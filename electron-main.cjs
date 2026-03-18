@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const https = require('https');
 const { exec, spawn } = require('child_process');
 
 let mainWindow = null; // 🚀 Global reference for system broadcasting
@@ -516,92 +517,117 @@ function startDirectiveWatcher() {
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
   
-  const binName = director === 'gemini' ? 'gemini' : (director === 'jules' ? 'jules' : 'antigravity');
-  const binPath = await checkCommand(binName);
+  const isCliDirector = ['gemini', 'jules', 'antigravity'].includes(director);
   
-  if (!binPath) {
-    event.sender.send('command-error', { messageId, error: `${director.toUpperCase()} CLI not found or blocked by shim filter.` });
-    return;
-  }
-
-  const codingKeywords = ['build', 'make', 'create', 'app', 'feature', 'implement', 'fix', 'refactor', 'continue', 'project', 'file', 'code', 'add'];
-  const isCodingTask = codingKeywords.some(word => command.toLowerCase().includes(word));
-
-  let spawnCmd = binPath;
-  let args = [];
-
-  if (director === 'gemini') {
-    // 🛡️ [TURBO] Headless Mode: Use -p for non-interactive communication
-    spawnCmd = `"${binPath}" -m gemini-3-flash-preview -p "${command}"`;
-  } else if (director === 'jules') {
-    args = ['prompt', command, '--theme', 'dark'];
-  } else {
-    args = ['chat', command];
-  }
-
-  const finalEnv = { 
-    ...process.env, 
-    FORCE_COLOR: '1',
-    PATH: sterilizePath(process.env.PATH) // 🛡️ GLOBAL ANTI-SPAM INJECT
-  };
-  
-  // Inject Credentials based on Director/Engine
-  if (GEMINI_KEY) {
-    finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
-    finalEnv['GOOGLE_API_KEY'] = GEMINI_KEY;
-  }
-  if (JULES_KEY) {
-    finalEnv['JULES_API_KEY'] = JULES_KEY;
-    // Jules often uses GOOGLE_API_KEY as fallback
-    if (!finalEnv['GOOGLE_API_KEY']) finalEnv['GOOGLE_API_KEY'] = JULES_KEY;
-  }
-  if (OPENAI_KEY) finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
-  if (CLAUDE_KEY) finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
-  if (GITHUB_TOKEN) finalEnv['GITHUB_PERSONAL_ACCESS_TOKEN'] = GITHUB_TOKEN;
-
-  console.log(`[Bridge] Spawning Stream: ${spawnCmd} ${args.join(' ')}`);
-  
-  const child = spawn(`"${spawnCmd}"`, args, { 
-    cwd: currentProjectRoot,
-    shell: true, 
-    env: finalEnv 
-  });
-
-  let fullOutput = '';
-
-  child.stdout.on('data', (data) => {
-    const chunk = data.toString();
-    fullOutput += chunk;
-    event.sender.send('command-chunk', { messageId, chunk });
-  });
-
-  child.stderr.on('data', (data) => {
-    const chunk = data.toString();
-    event.sender.send('command-chunk', { messageId, chunk });
-  });
-
-  child.on('close', (code) => {
-    const estimatedTokens = Math.ceil((command.length + fullOutput.length) / 4);
-    
-    // 🛡️ ACCURATE FLEET TELEMETRY
-    if (director === 'gemini') tokenStats.gemini += estimatedTokens;
-    else if (director === 'jules') tokenStats.jules += estimatedTokens;
-    else if (director === 'chatgpt') tokenStats.openai += estimatedTokens;
-    else if (director === 'claude') tokenStats.claude += estimatedTokens;
-    else tokenStats.antigravity += estimatedTokens;
-
-    saveGlobalState();
-    event.sender.send('command-end', { messageId, code });
-    
-    // ⚡ INSTANT ACTION: Trigger Push as soon as AI finishes
-    if (director && ['gemini', 'jules', 'antigravity'].includes(director)) {
-      triggerGitSync();
+  if (isCliDirector) {
+    const binPath = await checkCommand(director);
+    if (!binPath) {
+      event.sender.send('command-error', { messageId, error: `${director.toUpperCase()} CLI not found.` });
+      return;
     }
-  });
 
-  child.on('error', (err) => {
-    event.sender.send('command-error', { messageId, error: err.message });
-  });
+    let spawnCmd = binPath;
+    let args = [];
+    if (director === 'gemini') args = ['-m', 'gemini-3-flash-preview', '-p', command];
+    else if (director === 'jules') args = ['prompt', command, '--theme', 'dark'];
+    else args = ['chat', command];
+
+    const finalEnv = { ...process.env, FORCE_COLOR: '1' };
+    if (GEMINI_KEY) finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
+    if (JULES_KEY) finalEnv['JULES_API_KEY'] = JULES_KEY;
+
+    const child = spawn(director === 'gemini' ? `"${binPath}"` : binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    let fullOutput = '';
+    child.stdout.on('data', (data) => { fullOutput += data.toString(); event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
+    child.stderr.on('data', (data) => { event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
+    child.on('close', (code) => {
+      tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullOutput.length / 4);
+      saveGlobalState();
+      event.sender.send('command-end', { messageId, code });
+      triggerGitSync();
+    });
+  } else {
+    // DIRECT API DIRECTORS (ChatGPT, Claude, DeepSeek, etc.)
+    let apiUrl = '';
+    let apiKey = '';
+    let modelName = '';
+    let body = {};
+
+    if (director === 'chatgpt') {
+      apiUrl = 'api.openai.com';
+      apiKey = OPENAI_KEY;
+      modelName = 'gpt-4o';
+    } else if (director === 'claude') {
+      apiUrl = 'api.anthropic.com';
+      apiKey = CLAUDE_KEY;
+      modelName = 'claude-3-5-sonnet-20240620';
+    } else if (director === 'deepseek') {
+      apiUrl = 'api.deepseek.com';
+      apiKey = DEEPSEEK_KEY;
+      modelName = 'deepseek-chat';
+    } else if (director === 'mistral') {
+      apiUrl = 'api.mistral.ai';
+      apiKey = MISTRAL_KEY;
+      modelName = 'mistral-large-latest';
+    }
+
+    if (!apiKey) {
+      event.sender.send('command-error', { messageId, error: `API Key for ${director.toUpperCase()} is missing.` });
+      return;
+    }
+
+    const path = director === 'claude' ? '/v1/messages' : '/v1/chat/completions';
+    const postData = JSON.stringify(director === 'claude' ? {
+      model: modelName,
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: command }],
+      stream: true
+    } : {
+      model: modelName,
+      messages: [{ role: 'user', content: command }],
+      stream: true
+    });
+
+    const options = {
+      hostname: apiUrl,
+      port: 443,
+      path: path,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        ...(director === 'claude' ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Authorization': undefined } : {})
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let fullText = '';
+      res.on('data', (chunk) => {
+        const lines = chunk.toString().split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          if (line.includes('[DONE]')) continue;
+          try {
+            const json = JSON.parse(line.replace('data: ', ''));
+            const content = director === 'claude' ? (json.delta?.text || '') : (json.choices?.[0]?.delta?.content || '');
+            if (content) {
+              fullText += content;
+              event.sender.send('command-chunk', { messageId, chunk: content });
+            }
+          } catch (e) {}
+        }
+      });
+      res.on('end', () => {
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
+        event.sender.send('command-end', { messageId, code: 0 });
+        triggerGitSync();
+      });
+    });
+
+    req.on('error', (e) => { event.sender.send('command-error', { messageId, error: e.message }); });
+    req.write(postData);
+    req.end();
+  }
 });
 
 // Deprecated for new streaming UI but kept for legacy compat
