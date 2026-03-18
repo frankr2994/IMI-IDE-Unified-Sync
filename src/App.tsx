@@ -53,7 +53,7 @@ const App = () => {
   const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
   const [activeDirector, setActiveDirector] = useState('gemini');
   const [mcpServers, setMcpServers] = useState<any[]>([]);
-  const [newServer, setNewServer] = useState({ name: '', command: '', args: '' });
+  const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
   const [mcpSearch, setMcpSearch] = useState('');
   const [availableMCPs] = useState([
@@ -202,7 +202,7 @@ const App = () => {
     if (result.success) {
       addLog('system', `${name} is now linked and synced!`);
       await updateMcpList();
-      setNewServer({ name: '', command: '', args: '' });
+      setNewServer({ name: '', command: '', args: '', env: {} });
       fetchStats();
     } else {
       alert('Link Failed: ' + result.error);
@@ -695,8 +695,18 @@ const App = () => {
                   ))}
                 </div>
                 <div style={{ padding: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
-                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '10px' }}>
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder="Send cross-platform command..." className="chat-input" />
+                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <select 
+                        value={activeDirector} 
+                        onChange={(e) => setActiveDirector(e.target.value)}
+                        className="chat-input"
+                        style={{ width: 'auto', minWidth: '130px', padding: '16px 12px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      >
+                        <option value="gemini" style={{ background: '#1a1a2e' }}>Gemini</option>
+                        <option value="jules" style={{ background: '#1a1a2e' }}>Jules</option>
+                        <option value="antigravity" style={{ background: '#1a1a2e' }}>Antigravity</option>
+                      </select>
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Send command to ${activeDirector.toUpperCase()}...`} className="chat-input" />
                       <button type="submit" className="btn-chat-send"><Send size={18}/></button>
                     </form>
                 </div>
