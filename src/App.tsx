@@ -293,6 +293,13 @@ const App = () => {
 
   return (
     <div className="dashboard-container">
+      <div className="title-bar">
+        <div className="window-controls">
+          <button onClick={() => (ipc as any).send('window-minimize')} className="control-btn"><Minus size={14}/></button>
+          <button onClick={() => (ipc as any).send('window-maximize')} className="control-btn"><Maximize2 size={14}/></button>
+          <button onClick={() => (ipc as any).send('window-close')} className="control-btn close"><X size={14}/></button>
+        </div>
+      </div>
       <div className="sidebar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '1rem' }}>
           <div style={{ 
