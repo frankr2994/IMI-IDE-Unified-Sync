@@ -52,6 +52,7 @@ const App = () => {
   const [usage, setUsage] = useState({ cpu: '0', ram: '0', threads: 0, load: '0' });
   const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
   const [activeDirector, setActiveDirector] = useState('gemini');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
