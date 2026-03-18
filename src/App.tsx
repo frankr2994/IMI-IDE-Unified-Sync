@@ -659,24 +659,65 @@ const App = () => {
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{ 
                         flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', 
-                        border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden',
+                        border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible',
                         transition: 'all 0.3s'
                       }} className="chat-input-container">
-                        <select 
-                          value={activeDirector} 
-                          onChange={(e) => setActiveDirector(e.target.value)}
-                          style={{ 
-                            width: 'auto', padding: '0 10px 0 15px', background: 'rgba(155, 77, 255, 0.1)', 
-                            border: 'none', borderRight: '1px solid var(--glass-border)',
-                            color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', 
-                            textTransform: 'uppercase', letterSpacing: '0.1em', height: '40px',
-                            cursor: 'pointer', outline: 'none', appearance: 'none'
-                          }}
-                        >
-                          <option value="gemini" style={{ background: '#1a1a2e' }}>GEMINI</option>
-                          <option value="jules" style={{ background: '#1a1a2e' }}>JULES</option>
-                          <option value="antigravity" style={{ background: '#1a1a2e' }}>AG AI</option>
-                        </select>
+                        <div style={{ position: 'relative' }}>
+                          <div 
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            style={{ 
+                              display: 'flex', alignItems: 'center', gap: '8px',
+                              width: '130px', padding: '0 15px', background: 'rgba(155, 77, 255, 0.1)', 
+                              borderRight: '1px solid var(--glass-border)', borderTopLeftRadius: '12px', borderBottomLeftRadius: '12px',
+                              color: 'var(--primary)', fontWeight: 900, fontSize: '0.65rem', 
+                              textTransform: 'uppercase', letterSpacing: '0.1em', height: '40px',
+                              cursor: 'pointer', outline: 'none'
+                            }}
+                          >
+                            {activeDirector === 'gemini' && <Zap size={14} />}
+                            {activeDirector === 'jules' && <Layers size={14} />}
+                            {activeDirector === 'antigravity' && <Cpu size={14} />}
+                            <span style={{ flex: 1, textAlign: 'left' }}>
+                              {activeDirector === 'antigravity' ? 'AG AI' : activeDirector}
+                            </span>
+                            <ChevronRight size={14} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
+                          </div>
+                          
+                          <AnimatePresence>
+                            {isDropdownOpen && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                style={{ 
+                                  position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '150px',
+                                  background: 'rgba(20, 20, 30, 0.95)', backdropFilter: 'blur(20px)',
+                                  border: '1px solid var(--glass-border)', borderRadius: '12px',
+                                  boxShadow: '0 -10px 40px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 100
+                                }}
+                              >
+                                {[
+                                  { id: 'gemini', name: 'GEMINI', icon: <Zap size={14} /> },
+                                  { id: 'jules', name: 'JULES', icon: <Layers size={14} /> },
+                                  { id: 'antigravity', name: 'AG AI', icon: <Cpu size={14} /> }
+                                ].map(opt => (
+                                  <div 
+                                    key={opt.id}
+                                    onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); }}
+                                    style={{ 
+                                      display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 15px',
+                                      color: activeDirector === opt.id ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
+                                      fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer',
+                                      background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent',
+                                      borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                    }}
+                                  >
+                                    {opt.icon}
+                                    {opt.name}
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                         <input 
                           value={chatInput} 
                           onChange={e => setChatInput(e.target.value)} 
