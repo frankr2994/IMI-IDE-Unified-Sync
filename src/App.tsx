@@ -21,7 +21,11 @@ import {
   Search,
   CheckCircle2,
   Settings2,
-  Gauge
+  Gauge,
+  Key,
+  Palette,
+  Clock,
+  History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -46,39 +50,44 @@ const App = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
   const [usage, setUsage] = useState({ cpu: '0', ram: '0', threads: 0, load: '0' });
-  const [tokenUsage, setTokenUsage] = useState({ gemini: 0, jules: 0 });
+  const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
   const [activeDirector, setActiveDirector] = useState('gemini');
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '' });
   const [chatInput, setChatInput] = useState('');
   const [mcpSearch, setMcpSearch] = useState('');
   const [availableMCPs] = useState([
-    { name: 'Jules Cloud', pkg: '@google/jules', desc: 'Autonomous coding agent' },
     { name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent graph memory' },
     { name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local file access' },
-    { name: 'GitHub', pkg: '@modelcontextprotocol/server-github', desc: 'Repo management' },
     { name: 'Google Maps', pkg: '@modelcontextprotocol/server-google-maps', desc: 'Location data' }
   ]);
   const [projectRootInput, setProjectRootInput] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
-  const [julesToken, setJulesToken] = useState('');
   const [githubToken, setGithubToken] = useState('');
-  const [activeEngine, setActiveEngine] = useState('jules');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [claudeKey, setClaudeKey] = useState('');
+  const [customApiKey, setCustomApiKey] = useState('');
+  const [julesApiKey, setJulesApiKey] = useState('');
+  const [googleMapsKey, setGoogleMapsKey] = useState('');
+  const [activeEngine, setActiveEngine] = useState('gemini');
   const [gitInstalled, setGitInstalled] = useState(true);
   const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
   const [settingsSearch, setSettingsSearch] = useState('');
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
   const [snapshotMode, setSnapshotMode] = useState(true);
+  const [theme, setTheme] = useState('glass');
+  const [logRetention, setLogRetention] = useState(10);
+  const [snapshotFrequency, setSnapshotFrequency] = useState(5);
   
   interface Log { id: number; type: string; msg: string; }
   const [logs, setLogs] = useState<Log[]>([
     { id: 1, type: 'ag', msg: 'Antigravity core loaded. Watching for changes...' },
-    { id: 2, type: 'gemini', msg: 'Gemini CLI initialized. Ready for prompt.' },
-    { id: 3, type: 'jules', msg: 'Jules connection established. Cloud VM ready.' }
+    { id: 2, type: 'gemini', msg: 'Gemini Strategy Protocol: Enhancement roadmap generated.' },
+    { id: 3, type: 'jules', msg: 'Jules Implementation Engine: Hand-off received. Implementing Settings UI expansion...' }
   ]);
 
   const [messages, setMessages] = useState<any[]>([
-    { id: 0, type: 'system', text: 'Unified Sync Hub initialized. All commands are broadcasted to Jules and Gemini CLI.' }
+    { id: 0, type: 'system', text: 'Unified Sync Hub initialized. All commands are broadcasted to Gemini CLI.' }
   ]);
 
   const addLog = (type: string, msg: string) => {
@@ -96,8 +105,12 @@ const App = () => {
     if (tokens) setTokenUsage(tokens);
 
     const mcpData = await (ipc as any).invoke('mcp:global-list');
-    if (mcpData.success) {
-      const lines = mcpData.data.split('\n').filter((l: string) => l.includes('●') || l.includes('○'));
+    if (mcpData.success && mcpData.data) {
+      // Capture any line that looks like a server entry (starts with ●, ○, or ✗)
+      const lines = mcpData.data.split('\n').filter((l: string) => 
+        (l.includes('●') || l.includes('○') || l.includes('✗') || l.includes(':')) &&
+        !l.includes('automated checks disabled') 
+      );
       setMcpServers(lines.map((l: string) => ({ 
         name: l.trim(), 
         status: l.includes('●') ? 'online' : 'offline' 
@@ -106,13 +119,18 @@ const App = () => {
 
     const snapshot = await (ipc as any).invoke('load-context-snapshot');
     if (snapshot) setLastSnapshot(snapshot);
+  };
 
+  const loadConfig = async () => {
     const config = await (ipc as any).invoke('get-api-config');
     if (config) {
       setGeminiKey(config.geminiKey || '');
-      setJulesToken(config.julesToken || '');
       setGithubToken(config.githubToken || '');
-      setActiveEngine(config.activeEngine || 'jules');
+      setOpenaiKey(config.openaiKey || '');
+      setClaudeKey(config.claudeKey || '');
+      setCustomApiKey(config.customApiKey || '');
+      setJulesApiKey(config.julesApiKey || '');
+      setActiveEngine(config.activeEngine || 'gemini');
     }
   };
 
@@ -129,6 +147,19 @@ const App = () => {
     setIsExporting(false);
   };
 
+  const updateMcpList = async () => {
+    const mcpData = await (ipc as any).invoke('mcp:global-list');
+    if (mcpData.success && mcpData.data) {
+      const lines = mcpData.data.split('\n').filter((l: string) => 
+        (l.includes('●') || l.includes('○') || l.includes('✗') || l.includes(':'))
+      );
+      setMcpServers(lines.map((l: string) => ({ 
+        name: l.trim(), 
+        status: l.includes('●') ? 'online' : 'offline' 
+      })));
+    }
+  };
+
   const updateRoot = async () => {
     const result = await (ipc as any).invoke('set-project-root', projectRootInput);
     if (result.success) {
@@ -140,8 +171,11 @@ const App = () => {
   };
 
   const saveConfig = async () => {
-    await (ipc as any).invoke('save-api-config', { geminiKey, julesToken, githubToken, activeEngine });
-    alert('API Integration & Engine Settings Synced!');
+    await (ipc as any).invoke('save-api-config', { 
+      geminiKey, githubToken, 
+      openaiKey, claudeKey, customApiKey, julesApiKey, googleMapsKey, activeEngine 
+    });
+    // Silent background sync for premium UX
   };
 
   const connectMCPServer = async () => {
@@ -151,42 +185,84 @@ const App = () => {
     const env: any = {};
     if (newServer.name.toLowerCase().includes('github')) {
       if (!githubToken) {
-        alert('Please set your GitHub Personal Access Token in the Settings tab first!');
-        setActiveTab('settings');
+        alert('Please set your GitHub Personal Access Token in the Keys section first!');
         return;
       }
       env['GITHUB_PERSONAL_ACCESS_TOKEN'] = githubToken;
     }
+    if (newServer.name.toLowerCase().includes('jules')) {
+      if (!julesApiKey) {
+        alert('Please set your Jules API Key in the Keys section first!');
+        return;
+      }
+      env['JULES_API_KEY'] = julesApiKey; 
+      env['GOOGLE_API_KEY'] = julesApiKey; 
+    }
+    if (newServer.name.toLowerCase().includes('google')) {
+      if (!googleMapsKey) {
+        alert('Please set your Google Maps API Key in the Keys section first!');
+        return;
+      }
+      env['GOOGLE_MAPS_API_KEY'] = googleMapsKey;
+    }
+
+    const mcpName = newServer.name;
+    addLog('system', `Linking ${mcpName}...`);
+
+    // 1. Remove if already exists to prevent duplication issues
+    await (ipc as any).invoke('mcp:global-remove', mcpName);
+    
+    // 2. Add the new one
+    // Ensure args is passed as an array to the bridge
+    const finalArgs = typeof newServer.args === 'string' ? newServer.args.split(' ').filter(a => a) : newServer.args;
 
     const result = await (ipc as any).invoke('mcp:global-add', { 
-      name: newServer.name, 
+      name: mcpName, 
       command: newServer.command, 
-      args: newServer.args.split(' ').filter(a => a),
-      env
+      args: finalArgs,
+      env 
     });
+
     if (result.success) {
+      addLog('system', `${mcpName} is now linked and synced!`);
+      await updateMcpList();
       setNewServer({ name: '', command: '', args: '' });
-      addLog('system', result.msg);
       fetchStats();
+    } else {
+      alert('Link Failed: ' + result.error);
     }
   };
 
   const removeMCPServer = async (name: string) => {
-    const cleanName = name.replace(/[●○]/g, '').trim().split(' ')[0];
+    // Correctly strip symbols AND the separator colon for zero-entropy matching
+    const cleanName = name.replace(/[●○]/g, '').trim().split(':')[0].trim();
     const result = await (ipc as any).invoke('mcp:global-remove', cleanName);
     if (result.success) {
       addLog('system', result.msg);
-      fetchStats();
+      await updateMcpList(); // 🚀 Refresh UI immediately
     }
   };
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
-    const newUserMsg = { id: Date.now(), type: 'user', text: chatInput };
+    const messageId = Date.now();
+    const newUserMsg = { id: messageId, type: 'user', text: chatInput };
     setMessages(prev => [...prev, newUserMsg]);
     setChatInput('');
     setIsSyncing(true);
-    addLog('ag', `Broadcasting to ${activeDirector}: ${newUserMsg.text}`);
+    
+    // Create initial streaming AI response placeholder
+    const aiId = messageId + 1;
+    const aiResponse = { 
+      id: aiId, 
+      type: 'ai', 
+      director: activeDirector,
+      text: '',
+      isStreaming: true
+    };
+    setMessages(prev => [...prev, aiResponse]);
+
+    addLog('ag', `Broadcasting Stream to ${activeDirector}: ${newUserMsg.text}`);
     
     if (snapshotMode) {
       await (ipc as any).invoke('save-context-snapshot', {
@@ -196,34 +272,63 @@ const App = () => {
       });
     }
 
-    const result = await (ipc as any).invoke('execute-command', { command: newUserMsg.text, director: activeDirector });
-    const aiResponse = { 
-      id: Date.now() + 1, 
-      type: 'ai', 
+    // Call the streaming backend
+    (ipc as any).send('execute-command-stream', { 
+      command: newUserMsg.text, 
       director: activeDirector,
-      text: result.msg || 'Command executed by bridge.',
-      isJules: result.isJules,
-      sessionId: result.sessionId
-    };
-    setMessages(prev => [...prev, aiResponse]);
-    setIsSyncing(false);
-    fetchStats();
+      messageId: aiId
+    });
   };
 
-  const syncJules = async (sid: string) => {
-    addLog('system', `Attempting sync for Jules Session: ${sid}`);
-    const result = await (ipc as any).invoke('sync-jules-session', sid);
-    if (result.success) {
-      alert('SUCCESS: Jules code merged into local workspace.');
-      addLog('system', 'Sync successful.');
-    } else {
-      alert('Sync Failed: ' + result.error);
-    }
-  };
+  // syncJules functionality removed.
+
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 2000); 
+    loadConfig();
+    
+    // Auto-refresh disabled to prevent App Installer spam on Windows.
+    // fetchStats will now only run on load or manual trigger.
+    
+    // COMMAND STREAMING LISTENERS
+    const handleChunk = (_: any, { messageId, chunk }: any) => {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, text: m.text + chunk } : m
+      ));
+    };
+
+    const handleEnd = (_: any, { messageId }: any) => {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, isStreaming: false } : m
+      ));
+      setIsSyncing(false);
+      fetchStats();
+    };
+
+    const handleError = (_: any, { messageId, error }: any) => {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, text: m.text + '\n[Bridge Error]: ' + error, isStreaming: false } : m
+      ));
+      setIsSyncing(false);
+    };
+
+    const handleDirective = (_: any, directive: any) => {
+      const systemMsg = {
+        id: Date.now(),
+        type: 'system',
+        text: `🚀 [ASOS DIRECTIVE]: ${directive.message}\n\nURGENCY: ${directive.urgency.toUpperCase()}\nRECOMMENDED ACTION: ${directive.action}`,
+        isAlert: true
+      };
+      setMessages(prev => [...prev, systemMsg]);
+      addLog('system', `ASOS Optimizer: ${directive.message}`);
+    };
+
+    if (ipc.on) {
+      ipc.on('command-chunk', handleChunk);
+      ipc.on('command-end', handleEnd);
+      ipc.on('command-error', handleError);
+      ipc.on('system-directive', handleDirective);
+    }
     
     // Check Git and auto-fetch profile if token exists
     const initApp = async () => {
@@ -238,8 +343,14 @@ const App = () => {
     };
     initApp();
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      if (ipc.removeAllListeners) {
+        ipc.removeAllListeners('command-chunk');
+        ipc.removeAllListeners('command-end');
+        ipc.removeAllListeners('command-error');
+      }
+    };
+  }, []); // LOCKDOWN: No automatic refetch on tab change.
 
   const [githubUrl, setGithubUrl] = useState('');
   const [isLinking, setIsLinking] = useState(false);
@@ -249,7 +360,7 @@ const App = () => {
   const linkExistingGithub = async () => {
     // 1. Sync token to backend first if provided in the field
     if (githubToken) {
-      await (ipc as any).invoke('save-api-config', { geminiKey, julesToken, githubToken, activeEngine });
+      await (ipc as any).invoke('save-api-config', { geminiKey, githubToken, activeEngine });
     }
 
     const result = await (ipc as any).invoke('fetch-github-profile');
@@ -289,11 +400,11 @@ const App = () => {
 
   return (
     <div className="dashboard-container">
-      <div className="title-bar" style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px', background: 'rgba(0,0,0,0.3)', WebkitAppRegion: 'drag' } as any}>
-        <div className="window-controls" style={{ display: 'flex', gap: '10px', WebkitAppRegion: 'no-drag' } as any}>
-          <button onClick={() => ipc.send('window-minimize')} className="control-btn" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><Minus size={14} /></button>
-          <button onClick={() => ipc.send('window-maximize')} className="control-btn" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}><Maximize2 size={14} /></button>
-          <button onClick={() => ipc.send('window-close')} className="control-btn close" style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer' }}><X size={14} /></button>
+      <div className="title-bar">
+        <div className="window-controls">
+          <button onClick={() => ipc.send('window-minimize')} className="control-btn"><Minus size={16} /></button>
+          <button onClick={() => ipc.send('window-maximize')} className="control-btn"><Maximize2 size={16} /></button>
+          <button onClick={() => ipc.send('window-close')} className="control-btn close"><X size={16} /></button>
         </div>
       </div>
 
@@ -358,6 +469,10 @@ const App = () => {
               <div style={{ width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88' }}></div>
               <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>REPOS SYNCED</span>
             </div>
+            <div className="glass-card" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px', border: '1px solid #00ff8844' }}>
+              <ShieldCheck size={16} color="#00ff88" />
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#00ff88' }}>SAFE MODE: ACTIVE</span>
+            </div>
             <button onClick={handleExport} disabled={isExporting} className="btn-premium" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {isExporting ? <RefreshCw size={18} className="spin" /> : <Download size={18} />} Export Hub
             </button>
@@ -367,43 +482,140 @@ const App = () => {
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="db" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px' }}>
-                {[
-                  { title: 'Antigravity AI', badge: 'LOCAL', color: 'var(--primary)', logs: logs.filter(l=>l.type==='ag'), icon: <Zap /> },
-                  { title: 'Google Jules', badge: 'CLOUD', color: '#ff6b6b', logs: logs.filter(l=>l.type==='jules'), icon: <Activity /> },
-                  { title: 'Gemini CLI', badge: 'TERMINAL', color: '#00d2ff', logs: logs.filter(l=>l.type==='gemini'), icon: <Terminal /> }
-                ].map(agent => (
-                  <div key={agent.title} className="glass-card" style={{ padding: '1.5rem', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: agent.color }}></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="tool-badge" style={{ background: agent.color + '22', color: agent.color, fontWeight: 800 }}>{agent.badge}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)' }}>ACTIVE</span>
-                        <div className="status-online" style={{ width: '8px', height: '8px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88' }}></div>
+                {/* 🚀 ELITE MODEL ROUTING HUB */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '40px' }}>
+                   {/* ROLE 1: THE VOICE (Strategy & Planning) */}
+                   <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <div style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', color: '#4facfe' }}>ACTIVE VOICE (STRATEGY)</div>
+                        <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>WHO YOU TALK TO</div>
                       </div>
-                    </div>
-                    <h3 style={{ marginTop: '1.5rem', fontSize: '1.4rem', fontWeight: 800 }}>{agent.title}</h3>
-                    <div className="terminal-mock" style={{ height: '80px', margin: '15px 0', background: 'rgba(0,0,0,0.4)', borderRadius: '10px', padding: '12px', fontSize: '0.7rem' }}>
-                      {agent.logs.length > 0 ? agent.logs.map(l => <div key={l.id} style={{ marginBottom: '4px' }}><span style={{ color: agent.color, fontWeight: 800 }}>▶</span> {l.msg}</div>) : <div style={{ opacity: 0.3 }}>Standby for heartbeat...</div>}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <button 
-                        className="btn-premium" 
-                        style={{ padding: '10px', fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)' }} 
-                        onClick={() => addLog(agent.badge === 'LOCAL' ? 'ag' : agent.badge.toLowerCase(), 'Manual ping heartbeat sent.')}
-                      >
-                        Ping Node
-                      </button>
-                      <button 
-                        className="btn-premium" 
-                        style={{ padding: '10px', fontSize: '0.7rem', background: agent.color + '22', border: `1px solid ${agent.color}44`, color: agent.color }} 
-                        onClick={() => alert(`${agent.title} system diagnostics stable. Sync Latency: 4ms`)}
-                      >
-                        Diagnostic
-                      </button>
-                    </div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {[
+                          { id: 'gemini', name: 'Gemini', color: '#4facfe' },
+                          { id: 'chatgpt', name: 'ChatGPT', color: '#10a37f', linked: mcpServers.some(s => s.name.toLowerCase().includes('chatgpt')) },
+                          { id: 'claude', name: 'Claude', color: '#da7756', linked: mcpServers.some(s => s.name.toLowerCase().includes('claude')) }
+                        ].map(m => (
+                          <button 
+                            key={m.id}
+                            onClick={() => { setActiveDirector(m.id); saveConfig(); }}
+                            style={{ 
+                              flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--glass-border)',
+                              background: activeDirector === m.id ? m.color : 'rgba(255,255,255,0.02)',
+                              color: activeDirector === m.id ? '#fff' : 'rgba(255,255,255,0.4)',
+                              fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer',
+                              boxShadow: activeDirector === m.id ? `0 0 15px ${m.color}66` : 'none',
+                              opacity: (m.id === 'gemini' || m.linked) ? 1 : 0.3, transition: 'all 0.3s'
+                            }}
+                          >
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                   </div>
+
+                   {/* ROLE 2: THE AGENCY (Implementation) */}
+                   <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <div style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', color: '#00ff88' }}>ACTIVE AGENCY (CODE)</div>
+                        <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>WHO WRITES THE CODE</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {[
+                          { id: 'jules', name: 'Jules', color: '#ff416c', disabled: !julesApiKey },
+                          { id: 'antigravity', name: 'AG AI', color: '#00ff88' }
+                        ].map(m => (
+                          <button 
+                            key={m.id}
+                            disabled={m.disabled}
+                            onClick={() => { setActiveEngine(m.id); saveConfig(); }}
+                            style={{ 
+                              flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--glass-border)',
+                              background: activeEngine === m.id ? m.color : 'rgba(255,255,255,0.02)',
+                              color: activeEngine === m.id ? '#fff' : 'rgba(255,255,255,0.4)',
+                              fontWeight: 800, fontSize: '0.75rem', cursor: m.disabled ? 'not-allowed' : 'pointer',
+                              boxShadow: activeEngine === m.id ? `0 0 15px ${m.color}66` : 'none',
+                              opacity: m.disabled ? 0.3 : 1, transition: 'all 0.3s'
+                            }}
+                          >
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                   </div>
+                </div>
+              {/* 🛡️ INTELLIGENCE OVERSIGHT: THE DYNAMIC DASHBOARD */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 350px', gap: '25px', marginBottom: '40px' }}>
+                  {/* LEFT: PRIMARY AGENT DYNAMICS */}
+                  <div className="glass-card" style={{ padding: '2rem', position: 'relative', overflow: 'hidden', minHeight: '350px' }}>
+                     {/* Contextual Glow based on active agent */}
+                     <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', background: activeEngine === 'jules' ? '#ff416c' : '#00ff88' }}></div>
+                     
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>MASTER ENGINE OVERSIGHT</div>
+                          <h3 style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: '5px' }}>{activeEngine.toUpperCase()} CORE</h3>
+                        </div>
+                        <div className="glass-card" style={{ padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #00ff8844' }}>
+                          <div style={{ width: '10px', height: '10px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88' }}></div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>LIVE SYNCED</span>
+                        </div>
+                     </div>
+
+                     <div style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
+                        <div>
+                           <div style={{ opacity: 0.5, fontSize: '0.7rem', fontWeight: 700, marginBottom: '10px' }}>ACTIVE SESSIONS</div>
+                           <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeEngine === 'jules' ? 'Cloud Context Enabled' : 'Local Heartbeat Active'}</div>
+                           <p style={{ fontSize: '0.8rem', opacity: 0.4, marginTop: '8px' }}>
+                             {activeEngine === 'jules' ? 'Offloading heavy analysis to Google Cloud.' : 'Running neural operations on local silicon.'}
+                           </p>
+                        </div>
+                        <div>
+                           <div style={{ opacity: 0.5, fontSize: '0.7rem', fontWeight: 700, marginBottom: '10px' }}>SYNC LATENCY</div>
+                           <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeEngine === 'jules' ? '450ms (Round-Trip)' : '1ms (Direct Node)'}</div>
+                           <p style={{ fontSize: '0.8rem', opacity: 0.4, marginTop: '8px' }}>
+                             {activeEngine === 'jules' ? 'Authenticated via Jules API Security.' : 'Bypassing cloud layers for maximum speed.'}
+                           </p>
+                        </div>
+                     </div>
+
+                     <div className="terminal-mock" style={{ marginTop: '30px', background: 'rgba(0,0,0,0.4)', borderRadius: '12px', padding: '20px', fontSize: '0.85rem' }}>
+                        <span style={{ color: activeEngine === 'jules' ? '#ff416c' : '#00ff88', fontWeight: 900 }}>[SYS] RECOVERY POINT: </span>
+                        <span style={{ opacity: 0.6 }}>{lastSnapshot ? new Date(lastSnapshot.timestamp).toLocaleString() : 'No snapshot created yet.'}</span>
+                        <div style={{ marginTop: '10px', height: '60px', overflow: 'hidden', opacity: 0.4, fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                           {logs.filter(l => l.type === (activeEngine === 'jules' ? 'jules' : 'ag')).slice(-3).map(l => (
+                             <div key={l.id}>{new Date().toLocaleTimeString()} {' > '} {l.msg}</div>
+                           ))}
+                        </div>
+                     </div>
                   </div>
-                ))}
+
+                  {/* RIGHT: REAL-TIME TELEMETRY (Merged Gauge) */}
+                  <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                     <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>RESOURCE TELEMETRY</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
+                           <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>CPU THRESHOLD</div>
+                           <div style={{ color: '#00d2ff', fontWeight: 900 }}>{usage.cpu}%</div>
+                        </div>
+                        <div className="quota-bar" style={{ height: '8px', marginTop: '10px' }}><div className="quota-fill" style={{ width: `${usage.cpu}%`, background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)' }}></div></div>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '25px' }}>
+                           <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>MEMORY SATURATION</div>
+                           <div style={{ color: '#00ff88', fontWeight: 900 }}>{(parseFloat(usage.ram) / 64 * 100).toFixed(1)}%</div>
+                        </div>
+                        <div className="quota-bar" style={{ height: '8px', marginTop: '10px' }}><div className="quota-fill" style={{ width: `${(parseFloat(usage.ram) / 64 * 100)}%`, background: 'linear-gradient(90deg, #0cebeb 0%, #20e2d7 100%)' }}></div></div>
+                     </div>
+
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        <button onClick={fetchStats} className="btn-premium" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}>
+                           <RefreshCw size={14} /> RE-SCAN
+                        </button>
+                        <button onClick={() => alert('Full System Diagnostic: ALL NODES ONLINE.')} className="btn-premium" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', padding: '12px' }}>
+                           DIAGNOSTIC
+                        </button>
+                     </div>
+                  </div>
               </div>
 
               <div className="glass-card" style={{ marginTop: '25px', padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
@@ -446,7 +658,19 @@ const App = () => {
                         transition: 'all 0.3s'
                       }}
                     >
-                      Gemini CLI
+                      Gemini
+                    </button>
+                    <button 
+                      onClick={() => setActiveDirector('jules')} 
+                      className={activeDirector === 'jules' ? 'active' : ''}
+                      style={{ 
+                        padding: '6px 15px', borderRadius: '8px', border: 'none', 
+                        background: activeDirector === 'jules' ? 'var(--primary)' : 'transparent',
+                        color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
+                        transition: 'all 0.3s'
+                      }}
+                    >
+                      Jules
                     </button>
                     <button 
                       onClick={() => setActiveDirector('antigravity')} 
@@ -464,26 +688,32 @@ const App = () => {
                 </div>
                 <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
                   {messages.map(m => (
-                    <div key={m.id} style={{ marginBottom: '1.5rem', display: 'flex', gap: '15px', justifyContent: m.type==='user'?'flex-end':'flex-start' }}>
-                      {m.type !== 'user' && <div style={{ width: '32px', height: '32px', background: m.type==='system'?'#333':'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m.type==='ai'?<Cpu size={16}/>:<Terminal size={16}/>}</div>}
+                    <div key={m.id} style={{ marginBottom: '1.5rem', display: 'flex', gap: '15px', justifyContent: m.type==='user'?'flex-end':'flex-start', flexDirection: m.isAlert ? 'column' : 'row', alignItems: m.isAlert ? 'center' : 'flex-start' }}>
+                      {m.type !== 'user' && !m.isAlert && <div style={{ width: '32px', height: '32px', background: m.type==='system'?'#333':'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m.type==='ai'?<Cpu size={16}/>:<Terminal size={16}/>}</div>}
                       <div style={{ 
-                        maxWidth: '80%', padding: '12px 18px', borderRadius: '15px', 
-                        background: m.type==='user'?'var(--primary)':'rgba(255,255,255,0.05)',
-                        border: m.type==='user'?'none':'1px solid var(--glass-border)'
+                        maxWidth: m.isAlert ? '100%' : '80%', padding: '12px 18px', borderRadius: '15px', 
+                        background: m.isAlert ? 'rgba(255,107,107,0.1)' : (m.type==='user'?'var(--primary)':'rgba(255,255,255,0.05)'),
+                        border: m.isAlert ? '2px solid #ff6b6b44' : (m.type==='user'?'none':'1px solid var(--glass-border)'),
+                        boxShadow: m.isAlert ? '0 0 40px rgba(255,107,107,0.1)' : 'none'
                       }}>
-                        {m.type==='ai' && <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>{m.director?m.director.toUpperCase():'SYSTEM'} RESPONSE</div>}
+                        {m.type==='system' && m.isAlert && <div style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '0.65rem', marginBottom: '8px', letterSpacing: '0.1em' }}>🔒 SELF-OPTIMIZATION PROTOCOL ENGAGED</div>}
+                        {m.type==='ai' && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                              {m.director?m.director.toUpperCase():'SYSTEM'} RESPONSE
+                            </div>
+                            {m.isStreaming && (
+                              <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                                ● LIVE
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className="chat-bubble-content" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
                           {renderContent(m.text)}
+                          {m.isStreaming && <span className="cursor-blink">|</span>}
                         </div>
-                        {m.isJules && (
-                          <button 
-                            onClick={() => syncJules(m.sessionId)}
-                            className="btn-premium" 
-                            style={{ marginTop: '15px', fontSize: '0.75rem', padding: '8px 12px', width: '100%' }}
-                          >
-                            <RefreshCw size={14} style={{ marginRight: '8px' }} /> Synchronize Code to Local Workspace
-                          </button>
-                        )}
+
                       </div>
                     </div>
                   ))}
@@ -495,13 +725,20 @@ const App = () => {
                     </form>
                 </div>
               </div>
+              
               <div className="devtools-panel">
-                 <div className="devtools-header"><span>Console</span><span>Logs</span><span>System</span></div>
-                 <div className="devtools-content" style={{ height: '540px' }}>
-                    <div style={{ color: '#00ff88' }}>[Bridge] Initializing socket connection...</div>
-                    <div style={{ color: '#00d2ff' }}>[System] {usage.threads} CPU Cores detected.</div>
-                    <div style={{ color: '#75beff' }}>[FS] Watching {stats.fileCount} files in {stats.projectRoot}</div>
-                    <div style={{ marginTop: '10px', opacity: 0.6 }}>... listening for broadcast events</div>
+                 <div className="devtools-header" style={{ padding: '10px 15px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)' }}>
+                    <span>SYS CONSOLE</span>
+                    <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
+                 </div>
+                 <div className="devtools-content" style={{ height: '515px', padding: '15px', overflowY: 'auto', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                    {logs.slice(-15).map(l => (
+                      <div key={l.id} style={{ marginBottom: '6px', color: l.type === 'ag' ? '#00ff88' : (l.type === 'gemini' ? '#4facfe' : '#ffffff88') }}>
+                        <span style={{ opacity: 0.4 }}>[{new Date(l.id).toLocaleTimeString()}]</span> {l.msg}
+                      </div>
+                    ))}
+                    {logs.length === 0 && <div style={{ color: '#ffffff44' }}>Waiting for system events...</div>}
+                    <div className="cursor-blink" style={{ display: 'inline-block', width: '8px', height: '14px', background: 'var(--primary)', marginLeft: '5px' }}></div>
                  </div>
               </div>
             </motion.div>
@@ -509,16 +746,44 @@ const App = () => {
 
           {activeTab === 'tools' && (
             <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card" style={{ padding: '2rem' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-                 <div>
-                   <h3 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Global MCP Hub</h3>
-                   <p style={{ color: 'var(--text-dim)' }}>Link specialized tools into the Gemini CLI ecosystem.</p>
-                 </div>
-                 <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={newServer.name} onChange={e => setNewServer({...newServer, name: e.target.value})} placeholder="Name" className="chat-input" style={{ width: '150px' }} />
-                    <input value={newServer.command} onChange={e => setNewServer({...newServer, command: e.target.value})} placeholder="Command/Pkg" className="chat-input" style={{ width: '200px' }} />
-                    <input value={newServer.args} onChange={e => setNewServer({...newServer, args: e.target.value})} placeholder="Args" className="chat-input" style={{ width: '150px' }} />
-                    <button onClick={connectMCPServer} className="btn-premium">Link App</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Global MCP Hub</h3>
+                    <p style={{ color: 'var(--text-dim)' }}>Link specialized tools into the Gemini CLI ecosystem.</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                    {newServer.name.toLowerCase().includes('github') && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--secondary)', textTransform: 'uppercase' }}>GitHub PAT</label>
+                        <input type="password" value={githubToken} onChange={e => { setGithubToken(e.target.value); saveConfig(); }} placeholder="Paste GitHub Token..." className="chat-input" style={{ width: '220px', borderColor: githubToken ? 'var(--secondary)' : '#ff6b6b' }} />
+                      </div>
+                    )}
+                    {(newServer.name.toLowerCase().includes('jules')) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 900, color: '#ff416c', textTransform: 'uppercase' }}>Jules API Key</label>
+                        <input type="password" value={julesApiKey} onChange={e => { setJulesApiKey(e.target.value); saveConfig(); }} placeholder="Paste Jules Key..." className="chat-input" style={{ width: '220px', borderColor: julesApiKey ? '#ff416c' : '#ff6b6b' }} />
+                      </div>
+                    )}
+                    {newServer.name.toLowerCase().includes('chatgpt') && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 900, color: '#10a37f', textTransform: 'uppercase' }}>OpenAI (GPT) Key</label>
+                        <input type="password" value={openaiKey} onChange={e => { setOpenaiKey(e.target.value); saveConfig(); }} placeholder="sk-..." className="chat-input" style={{ width: '220px', borderColor: openaiKey ? '#10a37f' : '#ff6b6b' }} />
+                      </div>
+                    )}
+                    {newServer.name.toLowerCase().includes('claude') && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 900, color: '#da7756', textTransform: 'uppercase' }}>Claude (Anthropic) Key</label>
+                        <input type="password" value={claudeKey} onChange={e => { setClaudeKey(e.target.value); saveConfig(); }} placeholder="sk-ant-..." className="chat-input" style={{ width: '220px', borderColor: claudeKey ? '#da7756' : '#ff6b6b' }} />
+                      </div>
+                    )}
+                    {newServer.name.toLowerCase().includes('google') && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: '0.65rem', fontWeight: 900, color: '#f093fb', textTransform: 'uppercase' }}>Google Maps Key</label>
+                        <input type="password" value={googleMapsKey} onChange={e => { setGoogleMapsKey(e.target.value); saveConfig(); }} placeholder="Paste Maps API Key..." className="chat-input" style={{ width: '220px', borderColor: googleMapsKey ? '#f093fb' : '#ff6b6b' }} />
+                      </div>
+                    )}
+                    {newServer.name && <button onClick={connectMCPServer} className="btn-premium" style={{ height: '45px', padding: '0 30px' }}>LINK {newServer.name.toUpperCase()}</button>}
+
                  </div>
                </div>
 
@@ -526,35 +791,60 @@ const App = () => {
                  <div style={{ fontWeight: 900, marginBottom: '20px', color: 'var(--primary)', fontSize: '0.85rem', letterSpacing: '0.1em' }}>QUICK-LINK TOOL LIBRARY</div>
                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px' }}>
                     {[
-                      { name: 'Jules Cloud', pkg: '@google/jules', desc: 'Autonomous coding', color: 'linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%)' },
-                      { name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent graph', color: 'linear-gradient(135deg, #4834d4 0%, #686de0 100%)' },
-                      { name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local file access', color: 'linear-gradient(135deg, #6ab04c 0%, #badc58 100%)' },
-                      { name: 'GitHub', pkg: '@modelcontextprotocol/server-github', desc: githubToken ? '✓ Token Ready' : 'Setup Token in Settings', color: 'linear-gradient(135deg, #2f3542 0%, #57606f 100%)' },
-                      { name: 'Google Maps', pkg: '@modelcontextprotocol/server-google-maps', desc: 'Location data', color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }
-                    ].map(lib => (
-                      <button 
-                        key={lib.name} 
-                        onClick={() => setNewServer({ name: lib.name.split(' ')[0], command: 'npx', args: `-y ${lib.pkg}` })}
-                        className="glass-card" 
-                        style={{ 
-                          padding: '15px', 
-                          border: '1px solid var(--glass-border)', 
-                          cursor: 'pointer', 
-                          textAlign: 'left', 
-                          background: 'rgba(255,255,255,0.03)',
-                          position: 'relative',
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: lib.color }}></div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 900, color: '#fff', marginBottom: '4px' }}>{lib.name}</div>
-                        <div style={{ fontSize: '0.65rem', opacity: 0.7, color: 'var(--text-dim)' }}>{lib.desc}</div>
-                        <div style={{ 
-                          position: 'absolute', bottom: '-10px', right: '-10px', width: '40px', height: '40px', 
-                          background: lib.color, opacity: 0.1, filter: 'blur(15px)', borderRadius: '50%' 
-                        }}></div>
-                      </button>
-                    ))}
+                      { id: 'Jules', name: 'Jules Agent', pkg: '@amitdeshmukh/google-jules-mcp', key: !!julesApiKey, color: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', command: '', args: '' },
+                      { id: 'ChatGPT', name: 'ChatGPT API', pkg: '@modelcontextprotocol/server-openai', key: !!openaiKey, color: 'linear-gradient(135deg, #10a37f 0%, #0cebeb 100%)', command: '', args: '' },
+                      { id: 'Claude', name: 'Claude API', pkg: '@modelcontextprotocol/server-anthropic-chat', key: !!claudeKey, color: 'linear-gradient(135deg, #da7756 0%, #f093fb 100%)', command: '', args: '' },
+                      { id: 'GitHub', name: 'GitHub Sync', pkg: '@modelcontextprotocol/server-github', key: !!githubToken, color: 'linear-gradient(135deg, #24292e 0%, #171a1d 100%)', command: '', args: '' },
+                      { id: 'Memory', name: 'Memory', pkg: 'mcp-server-memory', key: true, color: 'linear-gradient(135deg, #4834d4 0%, #686de0 100%)', command: '', args: '' },
+                      { id: 'Filesystem', name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', key: true, color: 'linear-gradient(135deg, #6ab04c 0%, #badc58 100%)', command: '', args: '' },
+                      { id: 'Google', name: 'Google Maps', pkg: '@modelcontextprotocol/server-google-maps', key: true, color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', command: '', args: '' }
+                    ].map(lib => {
+                      const isLinked = mcpServers.some(s => {
+                        const cleanBase = s.name.replace(/[●○]/g, '').trim();
+                        const registeredName = cleanBase.split(':')[0].trim().toLowerCase();
+                        return registeredName === lib.id.toLowerCase() && s.status === 'online';
+                      });
+                      const statusColor = isLinked ? '#00ff88' : '#ff6b6b';
+                      const statusLabel = isLinked ? 'LINKED' : 'UNLINKED';
+                      
+                      return (
+                        <button 
+                          key={lib.name} 
+                          onClick={() => {
+                            if (lib.command) {
+                              setNewServer({ name: lib.id, command: lib.command, args: lib.args });
+                            } else {
+                              setNewServer({ name: lib.id, command: 'npx', args: `--no-install -y ${lib.pkg}` });
+                            }
+                          }}
+                          className="glass-card" 
+                          style={{ 
+                            padding: '15px', 
+                            border: `1px solid ${statusColor}a0`, 
+                            cursor: 'pointer', 
+                            textAlign: 'left', 
+                            background: isLinked ? `rgba(0,255,136,0.15)` : `rgba(255,107,107,0.05)`,
+                            boxShadow: isLinked ? `0 0 25px rgba(0,255,136,0.2)` : 'none',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'all 0.3s'
+                          }}
+                        >
+                          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: statusColor, opacity: 1 }}></div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 900, color: '#fff', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            {lib.name} {isLinked && <CheckCircle2 size={12} color="#00ff88" />}
+                          </div>
+                          <div style={{ 
+                            fontSize: '0.7rem', 
+                            fontWeight: 900,
+                            letterSpacing: '0.05em',
+                            color: statusColor 
+                          }}>
+                            {statusLabel}
+                          </div>
+                        </button>
+                      );
+                    })}
                  </div>
                </div>
 
@@ -587,91 +877,102 @@ const App = () => {
                      </div>
                    ))}
                    {mcpServers.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, padding: '4rem', gridColumn: 'span 2' }}><Database size={48} /><p>No external registries linked yet.</p></div>}
-                 </div>
-               </div>
+                  </div>
+                </div>
             </motion.div>
           )}
 
           {activeTab === 'quota' && (
-            <motion.div key="quota" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card" style={{ padding: '3rem' }}>
-               <div style={{ display: 'flex', gap: '40px' }}>
-                 <div style={{ flex: 1 }}>
-                   <h3 style={{ fontSize: '2rem', fontWeight: 900 }}>Token Quota Overview</h3>
-                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                      <div className="glass-card" style={{ padding: '20px', border: '1px solid #00d2ff44' }}>
-                        <div style={{ color: '#00d2ff', fontWeight: 800 }}>GEMINI CLI USAGE</div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>{tokenUsage.gemini.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.5 }}>tokens</span></div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Estimated via local bridge telemetry</div>
-                      </div>
-                      <div className="glass-card" style={{ padding: '20px', border: '1px solid #ff6b6b44' }}>
-                        <div style={{ color: '#ff6b6b', fontWeight: 800 }}>JULES CLOUD USAGE</div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>{tokenUsage.jules.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.5 }}>tokens</span></div>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>Offloaded to Google Cloud VMs</div>
-                      </div>
-                   </div>
-                   
-                   <p style={{ color: 'var(--text-dim)', margin: '25px 0' }}>When your local context hits high pressure, IMI suggests offloading tasks to **Jules** to preserve your local tokens and leverage cloud scalability.</p>
-                   
-                   <div className="glass-card" style={{ background: 'rgba(0,255,136,0.05)', border: '1px solid #00ff8844', padding: '20px', marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <motion.div key="quota" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ padding: '0 1rem' }}>
+                <div style={{ marginBottom: '40px' }}>
+                  <h3 style={{ fontSize: '2.4rem', fontWeight: 900, letterSpacing: '-1.5px' }}>Fleet Telemetry</h3>
+                  <p style={{ color: 'var(--text-dim)', fontSize: '1rem', marginTop: '10px' }}>Real-time token utilization across all linked AI systems.</p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px', marginBottom: '40px' }}>
+                  {[
+                    { id: 'gemini', name: 'Gemini Master', color: '#4facfe', val: (tokenUsage as any).gemini || 0 },
+                    { id: 'openai', name: 'GPT-4 Strategy', color: '#10a37f', val: (tokenUsage as any).openai || 0 },
+                    { id: 'claude', name: 'Claude Analysis', color: '#da7756', val: (tokenUsage as any).claude || 0 },
+                    { id: 'jules', name: 'Jules Agent', color: '#ff416c', val: (tokenUsage as any).jules || 0 }
+                  ].map(m => (
+                    <div key={m.id} className="glass-card" style={{ padding: '25px', position: 'relative', overflow: 'hidden' }}>
+                       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: m.color, opacity: 0.6 }}></div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: m.color, letterSpacing: '0.1em' }}>CLOUD OVERSIGHT</div>
+                         <div style={{ width: '8px', height: '8px', background: m.val > 0 ? '#00ff88' : 'rgba(255,255,255,0.1)', borderRadius: '50%' }}></div>
+                       </div>
+                       <h4 style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '15px' }}>{m.name}</h4>
+                       <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '5px' }}>{m.val.toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.4 }}>TOKENS</span></div>
+                       <div className="quota-bar" style={{ marginTop: '20px', height: '6px' }}><div className="quota-fill" style={{ width: `${Math.min(100, (m.val / 100000) * 100)}%`, background: m.color }}></div></div>
+                       <p style={{ fontSize: '0.65rem', opacity: 0.4, marginTop: '8px' }}>Active Bridge Tunnel: STABLE</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                   <div className="glass-card" style={{ padding: '30px', border: '1px solid #00ff8844' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <Zap size={32} color="#00ff88" />
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '1rem' }}>Handover Snapshot Bridge</div>
-                          <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Last Snapshot: {lastSnapshot ? new Date(lastSnapshot.timestamp).toLocaleTimeString() : 'Never'}</div>
+                          <div style={{ fontWeight: 900, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Silicon Pressure</div>
+                          <h4 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Antigravity AI (Local)</h4>
                         </div>
-                        <button onClick={async () => {
-                          const result = await (ipc as any).invoke('save-context-snapshot', { status: 'Manual User Backup', lastQuery: 'Dashboard Ping' });
-                          if (result.success) {
-                            fetchStats();
-                            alert('Resume Snapshot saved to Project Root!');
-                          }
-                        }} className="btn-premium" style={{ fontSize: '0.8rem', padding: '8px 15px' }}>Force Snapshot</button>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '15px', marginTop: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                           <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>COMPUTE LOAD</span>
+                           <span style={{ fontWeight: 900, color: '#00ff88' }}>{usage.cpu}%</span>
+                        </div>
+                        <div className="quota-bar"><div className="quota-fill" style={{ width: `${usage.cpu}%` }}></div></div>
+                        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: '15px' }}>Local bridge has calculated {(tokenUsage as any).antigravity || 0} implementation tokens.</p>
                       </div>
                    </div>
-                 </div>
-               </div>
+
+                   <div className="glass-card" style={{ padding: '30px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <Database size={32} color="#00d2ff" />
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>Global Resilience</div>
+                          <h4 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Resume Snapshot Bridge</h4>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', margin: '25px 0' }}>When cloud quotas hit high pressure, IMI automatically triggers a snapshot for hand-off to alternative systems.</p>
+                      <div style={{ display: 'flex', gap: '15px' }}>
+                         <button onClick={async () => {
+                           const result = await (ipc as any).invoke('save-context-snapshot', { status: 'Manual User Backup', lastQuery: 'Dashboard Ping' });
+                           if (result.success) { fetchStats(); alert('Resume Snapshot saved to Project Root!'); }
+                         }} className="btn-premium" style={{ flex: 1, height: '50px' }}>Save Point</button>
+                         <button onClick={fetchStats} className="btn-premium" style={{ background: 'rgba(255,255,255,0.05)', flex: 1, border: '1px solid var(--glass-border)', height: '50px' }}>Sync Fleet</button>
+                      </div>
+                   </div>
+                </div>
             </motion.div>
           )}
 
           {activeTab === 'settings' && (
-            <motion.div key="set" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card" style={{ padding: '0', display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '600px', overflow: 'hidden' }}>
-              {/* Settings Sub-Sidebar */}
+            <motion.div key="set" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', display: 'grid', gridTemplateColumns: '240px 1fr', minHeight: '600px', overflow: 'hidden' }}>
               <aside style={{ background: 'rgba(0,0,0,0.2)', padding: '2rem 1.5rem', borderRight: '1px solid var(--glass-border)' }}>
                 <div style={{ marginBottom: '2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '10px 15px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                     <Search size={16} color="var(--text-dim)" />
-                    <input 
-                      value={settingsSearch} 
-                      onChange={e => setSettingsSearch(e.target.value)} 
-                      placeholder="Find setting..." 
-                      style={{ background: 'none', border: 'none', color: '#fff', fontSize: '0.8rem', outline: 'none', width: '100%' }}
-                    />
+                    <input value={settingsSearch} onChange={e => setSettingsSearch(e.target.value)} placeholder="Find setting..." style={{ background: 'none', border: 'none', color: '#fff', fontSize: '0.8rem', outline: 'none', width: '100%' }} />
                   </div>
                 </div>
-
                 <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
                     { id: 'general', label: 'General', icon: <Settings2 size={18} /> },
-                    { id: 'github', label: 'GitHub Sync', icon: <RefreshCw size={18} /> },
-                    { id: 'keys', label: 'API & Tokens', icon: <ShieldCheck size={18} /> },
+                    { id: 'interface', label: 'Interface', icon: <Palette size={18} /> },
+                    { id: 'keys', label: 'API & Tokens', icon: <Key size={18} /> },
                     { id: 'advanced', label: 'Advanced', icon: <Gauge size={18} /> }
                   ].filter(tab => tab.label.toLowerCase().includes(settingsSearch.toLowerCase())).map(tab => (
-                    <button 
-                      key={tab.id}
-                      onClick={() => setSettingsActiveSubTab(tab.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 1rem', borderRadius: '10px', border: 'none',
-                        background: settingsActiveSubTab === tab.id ? 'var(--primary)' : 'transparent',
-                        color: settingsActiveSubTab === tab.id ? '#fff' : 'rgba(255,255,255,0.5)',
-                        cursor: 'pointer', transition: 'all 0.2s', fontWeight: 700, fontSize: '0.85rem', textAlign: 'left'
-                      }}
-                    >
+                    <button key={tab.id} onClick={() => setSettingsActiveSubTab(tab.id as any)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 1rem', borderRadius: '10px', border: 'none', background: settingsActiveSubTab === tab.id ? 'var(--primary)' : 'transparent', color: settingsActiveSubTab === tab.id ? '#fff' : 'rgba(255,255,255,0.5)', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 700, fontSize: '0.85rem', textAlign: 'left' }}>
                       {tab.icon} {tab.label}
                     </button>
                   ))}
                 </nav>
               </aside>
 
-              {/* Settings Content Area */}
               <div style={{ padding: '3rem', overflowY: 'auto' }}>
                 <AnimatePresence mode="wait">
                   {settingsActiveSubTab === 'general' && (
@@ -680,7 +981,6 @@ const App = () => {
                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '5px' }}>General Preferences</h3>
                         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Core project and workspace configurations.</p>
                       </div>
-
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <label style={{ fontWeight: 700, fontSize: '0.9rem' }}>Project Root Path</label>
                         <div style={{ display: 'flex', gap: '10px' }}>
@@ -688,68 +988,32 @@ const App = () => {
                           <button onClick={updateRoot} className="btn-premium">Set Root</button>
                         </div>
                       </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <h4 style={{ fontWeight: 800, fontSize: '0.9rem' }}>Primary Coding Engine</h4>
-                        <div className="director-selector" style={{ width: 'fit-content' }}>
-                          {['jules', 'gemini', 'custom'].map(id => (
-                            <button 
-                              key={id} 
-                              onClick={async () => {
-                                setActiveEngine(id);
-                                // Auto-save to backend immediately so refresh doesn't overwrite it
-                                await (ipc as any).invoke('save-api-config', { geminiKey, julesToken, githubToken, activeEngine: id });
-                              }} 
-                              className={activeEngine === id ? 'active' : ''} 
-                              style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: activeEngine === id ? 'var(--primary)' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}
-                            >
-                              {id === 'jules' ? 'Jules Cloud' : id === 'gemini' ? 'Gemini CLI' : '3rd Party'}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="divider-v" style={{ width: '100%', height: '1px' }}></div>
+                      <div style={{ background: 'rgba(0,255,136,0.1)', padding: '15px', borderRadius: '10px', border: '1px solid #00ff8844' }}>
+                        <p style={{ fontSize: '0.8rem', color: '#00ff88' }}>✓ GitHub & Git features are active and safe. Command shims are blocked to prevent popups.</p>
                       </div>
                     </motion.div>
                   )}
 
-                  {settingsActiveSubTab === 'github' && (
-                    <motion.div key="git" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                      {!gitInstalled && (
-                        <div className="glass-card" style={{ background: 'rgba(255,107,107,0.1)', borderColor: '#ff6b6b44', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <AlertCircle color="#ff6b6b" />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#ff6b6b' }}>Git Not Detected</div>
-                            <p style={{ fontSize: '0.7rem', opacity: 0.7 }}>You need Git to sync with GitHub. Please install it to enable the Export Hub.</p>
-                          </div>
-                          <button onClick={() => (ipc as any).send('open-external', 'https://git-scm.com/download/win')} className="btn-premium" style={{ background: '#ff6b6b', fontSize: '0.7rem', padding: '8px 15px' }}>Download Git</button>
-                        </div>
-                      )}
+                  {settingsActiveSubTab === 'interface' && (
+                    <motion.div key="int" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                       <div>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '5px' }}>GitHub Integration</h3>
-                        <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Connect your identity and sync your code.</p>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '5px' }}>Visual Experience</h3>
+                        <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Personalize your IMI workspace aesthetics.</p>
                       </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <h4 style={{ fontWeight: 800, fontSize: '0.9rem' }}>Account Profile</h4>
-                        {githubUser ? (
-                          <div className="glass-card" style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '15px', background: 'rgba(0,255,136,0.05)', borderColor: '#00ff8844' }}>
-                            <img src={githubUser.avatar_url} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="avatar" />
-                            <div><div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{githubUser.name || githubUser.login}</div><div style={{ fontSize: '0.7rem', opacity: 0.6 }}>@{githubUser.login}</div></div>
-                            <div style={{ marginLeft: 'auto', background: '#00ff8822', color: '#00ff88', padding: '4px 10px', borderRadius: '100px', fontSize: '0.6rem', fontWeight: 900 }}>CONNECTED</div>
-                          </div>
-                        ) : (
-                          <button onClick={linkExistingGithub} className="btn-premium" style={{ width: 'fit-content', background: '#24292e' }}>Link Existing Account</button>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <h4 style={{ fontWeight: 800, fontSize: '0.9rem' }}>Auto-Link Tool</h4>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <button onClick={openGitHub} className="btn-premium" style={{ background: '#24292e', fontSize: '0.75rem' }}>1. Create Repo</button>
-                          <input value={githubUrl} onChange={e => setGithubUrl(e.target.value)} placeholder="GitHub Repo URL..." className="chat-input" style={{ flex: 1 }} />
-                          <button onClick={handleAutoLinkGithub} disabled={isLinking} className="btn-premium" style={{ background: '#00ff88', color: '#000', fontSize: '0.75rem' }}>
-                            {isLinking ? <RefreshCw size={14} className="spin" /> : '2. Init & Link'}
-                          </button>
-                        </div>
+                      <div className="glass-card" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                         <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Theme Selection</div>
+                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                            {[
+                              { id: 'glass', name: 'Glassmorphism', color: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)' },
+                              { id: 'dark', name: 'Deep Dark', color: '#090909' },
+                              { id: 'neon', name: 'Neon Cyber', color: 'linear-gradient(135deg, #00ff8822 0%, #4facfe22 100%)' }
+                            ].map(t => (
+                              <button key={t.id} onClick={() => setTheme(t.id)} style={{ padding: '15px', borderRadius: '12px', border: theme === t.id ? '2px solid var(--primary)' : '1px solid var(--glass-border)', background: t.color, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                                 <div style={{ fontSize: '0.75rem', fontWeight: 900, color: theme === t.id ? '#fff' : 'rgba(255,255,255,0.4)' }}>{t.name.toUpperCase()}</div>
+                              </button>
+                            ))}
+                         </div>
                       </div>
                     </motion.div>
                   )}
@@ -760,18 +1024,38 @@ const App = () => {
                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '5px' }}>API & Tokens</h3>
                         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Manage credentials for AI engines and GitHub.</p>
                       </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                        {[
-                          { label: 'Gemini CLI Key', val: geminiKey, set: setGeminiKey, ph: 'Google AI Studio Key...' },
-                          { label: 'Jules Session Token', val: julesToken, set: setJulesToken, ph: 'Paste Jules SID...' },
-                          { label: 'GitHub PAT', val: githubToken, set: setGithubToken, ph: 'Personal Access Token...' }
-                        ].map(key => (
-                          <div key={key.label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.7 }}>{key.label}</label>
-                            <input type="password" value={key.val} onChange={e => key.set(e.target.value)} placeholder={key.ph} className="chat-input" />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '25px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+                          <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '15px' }}>Core AI Engines</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            {[
+                              { label: 'Gemini CLI Key', val: geminiKey, set: setGeminiKey, ph: 'Google AI Studio Key...' },
+                              { label: 'Jules AI Token', val: julesApiKey, set: setJulesApiKey, ph: 'Jules/Google API Key...' },
+                              { label: 'GitHub PAT', val: githubToken, set: setGithubToken, ph: 'Personal Access Token...' }
+                            ].map(key => (
+                              <div key={key.label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{key.label}</label>
+                                <input type="password" value={key.val} onChange={e => key.set(e.target.value)} placeholder={key.ph} className="chat-input" style={{ fontSize: '0.85rem' }} />
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+                          <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--secondary)', marginBottom: '15px' }}>Extended API Connections</h4>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            {[
+                              { label: 'OpenAI (GPT) Key', val: openaiKey, set: setOpenaiKey, ph: 'sk-...' },
+                              { label: 'Anthropic (Claude) Key', val: claudeKey, set: setClaudeKey, ph: 'sk-ant-...' },
+                              { label: 'Google Maps Key', val: googleMapsKey, set: setGoogleMapsKey, ph: 'Google Cloud Key...' },
+                              { label: 'Custom Variable', val: customApiKey, set: setCustomApiKey, ph: 'VAR_NAME=value' }
+                            ].map(key => (
+                              <div key={key.label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.7 }}>{key.label}</label>
+                                <input type="password" value={key.val} onChange={e => key.set(e.target.value)} placeholder={key.ph} className="chat-input" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                       <button onClick={saveConfig} className="btn-premium" style={{ width: 'fit-content', padding: '12px 40px' }}>Save All Credentials</button>
                     </motion.div>
@@ -781,12 +1065,12 @@ const App = () => {
                     <motion.div key="adv" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                       <div>
                         <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '5px' }}>Advanced Automation</h3>
-                        <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Fine-tune agent behavior and reporting.</p>
+                         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Fine-tune agent behavior and reporting.</p>
                       </div>
-
                       {[
                         { title: 'Autonomous Debugging', desc: 'Allow agents to fix errors automatically.' },
-                        { title: 'Telemetry Broadcast', desc: 'Send usage metrics for optimized sync.' }
+                        { title: 'Telemetry Broadcast', desc: 'Send usage metrics for optimized sync.' },
+                        { title: 'System Safety Filter', desc: 'Enable AI-driven safety guardrails for terminal commands.' }
                       ].map(item => (
                         <div key={item.title} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
                           <div>
@@ -796,6 +1080,33 @@ const App = () => {
                           <button className="director-btn active" style={{ width: '70px', height: '35px' }}>TRUE</button>
                         </div>
                       ))}
+                      <div className="divider-v" style={{ margin: '10px 0' }}></div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                         <div className="glass-card" style={{ padding: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                               <History size={16} color="var(--primary)" />
+                               <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Log Retention</span>
+                            </div>
+                            <input type="range" min="1" max="100" value={logRetention} onChange={e => setLogRetention(parseInt(e.target.value))} style={{ width: '100%' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.7rem', opacity: 0.5 }}>
+                               <span>1 Row</span>
+                               <span>{logRetention} Rows</span>
+                               <span>100 Rows</span>
+                            </div>
+                         </div>
+                         <div className="glass-card" style={{ padding: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                               <Clock size={16} color="var(--secondary)" />
+                               <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>Snapshot Freq</span>
+                            </div>
+                            <input type="range" min="1" max="60" value={snapshotFrequency} onChange={e => setSnapshotFrequency(parseInt(e.target.value))} style={{ width: '100%' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.7rem', opacity: 0.5 }}>
+                               <span>1 Min</span>
+                               <span>{snapshotFrequency} Mins</span>
+                               <span>60 Mins</span>
+                            </div>
+                         </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

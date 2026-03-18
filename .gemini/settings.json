@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "Jules": {
+      "command": "npx --no-install",
+      "args": [
+        "--no-install",
+        "-y",
+        "@google/jules"
+      ]
+    }
+  }
+}

@@ -32,7 +32,7 @@ console.log(`Context Saturation: ${usagePercent.toFixed(2)}%`);
 
 if (usagePercent > 80) {
   console.log(`[!] CRITICAL: You are running out of 'Antigravity' tokens.`);
-  console.log(`[Action] Move current task to GOOGLE JULES (Cloud Async).`);
+  console.log(`[Action] Reduce project size or clear temporary workspace files.`);
 } else {
   console.log(`[+] OK: Context is within comfortable Antigravity limits.`);
 }
