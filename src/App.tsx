@@ -63,9 +63,12 @@ const App = () => {
   const [chatInput, setChatInput] = useState('');
   const [mcpSearch, setMcpSearch] = useState('');
   const [availableMCPs] = useState([
-    { name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent graph memory' },
-    { name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local file access' },
-    { name: 'Google Maps', pkg: '@modelcontextprotocol/server-google-maps', desc: 'Location data' }
+    { id: 'Jules', name: 'Jules Agent', pkg: '@amitdeshmukh/google-jules-mcp', desc: 'Recycling implementation engine', color: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', command: 'npx', args: ['-y', '@amitdeshmukh/google-jules-mcp'] },
+    { id: 'GitHub', name: 'GitHub Sync', pkg: '@modelcontextprotocol/server-github', desc: 'Bidirectional cloud repository access', color: 'linear-gradient(135deg, #24292e 0%, #171a1d 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+    { id: 'ChatGPT', name: 'ChatGPT API', pkg: '@modelcontextprotocol/server-openai', desc: 'OpenAI context bridge', color: 'linear-gradient(135deg, #10a37f 0%, #0cebeb 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-openai'] },
+    { id: 'Claude', name: 'Claude API', pkg: '@modelcontextprotocol/server-anthropic-chat', desc: 'Anthropic reasoning layer', color: 'linear-gradient(135deg, #da7756 0%, #f093fb 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-anthropic-chat'] },
+    { id: 'Filesystem', name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local directory monitoring', color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
+    { id: 'Memory', name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent knowledge graph', color: 'linear-gradient(135deg, #9b4dff 0%, #64748b 100%)', command: 'npx', args: ['-y', 'mcp-server-memory'] }
   ]);
   const [projectRootInput, setProjectRootInput] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -534,16 +537,104 @@ const App = () => {
 
           {activeTab === 'tools' && (
             <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '20px' }}>Global MCP Hub</h3>
-                <div className="tool-grid">
-                  {mcpServers.map((s, i) => (
-                    <div key={i} className="glass-card" style={{ padding: '1.5rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 800 }}>{s.name}</span>
-                        <div className={`status-indicator ${s.status === 'online' ? 'status-online' : ''}`}></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', alignItems: 'flex-end' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Global MCP Hub</h3>
+                    <p style={{ color: 'var(--text-dim)' }}>Link specialized tools into the IMI ecosystem.</p>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                    <input 
+                      value={mcpSearch} 
+                      onChange={e => setMcpSearch(e.target.value)} 
+                      placeholder="Search Registry..." 
+                      className="chat-input" 
+                      style={{ width: '300px', paddingLeft: '45px', height: '45px', fontSize: '0.85rem' }} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '40px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>AVAILABLE REGISTRY</div>
+                  <div className="tool-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+                    {availableMCPs.filter(lib => lib.name.toLowerCase().includes(mcpSearch.toLowerCase())).map(lib => {
+                      const isLinked = mcpServers.some(s => s.name.toLowerCase().includes(lib.id.toLowerCase()));
+                      return (
+                        <div key={lib.id} className="glass-card" style={{ 
+                          padding: '1.5rem', 
+                          border: isLinked ? `1px solid var(--primary)` : '1px solid var(--glass-border)',
+                          background: isLinked ? `rgba(155, 77, 255, 0.05)` : 'rgba(255,255,255,0.02)',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: lib.color }}></div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: lib.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {lib.id === 'GitHub' ? <RefreshCw size={20} /> : <Database size={20} />}
+                            </div>
+                            <button 
+                              onClick={async () => {
+                                const newServerConfig = { 
+                                  name: lib.id, 
+                                  command: lib.command, 
+                                  args: lib.args, 
+                                  env: {} as any 
+                                };
+                                // Auto-inject keys if they exist
+                                if (lib.id === 'Jules' && julesApiKey) newServerConfig.env = { JULES_API_KEY: julesApiKey, GOOGLE_API_KEY: julesApiKey };
+                                else if (lib.id === 'GitHub' && githubToken) newServerConfig.env = { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken };
+                                else if (lib.id === 'ChatGPT' && openaiKey) newServerConfig.env = { OPENAI_API_KEY: openaiKey };
+                                else if (lib.id === 'Claude' && claudeKey) newServerConfig.env = { ANTHROPIC_API_KEY: claudeKey };
+
+                                addLog('system', `Linking ${lib.id}...`);
+                                const result = await (ipc as any).invoke('mcp:global-add', newServerConfig);
+                                if (result.success) {
+                                  addLog('system', `${lib.id} integration successful.`);
+                                  updateMcpList();
+                                }
+                              }} 
+                              className={isLinked ? "btn-chat-send" : "btn-premium"}
+                              style={{ width: 'auto', height: '35px', padding: '0 15px', borderRadius: '8px', fontSize: '0.7rem' }}
+                            >
+                              {isLinked ? <CheckCircle2 size={16} /> : 'LINK'}
+                            </button>
+                          </div>
+                          <h4 style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '5px' }}>{lib.name}</h4>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: '1.4' }}>{lib.desc}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', marginBottom: '20px' }}>LINKED SERVICES ({mcpServers.length})</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {mcpServers.map((s, i) => (
+                      <div key={i} className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <div className={`status-indicator ${s.status === 'online' ? 'status-online' : ''}`}></div>
+                          <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{s.name}</span>
+                        </div>
+                        <button 
+                          onClick={async () => {
+                            const name = s.name.split(':')[0].trim();
+                            await (ipc as any).invoke('mcp:global-remove', name);
+                            updateMcpList();
+                          }}
+                          style={{ background: 'transparent', border: 'none', color: '#ff4b2b', cursor: 'pointer', opacity: 0.6 }}
+                        >
+                          <X size={18} />
+                        </button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                    {mcpServers.length === 0 && (
+                      <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.3 }}>
+                        <Database size={48} style={{ marginBottom: '15px' }} />
+                        <p>No external registries linked yet.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
             </motion.div>
           )}
