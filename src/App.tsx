@@ -74,6 +74,8 @@ const App = () => {
   const [claudeKey, setClaudeKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
+  const [llamaKey, setLlamaKey] = useState('');
+  const [perplexityKey, setPerplexityKey] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [julesApiKey, setJulesApiKey] = useState('');
   const [googleMapsKey, setGoogleMapsKey] = useState('');
@@ -136,6 +138,8 @@ const App = () => {
       setClaudeKey(config.claudeKey || '');
       setDeepseekKey(config.deepseekKey || '');
       setMistralKey(config.mistralKey || '');
+      setLlamaKey(config.llamaKey || '');
+      setPerplexityKey(config.perplexityKey || '');
       setCustomApiKey(config.customApiKey || '');
       setJulesApiKey(config.julesApiKey || '');
       setGoogleMapsKey(config.googleMapsKey || '');
@@ -529,7 +533,7 @@ const App = () => {
           )}
 
           {activeTab === 'tools' && (
-            <div className="glass-card" style={{ padding: '2rem' }}>
+            <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '20px' }}>Global MCP Hub</h3>
                 <div className="tool-grid">
                   {mcpServers.map((s, i) => (
@@ -541,11 +545,11 @@ const App = () => {
                     </div>
                   ))}
                 </div>
-            </div>
+            </motion.div>
           )}
 
           {activeTab === 'settings' && (
-            <div className="glass-card" style={{ padding: '2rem' }}>
+            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '20px' }}>System Configuration</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="Project Path..." className="chat-input" />
@@ -561,7 +565,7 @@ const App = () => {
                     <button onClick={saveConfig} className="btn-premium">Save Credentials</button>
                   </div>
                 </div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
