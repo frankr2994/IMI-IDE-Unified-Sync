@@ -72,6 +72,8 @@ const App = () => {
   const [githubToken, setGithubToken] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
   const [claudeKey, setClaudeKey] = useState('');
+  const [deepseekKey, setDeepseekKey] = useState('');
+  const [mistralKey, setMistralKey] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [julesApiKey, setJulesApiKey] = useState('');
   const [googleMapsKey, setGoogleMapsKey] = useState('');
