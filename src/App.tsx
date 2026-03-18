@@ -53,24 +53,8 @@ const App = () => {
   const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
   const [activeDirector, setActiveDirector] = useState('gemini');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [mcpServers, setMcpServers] = useState<any[]>([]);
-  const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
-  const [chatInput, setChatInput] = useState('');
-  const [mcpSearch, setMcpSearch] = useState('');
-  const [availableMCPs] = useState([
-    { name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent graph memory' },
-    { name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local file access' },
-    { name: 'Google Maps', pkg: '@modelcontextprotocol/server-google-maps', desc: 'Location data' }
-  ]);
-  const [projectRootInput, setProjectRootInput] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [githubToken, setGithubToken] = useState('');
-  const [openaiKey, setOpenaiKey] = useState('');
-  const [claudeKey, setClaudeKey] = useState('');
-  const [customApiKey, setCustomApiKey] = useState('');
-  const [julesApiKey, setJulesApiKey] = useState('');
-  const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [activeEngine, setActiveEngine] = useState('gemini');
+  const [isCoderDropdownOpen, setIsCoderDropdownOpen] = useState(false);
   const [gitInstalled, setGitInstalled] = useState(true);
   const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
   const [settingsSearch, setSettingsSearch] = useState('');
@@ -239,13 +223,14 @@ const App = () => {
     };
     setMessages(prev => [...prev, aiResponse]);
 
-    addLog('ag', `Broadcasting Stream to ${activeDirector}: ${newUserMsg.text}`);
+    addLog('ag', `Broadcasting Stream: ${activeDirector} (Brain) -> ${activeEngine} (Coder)`);
     
     if (snapshotMode) {
       await (ipc as any).invoke('save-context-snapshot', {
-        lastQuery: chatInput,
+        lastQuery: newUserMsg.text,
         activeDirector,
-        status: 'Handing over to alternative model'
+        activeEngine,
+        status: 'Handing over to implementation engine'
       });
     }
 
@@ -253,6 +238,7 @@ const App = () => {
     (ipc as any).send('execute-command-stream', { 
       command: newUserMsg.text, 
       director: activeDirector,
+      engine: activeEngine, // 🚀 Now broadcasting both
       messageId: aiId
     });
   };
@@ -662,25 +648,28 @@ const App = () => {
                         border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible',
                         transition: 'all 0.3s'
                       }} className="chat-input-container">
+                        
+                        {/* BRAIN PICKER */}
                         <div style={{ position: 'relative' }}>
                           <div 
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }}
                             style={{ 
                               display: 'flex', alignItems: 'center', gap: '8px',
-                              width: '130px', padding: '0 15px', background: 'rgba(155, 77, 255, 0.1)', 
+                              width: '120px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', 
                               borderRight: '1px solid var(--glass-border)', borderTopLeftRadius: '12px', borderBottomLeftRadius: '12px',
-                              color: 'var(--primary)', fontWeight: 900, fontSize: '0.65rem', 
-                              textTransform: 'uppercase', letterSpacing: '0.1em', height: '40px',
+                              color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', 
+                              textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px',
                               cursor: 'pointer', outline: 'none'
                             }}
                           >
-                            {activeDirector === 'gemini' && <Zap size={14} />}
-                            {activeDirector === 'jules' && <Layers size={14} />}
-                            {activeDirector === 'antigravity' && <Cpu size={14} />}
+                            <div style={{ position: 'absolute', top: '-14px', left: '10px', fontSize: '0.5rem', opacity: 0.5, fontWeight: 900 }}>BRAIN</div>
+                            {activeDirector === 'gemini' && <Zap size={12} />}
+                            {activeDirector === 'jules' && <Layers size={12} />}
+                            {activeDirector === 'antigravity' && <Cpu size={12} />}
                             <span style={{ flex: 1, textAlign: 'left' }}>
                               {activeDirector === 'antigravity' ? 'AG AI' : activeDirector}
                             </span>
-                            <ChevronRight size={14} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
+                            <ChevronRight size={12} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
                           </div>
                           
                           <AnimatePresence>
@@ -695,15 +684,15 @@ const App = () => {
                                 }}
                               >
                                 {[
-                                  { id: 'gemini', name: 'GEMINI', icon: <Zap size={14} /> },
-                                  { id: 'jules', name: 'JULES', icon: <Layers size={14} /> },
-                                  { id: 'antigravity', name: 'AG AI', icon: <Cpu size={14} /> }
+                                  { id: 'gemini', name: 'GEMINI', icon: <Zap size={12} /> },
+                                  { id: 'jules', name: 'JULES', icon: <Layers size={12} /> },
+                                  { id: 'antigravity', name: 'AG AI', icon: <Cpu size={12} /> }
                                 ].map(opt => (
                                   <div 
                                     key={opt.id}
                                     onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); }}
                                     style={{ 
-                                      display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 15px',
+                                      display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px',
                                       color: activeDirector === opt.id ? 'var(--primary)' : 'rgba(255,255,255,0.6)',
                                       fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer',
                                       background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent',
@@ -718,6 +707,64 @@ const App = () => {
                             )}
                           </AnimatePresence>
                         </div>
+
+                        {/* CODER PICKER */}
+                        <div style={{ position: 'relative' }}>
+                          <div 
+                            onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }}
+                            style={{ 
+                              display: 'flex', alignItems: 'center', gap: '8px',
+                              width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', 
+                              borderRight: '1px solid var(--glass-border)', 
+                              color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', 
+                              textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px',
+                              cursor: 'pointer', outline: 'none'
+                            }}
+                          >
+                            <div style={{ position: 'absolute', top: '-14px', left: '10px', fontSize: '0.5rem', opacity: 0.5, fontWeight: 900 }}>CODER</div>
+                            {activeEngine === 'jules' && <Layers size={12} />}
+                            {activeEngine === 'antigravity' && <Cpu size={12} />}
+                            {activeEngine === 'gemini' && <Zap size={12} />}
+                            <span style={{ flex: 1, textAlign: 'left' }}>
+                              {activeEngine === 'jules' ? 'JULES' : activeEngine.toUpperCase()}
+                            </span>
+                            <ChevronRight size={12} style={{ transform: isCoderDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.2s' }} />
+                          </div>
+                          
+                          <AnimatePresence>
+                            {isCoderDropdownOpen && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                style={{ 
+                                  position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '150px',
+                                  background: 'rgba(20, 20, 30, 0.95)', backdropFilter: 'blur(20px)',
+                                  border: '1px solid var(--glass-border)', borderRadius: '12px',
+                                  boxShadow: '0 -10px 40px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 100
+                                }}
+                              >
+                                {[
+                                  { id: 'jules', name: 'JULES', icon: <Layers size={12} /> }
+                                ].map(opt => (
+                                  <div 
+                                    key={opt.id}
+                                    onClick={() => { setActiveEngine(opt.id); setIsCoderDropdownOpen(false); }}
+                                    style={{ 
+                                      display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px',
+                                      color: activeEngine === opt.id ? '#00ff88' : 'rgba(255,255,255,0.6)',
+                                      fontWeight: 800, fontSize: '0.65rem', letterSpacing: '0.1em', cursor: 'pointer',
+                                      background: activeEngine === opt.id ? 'rgba(0, 255, 136, 0.1)' : 'transparent',
+                                      borderBottom: '1px solid rgba(255,255,255,0.05)'
+                                    }}
+                                  >
+                                    {opt.icon}
+                                    {opt.name}
+                                  </div>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
                         <input 
                           value={chatInput} 
                           onChange={e => setChatInput(e.target.value)} 
