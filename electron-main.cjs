@@ -521,7 +521,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   if (director === 'gemini') {
     // 🛡️ [TURBO] Headless Mode: Use -p for non-interactive communication
-    args = ['-m', 'gemini-3-flash-preview', '-p', command];
+    spawnCmd = `"${binPath}" -m gemini-3-flash-preview -p "${command}"`;
   } else if (director === 'jules') {
     args = ['prompt', command, '--theme', 'dark'];
   } else {
