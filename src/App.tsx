@@ -618,96 +618,56 @@ const App = () => {
           {activeTab === 'command center' && (
             <motion.div key="cc" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '25px', height: '600px' }}>
               <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '1.2rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)' }}>
+                <div style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div className="spin"><RefreshCw size={14} color="var(--primary)" /></div>
-                    <span style={{ fontWeight: 800 }}>ORCHESTRATOR BROADCAST</span>
-                  </div>
-                  <div className="director-selector" style={{ background: 'rgba(255,255,255,0.05)', padding: '4px', borderRadius: '10px', display: 'flex', gap: '5px' }}>
-                    <button 
-                      onClick={() => setActiveDirector('gemini')} 
-                      className={activeDirector === 'gemini' ? 'active' : ''}
-                      style={{ 
-                        padding: '6px 15px', borderRadius: '8px', border: 'none', 
-                        background: activeDirector === 'gemini' ? 'var(--primary)' : 'transparent',
-                        color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-                        transition: 'all 0.3s'
-                      }}
-                    >
-                      Gemini
-                    </button>
-                    <button 
-                      onClick={() => setActiveDirector('jules')} 
-                      className={activeDirector === 'jules' ? 'active' : ''}
-                      style={{ 
-                        padding: '6px 15px', borderRadius: '8px', border: 'none', 
-                        background: activeDirector === 'jules' ? 'var(--primary)' : 'transparent',
-                        color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-                        transition: 'all 0.3s'
-                      }}
-                    >
-                      Jules
-                    </button>
-                    <button 
-                      onClick={() => setActiveDirector('antigravity')} 
-                      className={activeDirector === 'antigravity' ? 'active' : ''}
-                      style={{ 
-                        padding: '6px 15px', borderRadius: '8px', border: 'none', 
-                        background: activeDirector === 'antigravity' ? 'var(--primary)' : 'transparent',
-                        color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700,
-                        transition: 'all 0.3s'
-                      }}
-                    >
-                      AntiGravity
-                    </button>
+                    <span style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em' }}>ORCHESTRATOR BROADCAST</span>
                   </div>
                 </div>
-                <div style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+                <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {messages.map(m => (
-                    <div key={m.id} style={{ marginBottom: '1.5rem', display: 'flex', gap: '15px', justifyContent: m.type==='user'?'flex-end':'flex-start', flexDirection: m.isAlert ? 'column' : 'row', alignItems: m.isAlert ? 'center' : 'flex-start' }}>
-                      {m.type !== 'user' && !m.isAlert && <div style={{ width: '32px', height: '32px', background: m.type==='system'?'#333':'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m.type==='ai'?<Cpu size={16}/>:<Terminal size={16}/>}</div>}
+                    <div key={m.id} style={{ display: 'flex', gap: '12px', justifyContent: m.type==='user'?'flex-end':'flex-start', flexDirection: 'row', alignItems: 'flex-start' }}>
+                      {m.type !== 'user' && <div style={{ width: '28px', height: '28px', background: m.type==='system'?'#333':'var(--primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>{m.type==='ai'?<Cpu size={14}/>:<Terminal size={14}/>}</div>}
                       <div style={{ 
-                        maxWidth: m.isAlert ? '100%' : '80%', padding: '12px 18px', borderRadius: '15px', 
-                        background: m.isAlert ? 'rgba(255,107,107,0.1)' : (m.type==='user'?'var(--primary)':'rgba(255,255,255,0.05)'),
-                        border: m.isAlert ? '2px solid #ff6b6b44' : (m.type==='user'?'none':'1px solid var(--glass-border)'),
-                        boxShadow: m.isAlert ? '0 0 40px rgba(255,107,107,0.1)' : 'none'
+                        maxWidth: '85%', padding: '10px 16px', borderRadius: '12px', 
+                        background: m.type==='user'?'var(--primary)':'rgba(255,255,255,0.05)',
+                        border: m.type==='user'?'none':'1px solid var(--glass-border)',
+                        boxShadow: m.type==='user'?'0 4px 15px var(--primary-glow)':'none'
                       }}>
-                        {m.type==='system' && m.isAlert && <div style={{ color: '#ff6b6b', fontWeight: 900, fontSize: '0.65rem', marginBottom: '8px', letterSpacing: '0.1em' }}>🔒 SELF-OPTIMIZATION PROTOCOL ENGAGED</div>}
                         {m.type==='ai' && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                              {m.director?m.director.toUpperCase():'SYSTEM'} RESPONSE
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                              {m.director?m.director.toUpperCase():'SYSTEM'}
                             </div>
                             {m.isStreaming && (
-                              <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.6rem', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                              <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>
                                 ● LIVE
                               </div>
                             )}
                           </div>
                         )}
-                        <div className="chat-bubble-content" style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
+                        <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
                           {renderContent(m.text)}
                           {m.isStreaming && <span className="cursor-blink">|</span>}
                         </div>
-
                       </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ padding: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
-                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
+                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <select 
                         value={activeDirector} 
                         onChange={(e) => setActiveDirector(e.target.value)}
                         className="chat-input"
-                        style={{ width: 'auto', minWidth: '130px', padding: '16px 12px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                        style={{ width: 'auto', minWidth: '110px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px' }}
                       >
                         <option value="gemini" style={{ background: '#1a1a2e' }}>Gemini</option>
                         <option value="jules" style={{ background: '#1a1a2e' }}>Jules</option>
-                        <option value="antigravity" style={{ background: '#1a1a2e' }}>Antigravity</option>
+                        <option value="antigravity" style={{ background: '#1a1a2e' }}>AG AI</option>
                       </select>
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Send command to ${activeDirector.toUpperCase()}...`} className="chat-input" />
-                      <button type="submit" className="btn-chat-send"><Send size={18}/></button>
+                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message ${activeDirector.toUpperCase()}...`} className="chat-input" style={{ height: '40px', fontSize: '0.9rem', padding: '0 15px' }} />
+                      <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
                     </form>
                 </div>
               </div>

@@ -267,7 +267,7 @@ app.whenReady().then(() => {
   checkCommand('jules');
   
   // ⚡ Auto-Sync Engine: Zero-Touch GitHub Publishing
-  setInterval(triggerGitSync, 300000); // 🚀 Heartbeat: 5 minutes
+  setInterval(triggerGitSync, 60000); // 🚀 Heartbeat: 60 seconds
   
   createWindow();
 });
@@ -281,13 +281,14 @@ async function triggerGitSync() {
     const gitPath = await checkCommand('git');
     if (!gitPath) { syncActive = false; return; }
     
-    console.log(`[Sync] Triggering Cloud-Express Push...`);
+    console.log(`[Sync] Triggering Bidirectional Cloud-Sync...`);
     const { exec } = require('child_process');
-    const cmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation" && "${gitPath}" push`;
+    // Pull first, then push
+    const cmd = `"${gitPath}" pull && "${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation" && "${gitPath}" push`;
     
     exec(cmd, { cwd: currentProjectRoot }, (error) => {
       syncActive = false;
-      if (!error) console.log(`[Sync] High-Priority Push: SUCCESS.`);
+      if (!error) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
       else console.error(`[Sync] High-Priority Push: FAILED.`, error);
     });
   } catch (e) { syncActive = false; }
