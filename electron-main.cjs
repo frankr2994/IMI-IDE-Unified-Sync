@@ -536,7 +536,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (GEMINI_KEY) finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
     if (JULES_KEY) finalEnv['JULES_API_KEY'] = JULES_KEY;
 
-    const child = spawn(director === 'gemini' ? `"${binPath}"` : binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    const child = spawn(binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
     child.stdout.on('data', (data) => { fullOutput += data.toString(); event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
     child.stderr.on('data', (data) => { event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
