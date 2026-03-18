@@ -656,17 +656,37 @@ const App = () => {
                 </div>
                 <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <select 
-                        value={activeDirector} 
-                        onChange={(e) => setActiveDirector(e.target.value)}
-                        className="chat-input"
-                        style={{ width: 'auto', minWidth: '85px', padding: '0 8px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px' }}
-                      >
-                        <option value="gemini" style={{ background: '#1a1a2e' }}>Gemini</option>
-                        <option value="jules" style={{ background: '#1a1a2e' }}>Jules</option>
-                        <option value="antigravity" style={{ background: '#1a1a2e' }}>AG AI</option>
-                      </select>
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message ${activeDirector.toUpperCase()}...`} className="chat-input" style={{ height: '40px', fontSize: '0.9rem', padding: '0 15px' }} />
+                      <div style={{ 
+                        flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', 
+                        border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden',
+                        transition: 'all 0.3s'
+                      }} className="chat-input-container">
+                        <select 
+                          value={activeDirector} 
+                          onChange={(e) => setActiveDirector(e.target.value)}
+                          style={{ 
+                            width: 'auto', padding: '0 10px 0 15px', background: 'rgba(155, 77, 255, 0.1)', 
+                            border: 'none', borderRight: '1px solid var(--glass-border)',
+                            color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', 
+                            textTransform: 'uppercase', letterSpacing: '0.1em', height: '40px',
+                            cursor: 'pointer', outline: 'none', appearance: 'none'
+                          }}
+                        >
+                          <option value="gemini" style={{ background: '#1a1a2e' }}>GEMINI</option>
+                          <option value="jules" style={{ background: '#1a1a2e' }}>JULES</option>
+                          <option value="antigravity" style={{ background: '#1a1a2e' }}>AG AI</option>
+                        </select>
+                        <input 
+                          value={chatInput} 
+                          onChange={e => setChatInput(e.target.value)} 
+                          type="text" 
+                          placeholder={`Message...`} 
+                          style={{ 
+                            flex: 1, background: 'transparent', border: 'none', padding: '0 15px', 
+                            color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' 
+                          }} 
+                        />
+                      </div>
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
                     </form>
                 </div>
