@@ -660,7 +660,7 @@ const App = () => {
                         value={activeDirector} 
                         onChange={(e) => setActiveDirector(e.target.value)}
                         className="chat-input"
-                        style={{ width: 'auto', minWidth: '110px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px' }}
+                        style={{ width: 'auto', minWidth: '85px', padding: '0 8px', background: 'rgba(155, 77, 255, 0.1)', borderColor: 'rgba(155, 77, 255, 0.3)', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em', height: '40px' }}
                       >
                         <option value="gemini" style={{ background: '#1a1a2e' }}>Gemini</option>
                         <option value="jules" style={{ background: '#1a1a2e' }}>Jules</option>
