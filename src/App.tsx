@@ -134,10 +134,11 @@ const App = () => {
       setGithubToken(config.githubToken || '');
       setOpenaiKey(config.openaiKey || '');
       setClaudeKey(config.claudeKey || '');
+      setDeepseekKey(config.deepseekKey || '');
+      setMistralKey(config.mistralKey || '');
       setCustomApiKey(config.customApiKey || '');
       setJulesApiKey(config.julesApiKey || '');
       setGoogleMapsKey(config.googleMapsKey || '');
-      // Note: activeEngine and activeDirector can be loaded here too if needed
     }
   };
 
@@ -180,11 +181,10 @@ const App = () => {
   const saveConfig = async () => {
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
-      openaiKey, claudeKey, customApiKey, julesApiKey, googleMapsKey, 
+      openaiKey, claudeKey, deepseekKey, mistralKey, customApiKey, julesApiKey, googleMapsKey, 
       activeEngine, activeDirector 
     });
   };
-
   const connectMCPServer = async () => {
     if (!newServer.name || !newServer.command) return;
     const { name, command, args, env } = newServer;
@@ -453,14 +453,35 @@ const App = () => {
                             {activeDirector === 'gemini' && <Zap size={12} />}
                             {activeDirector === 'jules' && <Layers size={12} />}
                             {activeDirector === 'antigravity' && <Cpu size={12} />}
-                            <span style={{ flex: 1 }}>{activeDirector === 'antigravity' ? 'AG AI' : activeDirector}</span>
+                            {activeDirector === 'chatgpt' && <MessageSquare size={12} />}
+                            {activeDirector === 'claude' && <ShieldCheck size={12} />}
+                            {activeDirector === 'mistral' && <Activity size={12} />}
+                            {activeDirector === 'llama' && <Database size={12} />}
+                            {activeDirector === 'perplexity' && <Search size={12} />}
+                            {activeDirector === 'deepseek' && <Terminal size={12} />}
+                            <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {activeDirector === 'antigravity' ? 'AG AI' : activeDirector.toUpperCase()}
+                            </span>
                             <ChevronRight size={12} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
                           </div>
                           <AnimatePresence>
                             {isDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '150px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100 }}>
-                                {['gemini', 'jules', 'antigravity'].map(opt => (
-                                  <div key={opt} onClick={() => { setActiveDirector(opt); setIsDropdownOpen(false); }} style={{ padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>{opt.toUpperCase()}</div>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '180px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '300px' }}>
+                                {[
+                                  { id: 'gemini', name: 'GEMINI', icon: <Zap size={12} /> },
+                                  { id: 'jules', name: 'JULES', icon: <Layers size={12} /> },
+                                  { id: 'antigravity', name: 'AG AI', icon: <Cpu size={12} /> },
+                                  { id: 'chatgpt', name: 'CHATGPT', icon: <MessageSquare size={12} /> },
+                                  { id: 'claude', name: 'CLAUDE', icon: <ShieldCheck size={12} /> },
+                                  { id: 'mistral', name: 'MISTRAL', icon: <Activity size={12} /> },
+                                  { id: 'llama', name: 'LLAMA 3', icon: <Database size={12} /> },
+                                  { id: 'perplexity', name: 'PERPLEXITY', icon: <Search size={12} /> },
+                                  { id: 'deepseek', name: 'DEEPSEEK', icon: <Terminal size={12} /> }
+                                ].map(opt => (
+                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>
+                                    {opt.icon}
+                                    {opt.name}
+                                  </div>
                                 ))}
                               </motion.div>
                             )}
@@ -533,6 +554,10 @@ const App = () => {
                     <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} placeholder="Gemini Key" className="chat-input" />
                     <input type="password" value={julesApiKey} onChange={e => setJulesApiKey(e.target.value)} placeholder="Jules Key" className="chat-input" />
                     <input type="password" value={githubToken} onChange={e => setGithubToken(e.target.value)} placeholder="GitHub Token" className="chat-input" />
+                    <input type="password" value={openaiKey} onChange={e => setOpenaiKey(e.target.value)} placeholder="OpenAI Key (ChatGPT)" className="chat-input" />
+                    <input type="password" value={claudeKey} onChange={e => setClaudeKey(e.target.value)} placeholder="Claude Key" className="chat-input" />
+                    <input type="password" value={deepseekKey} onChange={e => setDeepseekKey(e.target.value)} placeholder="DeepSeek Key" className="chat-input" />
+                    <input type="password" value={mistralKey} onChange={e => setMistralKey(e.target.value)} placeholder="Mistral Key" className="chat-input" />
                     <button onClick={saveConfig} className="btn-premium">Save Credentials</button>
                   </div>
                 </div>

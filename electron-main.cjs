@@ -43,6 +43,8 @@ let GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 let GITHUB_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || '';
 let OPENAI_KEY = '';
 let CLAUDE_KEY = '';
+let DEEPSEEK_KEY = '';
+let MISTRAL_KEY = '';
 let CUSTOM_API_KEY = '';
 let JULES_KEY = '';
 let GOOGLE_MAPS_KEY = '';
@@ -60,6 +62,8 @@ try {
       if (state.config.githubToken) GITHUB_TOKEN = state.config.githubToken;
       if (state.config.openaiKey) OPENAI_KEY = state.config.openaiKey;
       if (state.config.claudeKey) CLAUDE_KEY = state.config.claudeKey;
+      if (state.config.deepseekKey) DEEPSEEK_KEY = state.config.deepseekKey;
+      if (state.config.mistralKey) MISTRAL_KEY = state.config.mistralKey;
       if (state.config.customApiKey) CUSTOM_API_KEY = state.config.customApiKey;
       if (state.config.julesApiKey) JULES_KEY = state.config.julesApiKey;
       if (state.config.googleMapsKey) GOOGLE_MAPS_KEY = state.config.googleMapsKey;
@@ -103,6 +107,8 @@ const saveGlobalState = () => {
     currentState.config.githubToken = GITHUB_TOKEN;
     currentState.config.openaiKey = OPENAI_KEY;
     currentState.config.claudeKey = CLAUDE_KEY;
+    currentState.config.deepseekKey = DEEPSEEK_KEY;
+    currentState.config.mistralKey = MISTRAL_KEY;
     currentState.config.customApiKey = CUSTOM_API_KEY;
     currentState.config.julesApiKey = JULES_KEY;
     currentState.config.googleMapsKey = GOOGLE_MAPS_KEY;
@@ -121,6 +127,8 @@ ipcMain.handle('save-api-config', (event, config) => {
   GITHUB_TOKEN = config.githubToken ?? GITHUB_TOKEN;
   OPENAI_KEY = config.openaiKey ?? OPENAI_KEY;
   CLAUDE_KEY = config.claudeKey ?? CLAUDE_KEY;
+  DEEPSEEK_KEY = config.deepseekKey ?? DEEPSEEK_KEY;
+  MISTRAL_KEY = config.mistralKey ?? MISTRAL_KEY;
   CUSTOM_API_KEY = config.customApiKey ?? CUSTOM_API_KEY;
   JULES_KEY = config.julesApiKey ?? JULES_KEY;
   GOOGLE_MAPS_KEY = config.googleMapsKey ?? GOOGLE_MAPS_KEY;
@@ -136,6 +144,8 @@ ipcMain.handle('get-api-config', () => {
     githubToken: GITHUB_TOKEN, 
     openaiKey: OPENAI_KEY,
     claudeKey: CLAUDE_KEY,
+    deepseekKey: DEEPSEEK_KEY,
+    mistralKey: MISTRAL_KEY,
     customApiKey: CUSTOM_API_KEY,
     julesApiKey: JULES_KEY,
     googleMapsKey: GOOGLE_MAPS_KEY,
