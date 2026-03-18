@@ -180,51 +180,27 @@ const App = () => {
 
   const connectMCPServer = async () => {
     if (!newServer.name || !newServer.command) return;
-    
-    // Auto-detect if this is the GitHub MCP and inject the token
-    const env: any = {};
-    if (newServer.name.toLowerCase().includes('github')) {
-      if (!githubToken) {
-        alert('Please set your GitHub Personal Access Token in the Keys section first!');
-        return;
-      }
-      env['GITHUB_PERSONAL_ACCESS_TOKEN'] = githubToken;
-    }
-    if (newServer.name.toLowerCase().includes('jules')) {
-      if (!julesApiKey) {
-        alert('Please set your Jules API Key in the Keys section first!');
-        return;
-      }
-      env['JULES_API_KEY'] = julesApiKey; 
-      env['GOOGLE_API_KEY'] = julesApiKey; 
-    }
-    if (newServer.name.toLowerCase().includes('google')) {
-      if (!googleMapsKey) {
-        alert('Please set your Google Maps API Key in the Keys section first!');
-        return;
-      }
-      env['GOOGLE_MAPS_API_KEY'] = googleMapsKey;
-    }
 
-    const mcpName = newServer.name;
-    addLog('system', `Linking ${mcpName}...`);
+    const { name, command, args, env } = newServer;
+
+    addLog('system', `Linking ${name}...`);
 
     // 1. Remove if already exists to prevent duplication issues
-    await (ipc as any).invoke('mcp:global-remove', mcpName);
+    await (ipc as any).invoke('mcp:global-remove', name);
     
     // 2. Add the new one
     // Ensure args is passed as an array to the bridge
-    const finalArgs = typeof newServer.args === 'string' ? newServer.args.split(' ').filter(a => a) : newServer.args;
+    const finalArgs = typeof args === 'string' ? args.split(' ').filter(a => a) : args;
 
     const result = await (ipc as any).invoke('mcp:global-add', { 
-      name: mcpName, 
-      command: newServer.command, 
+      name, 
+      command, 
       args: finalArgs,
       env 
     });
 
     if (result.success) {
-      addLog('system', `${mcpName} is now linked and synced!`);
+      addLog('system', `${name} is now linked and synced!`);
       await updateMcpList();
       setNewServer({ name: '', command: '', args: '' });
       fetchStats();
@@ -811,11 +787,25 @@ const App = () => {
                         <button 
                           key={lib.name} 
                           onClick={() => {
-                            if (lib.command) {
-                              setNewServer({ name: lib.id, command: lib.command, args: lib.args });
-                            } else {
-                              setNewServer({ name: lib.id, command: 'npx', args: `--no-install -y ${lib.pkg}` });
+                            const newServerConfig: any = {
+                              name: lib.id,
+                              command: 'npx',
+                              args: `--no-install -y ${lib.pkg}`
+                            };
+
+                            if (lib.id === 'Jules' && julesApiKey) {
+                              newServerConfig.env = { JULES_API_KEY: julesApiKey, GOOGLE_API_KEY: julesApiKey };
+                            } else if (lib.id === 'ChatGPT' && openaiKey) {
+                              newServerConfig.env = { OPENAI_API_KEY: openaiKey };
+                            } else if (lib.id === 'Claude' && claudeKey) {
+                              newServerConfig.env = { ANTHROPIC_API_KEY: claudeKey };
+                            } else if (lib.id === 'GitHub' && githubToken) {
+                              newServerConfig.env = { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken };
+                            } else if (lib.id === 'Google' && googleMapsKey) {
+                              newServerConfig.env = { GOOGLE_MAPS_API_KEY: googleMapsKey };
                             }
+                            
+                            setNewServer(newServerConfig);
                           }}
                           className="glass-card" 
                           style={{ 

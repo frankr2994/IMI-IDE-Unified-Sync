@@ -86,21 +86,30 @@ const saveGlobalState = () => {
     
     let currentState = {};
     if (fs.existsSync(GLOBAL_STATE_PATH)) {
-      currentState = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
+      try {
+        currentState = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
+      } catch (e) {
+        console.error('[Bridge] Failed to parse existing state file, starting fresh:', e);
+        currentState = {};
+      }
     }
+
+    if (!currentState.config) {
+      currentState.config = {};
+    }
+
     currentState.tokenUsage = tokenStats;
-    currentState.config = {
-      geminiKey: GEMINI_KEY,
-      githubToken: GITHUB_TOKEN,
-      openaiKey: OPENAI_KEY,
-      claudeKey: CLAUDE_KEY,
-      customApiKey: CUSTOM_API_KEY,
-      julesApiKey: JULES_KEY,
-      googleMapsKey: GOOGLE_MAPS_KEY,
-      activeEngine: ACTIVE_ENGINE,
-      mcpServersList: mcpServersList,
-      projectRoot: currentProjectRoot
-    };
+    currentState.config.geminiKey = GEMINI_KEY;
+    currentState.config.githubToken = GITHUB_TOKEN;
+    currentState.config.openaiKey = OPENAI_KEY;
+    currentState.config.claudeKey = CLAUDE_KEY;
+    currentState.config.customApiKey = CUSTOM_API_KEY;
+    currentState.config.julesApiKey = JULES_KEY;
+    currentState.config.googleMapsKey = GOOGLE_MAPS_KEY;
+    currentState.config.activeEngine = ACTIVE_ENGINE;
+    currentState.config.mcpServersList = mcpServersList;
+    currentState.config.projectRoot = currentProjectRoot;
+
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify(currentState, null, 2));
     console.log('[Bridge] Global state persistent.');
   } catch (e) { console.error('[Bridge] Failed to save persistent state:', e); }
@@ -512,7 +521,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   if (director === 'gemini') {
     // 🛡️ [TURBO] Headless Mode: Use -p for non-interactive communication
-    args = ['-m', 'gemini-3', '-p', command];
+    args = ['-m', 'gemini-3-flash-preview', '-p', command];
   } else if (director === 'jules') {
     args = ['prompt', command, '--theme', 'dark'];
   } else {
@@ -674,7 +683,7 @@ function checkCommand(cmd) {
 
 ipcMain.handle('mcp:global-list', async () => {
   let list = mcpServersList.map(s => {
-    const isConnected = activeMCPServers.has(s.name);
+    const isConnected = mcpServersList.some(server => server.name === s.name);
     return `${isConnected ? '●' : '○'} ${s.name}: ${s.command} ${s.args.join(' ')}`;
   }).join('\n');
   
