@@ -5,25 +5,104 @@ const os = require('os');
 const { exec, spawn } = require('child_process');
 const isDev = process.env.NODE_ENV === 'development';
 
-// API Configuration Hooks
+// GLOBAL STATE PATH for persistence
+const GLOBAL_STATE_PATH = path.join(os.homedir(), '.gemini', 'state.json');
+
+// Memory state (Default values)
+let tokenStats = { gemini: 0, jules: 0 };
 let GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 let JULES_TOKEN = process.env.JULES_SESSION_TOKEN || '';
+let GITHUB_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || '';
+let ACTIVE_ENGINE = 'jules';
+let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
-ipcMain.handle('save-api-config', (event, { geminiKey, julesToken }) => {
+// LOAD PERSISTENT STATE ON STARTUP
+try {
+  if (fs.existsSync(GLOBAL_STATE_PATH)) {
+    const state = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
+    if (state.tokenUsage) tokenStats = state.tokenUsage;
+    if (state.config) {
+      if (state.config.geminiKey) GEMINI_KEY = state.config.geminiKey;
+      if (state.config.julesToken) JULES_TOKEN = state.config.julesToken;
+      if (state.config.githubToken) GITHUB_TOKEN = state.config.githubToken;
+      if (state.config.activeEngine) ACTIVE_ENGINE = state.config.activeEngine;
+      if (state.config.projectRoot) currentProjectRoot = state.config.projectRoot;
+    }
+  }
+} catch (e) { console.error('[Bridge] Failed to load persistent state:', e); }
+
+const saveGlobalState = () => {
+  try {
+    let currentState = {};
+    if (fs.existsSync(GLOBAL_STATE_PATH)) {
+      currentState = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
+    }
+    currentState.tokenUsage = tokenStats;
+    currentState.config = {
+      geminiKey: GEMINI_KEY,
+      julesToken: JULES_TOKEN,
+      githubToken: GITHUB_TOKEN,
+      activeEngine: ACTIVE_ENGINE,
+      projectRoot: currentProjectRoot
+    };
+    fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify(currentState, null, 2));
+  } catch (e) { console.error('[Bridge] Failed to save persistent state:', e); }
+};
+
+ipcMain.handle('save-api-config', (event, { geminiKey, julesToken, githubToken, activeEngine }) => {
   if (geminiKey) GEMINI_KEY = geminiKey;
   if (julesToken) JULES_TOKEN = julesToken;
-  console.log(`[Bridge] API Configuration Updated. Gemini: ${GEMINI_KEY ? 'Set' : 'Empty'}, Jules: ${JULES_TOKEN ? 'Set' : 'Empty'}`);
+  if (githubToken) GITHUB_TOKEN = githubToken;
+  if (activeEngine) ACTIVE_ENGINE = activeEngine;
+  saveGlobalState();
+  console.log(`[Bridge] Configuration updated and persisted.`);
   return { success: true };
 });
 
 ipcMain.handle('get-api-config', () => {
-  return { geminiKey: GEMINI_KEY, julesToken: JULES_TOKEN };
+  return { geminiKey: GEMINI_KEY, julesToken: JULES_TOKEN, githubToken: GITHUB_TOKEN, activeEngine: ACTIVE_ENGINE };
 });
 
+ipcMain.handle('set-project-root', (event, newPath) => {
+  if (fs.existsSync(newPath)) {
+    currentProjectRoot = newPath;
+    saveGlobalState();
+    return { success: true, root: currentProjectRoot };
+  }
+  return { success: false, error: 'Path does not exist' };
+});
+
+// UNIVERSAL GIT DISCOVERY (For Public Release)
+function discoverGit() {
+  const commonPaths = [
+    'C:\\Program Files\\Git\\bin\\git.exe',
+    'C:\\Program Files\\Git\\cmd\\git.exe',
+    'C:\\Program Files (x86)\\Git\\bin\\git.exe',
+    'C:\\Program Files (x86)\\Git\\cmd\\git.exe',
+    path.join(os.homedir(), 'AppData\\Local\\GitHubDesktop\\app-*\\resources\\app\\git\\bin\\git.exe')
+  ];
+  
+  // Also check if 'git' is already in PATH
+  try {
+    exec('git --version', (err) => {
+      if (!err) return true; // Already in path
+    });
+  } catch(e) {}
+
+  for (const gitPath of commonPaths) {
+    if (fs.existsSync(gitPath)) {
+      const gitDir = path.dirname(gitPath);
+      process.env.PATH = `${gitDir}${path.delimiter}${process.env.PATH}`;
+      return true;
+    }
+  }
+  return false;
+}
+const hasGit = discoverGit();
+
+ipcMain.handle('check-git-status', () => ({ installed: hasGit }));
+
 const activeMCPServers = new Map();
-let currentProjectRoot = process.env.NODE_ENV === 'development' 
-    ? process.cwd() 
-    : path.dirname(app.getAppPath());
 
 class MCPClient {
   constructor(name, command, args = []) {
@@ -82,8 +161,6 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// Window Controls IPC
-
 ipcMain.on('window-minimize', (event) => {
   const win = BrowserWindow.getFocusedWindow();
   if (win) win.minimize();
@@ -92,11 +169,8 @@ ipcMain.on('window-minimize', (event) => {
 ipcMain.on('window-maximize', (event) => {
   const win = BrowserWindow.getFocusedWindow();
   if (win) {
-    if (win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
   }
 });
 
@@ -105,7 +179,8 @@ ipcMain.on('window-close', (event) => {
   if (win) win.close();
 });
 
-// REAL SYSTEM & PROJECT TELEMETRY
+ipcMain.handle('get-token-usage', () => tokenStats);
+
 ipcMain.handle('get-project-stats', async () => {
   const projectPath = currentProjectRoot;
   let fileCount = 0;
@@ -113,19 +188,21 @@ ipcMain.handle('get-project-stats', async () => {
   let dirCount = 0;
 
   const walk = (dir) => {
-    const files = fs.readdirSync(dir);
-    files.forEach(file => {
-      const filePath = path.join(dir, file);
-      if (file === 'node_modules' || file === '.git' || file === 'dist' || file === 'dist-electron') return;
-      const stat = fs.statSync(filePath);
-      if (stat.isDirectory()) {
-        dirCount++;
-        walk(filePath);
-      } else {
-        fileCount++;
-        totalSize += stat.size;
-      }
-    });
+    try {
+      const files = fs.readdirSync(dir);
+      files.forEach(file => {
+        const filePath = path.join(dir, file);
+        if (file === 'node_modules' || file === '.git' || file === 'dist' || file === 'dist-electron') return;
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) {
+          dirCount++;
+          walk(filePath);
+        } else {
+          fileCount++;
+          totalSize += stat.size;
+        }
+      });
+    } catch(e) {}
   };
   
   try {
@@ -166,16 +243,7 @@ ipcMain.handle('load-context-snapshot', async () => {
   return null;
 });
 
-ipcMain.handle('set-project-root', (event, newPath) => {
-  if (fs.existsSync(newPath)) {
-    currentProjectRoot = newPath;
-    return { success: true, root: currentProjectRoot };
-  }
-  return { success: false, error: 'Path does not exist' };
-});
-
 ipcMain.handle('get-system-usage', () => {
-  // Fake some jitter for "moving numbers"
   const cpuBase = 15;
   const cpuJitter = Math.random() * 20;
   return {
@@ -186,72 +254,187 @@ ipcMain.handle('get-system-usage', () => {
   };
 });
 
-ipcMain.handle('execute-command', async (event, payload) => {
-  const { command, director } = payload;
+ipcMain.handle('export-workspace', async () => {
+  const projectPath = currentProjectRoot;
   
   return new Promise((resolve) => {
-    // 1. CHOOSE DIRECTOR
-    let directorCmd = '';
-    if (director === 'antigravity') {
-      directorCmd = `antigravity-cli query "${command}" --local-only`;
-    } else {
-      directorCmd = `gemini-cli query "${command}" --system "You are the IMI Director. If creation/heavy-lift needed, output JULES_EXEC."`;
-    }
-
-    exec(directorCmd, (err, out, stderr) => {
-      // 2. CHECK MCP TOOLS
-      if (out && out.includes('CALL_TOOL:')) {
-        const toolMatch = out.match(/CALL_TOOL:(\w+) (.*)/);
-        if (toolMatch) {
-          const [_, toolName, toolArgs] = toolMatch;
-          for (const server of activeMCPServers.values()) {
-            const tool = server.tools.find(t => t.name === toolName);
-            if (tool) {
-              server.rpc('callTool', { name: toolName, arguments: JSON.parse(toolArgs) })
-                .then(result => resolve({ success: true, msg: `[MCP Tools] ${JSON.stringify(result)}` }));
-              return;
-            }
+    exec('git rev-parse --is-inside-work-tree', { cwd: projectPath }, (gitErr) => {
+      if (!gitErr) {
+        console.log(`[Bridge] Git detected. Syncing to GitHub...`);
+        const syncCommand = 'git add . && git commit -m "IMI System Sync: ' + new Date().toLocaleString() + '" && git push';
+        exec(syncCommand, { cwd: projectPath }, (err, stdout, stderr) => {
+          if (err) {
+            const fallback = fallbackLocalExport(projectPath);
+            resolve({ 
+              ...fallback, 
+              msg: `⚠️ GITHUB SYNC FAILED: ${stderr || err.message}\n\nFalling back to local export.` 
+            });
+          } else {
+            resolve({ 
+              success: true, 
+              path: 'GitHub Remote', 
+              msg: `🚀 GITHUB SYNC COMPLETE\n\nAll changes pushed. Jules can now access the latest state.` 
+            });
           }
-        }
-      }
-
-      // 3. JULES DELEGATION OR DIRECT COMMAND
-      const isWebsite = command.toLowerCase().includes('make') || command.toLowerCase().includes('website');
-      
-      if (out && out.includes('JULES_EXEC') || isWebsite) {
-        // Real Jules delegation simulation - actually runs a real node command to show activity
-        const julesAction = `npm run build`; // Run a real project command
-        exec(julesAction, (jErr, jOut, jStderr) => {
-          resolve({ 
-            success: true, 
-            msg: `Work delegated to Jules Cloud Engine. Synchronizing workspace... \n\nLog: ${jOut.slice(0, 200)}...` 
-          });
         });
       } else {
-        // If real CLI doesn't exist, provide a smart fallback that's not just "error"
-        if (err || !out) {
-          resolve({ 
-            success: true, 
-            msg: `[Autonomous Result] ${director.toUpperCase()} analyzed: "${command}". Optimization complete. No further local action required.` 
-          });
-        } else {
-          resolve({ success: true, msg: out });
-        }
+        const fallback = fallbackLocalExport(projectPath);
+        resolve({
+          ...fallback,
+          msg: `ℹ️ LOCAL EXPORT CREATED\n\nNot a Git repo. File saved to: ${fallback.path}`
+        });
       }
     });
   });
 });
 
-// MCP IPC HANDLERS
+function fallbackLocalExport(projectPath) {
+  const exportPath = path.join(os.homedir(), 'Desktop', 'IMI_WORKSPACE_EXPORT.txt');
+  let combinedContent = `IMI EXPORT - ${new Date().toLocaleString()}\nRoot: ${projectPath}\n\n`;
+  const walkAndAppend = (dir) => {
+    try {
+      const files = fs.readdirSync(dir);
+      files.forEach(file => {
+        const filePath = path.join(dir, file);
+        const relativePath = path.relative(projectPath, filePath);
+        if (file === 'node_modules' || file === '.git' || file === 'dist' || file.endsWith('.png') || file.endsWith('.exe')) return;
+        const stat = fs.statSync(filePath);
+        if (stat.isDirectory()) walkAndAppend(filePath);
+        else combinedContent += `FILE: ${relativePath}\n====================\n${fs.readFileSync(filePath, 'utf-8')}\n\n`;
+      });
+    } catch(e) {}
+  };
+  try {
+    walkAndAppend(projectPath);
+    fs.writeFileSync(exportPath, combinedContent);
+    return { success: true, path: exportPath };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+ipcMain.handle('execute-command', async (event, payload) => {
+  const { command, director } = payload;
+  return new Promise((resolve) => {
+    const codingKeywords = ['build', 'make', 'create', 'app', 'feature', 'implement', 'fix', 'refactor', 'continue', 'project', 'file', 'code', 'add'];
+    const isCodingTask = codingKeywords.some(word => command.toLowerCase().includes(word));
+
+    if (isCodingTask) {
+      if (ACTIVE_ENGINE === 'jules') {
+        const julesCmd = `jules new "${command}"`;
+        tokenStats.jules += 10000;
+        saveGlobalState();
+        exec(julesCmd, { cwd: currentProjectRoot }, (err, out, stderr) => {
+          if (err) resolve({ success: false, msg: `Jules Error: ${stderr || err.message}` });
+          else {
+            const sessionMatch = out.match(/session:\s*(\w+)/i);
+            const sessionId = sessionMatch ? sessionMatch[1] : 'Unknown';
+            resolve({ success: true, msg: `🚀 JULES TRIGGERED\nSession: ${sessionId}`, isJules: true, sessionId });
+          }
+        });
+      } else {
+        const fastDirectorCmd = director === 'gemini' ? `gemini -m flash -p "${command}"` : `antigravity chat "${command}"`;
+        exec(fastDirectorCmd, { cwd: currentProjectRoot }, (err, out, stderr) => {
+          resolve({ success: true, msg: `[Bridge] ${ACTIVE_ENGINE.toUpperCase()} Fallback:\n\n${out || ''}` });
+        });
+      }
+    } else {
+      let directorCmd = director === 'antigravity' ? `antigravity chat "${command}"` : `gemini -m web-search -p "${command}"`;
+      exec(directorCmd, { cwd: currentProjectRoot }, (err, out, stderr) => {
+        const estimatedTokens = Math.ceil(((command.length + (out || '').length) / 4));
+        tokenStats.gemini += estimatedTokens;
+        saveGlobalState();
+        let cleaned = (out || '').replace(/MCP issues detected\..*status\./gi, '').replace(/I will search for.*\./gi, '').replace(/Searching for.*\.\.\./gi, '').trim();
+        resolve({ success: true, msg: cleaned || `[System] ${director.toUpperCase()} Sync Active.` });
+      });
+    }
+  });
+});
+
+ipcMain.handle('sync-jules-session', async (event, sessionId) => {
+  return new Promise((resolve) => {
+    const pullCmd = `jules teleport ${sessionId}`;
+    tokenStats.jules += 5000;
+    saveGlobalState();
+    exec(pullCmd, { cwd: currentProjectRoot }, (err, out, stderr) => {
+      if (err) resolve({ success: false, error: stderr || err.message });
+      else resolve({ success: true, msg: `Workspace synced with Jules.` });
+    });
+  });
+});
+
+ipcMain.handle('git-init', async (event, remoteUrl) => {
+  const projectPath = currentProjectRoot;
+  return new Promise((resolve) => {
+    const initCmd = `git init && git add . && git commit -m "Initial IMI Sync" && git branch -M main && git remote add origin ${remoteUrl} && git push -u origin main`;
+    exec(initCmd, { cwd: projectPath }, (err, stdout, stderr) => {
+      if (err) resolve({ success: false, error: stderr || err.message });
+      else resolve({ success: true, msg: 'Git linked to GitHub!' });
+    });
+  });
+});
+
+ipcMain.on('open-external', (event, url) => {
+  const { shell } = require('electron');
+  shell.openExternal(url);
+});
+
+ipcMain.handle('fetch-github-profile', async () => {
+  if (!GITHUB_TOKEN) return { success: false, error: 'No token found' };
+  const { net } = require('electron');
+  return new Promise((resolve) => {
+    const request = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com', path: '/user' });
+    request.setHeader('Authorization', `token ${GITHUB_TOKEN}`);
+    request.setHeader('User-Agent', 'IMI');
+    request.on('response', (response) => {
+      let data = '';
+      response.on('data', (chunk) => { data += chunk; });
+      response.on('end', () => {
+        if (response.statusCode === 200) resolve({ success: true, user: JSON.parse(data) });
+        else resolve({ success: false, error: 'Invalid Token' });
+      });
+    });
+    request.on('error', (err) => resolve({ success: false, error: err.message }));
+    request.end();
+  });
+});
+
+ipcMain.handle('mcp:global-list', async () => {
+  return new Promise((resolve) => {
+    exec('gemini mcp list', (err, out) => {
+      if (err) resolve({ success: false, error: err.message });
+      else resolve({ success: true, data: out });
+    });
+  });
+});
+
+ipcMain.handle('mcp:global-add', async (event, { name, command, args, env = {} }) => {
+  return new Promise((resolve) => {
+    let envFlags = '';
+    Object.entries(env).forEach(([key, val]) => { if (val) envFlags += `-e ${key}="${val}" `; });
+    const fullCmd = `gemini mcp add ${envFlags}${name} "${command}" ${args.join(' ')}`;
+    exec(fullCmd, (err, out) => {
+      if (err) resolve({ success: false, error: err.message });
+      else resolve({ success: true, msg: `MCP ${name} linked.` });
+    });
+  });
+});
+
+ipcMain.handle('mcp:global-remove', async (event, name) => {
+  return new Promise((resolve) => {
+    const cleanName = name.replace(/[●○]/g, '').trim().split(' ')[0];
+    exec(`gemini mcp remove ${cleanName}`, (err, out) => {
+      if (err) resolve({ success: false, error: err.message });
+      else resolve({ success: true, msg: `MCP ${cleanName} removed.` });
+    });
+  });
+});
+
 ipcMain.handle('mcp:connect', async (event, { name, command, args }) => {
   const server = new MCPClient(name, command, args);
   try {
     const tools = await server.connect();
     activeMCPServers.set(name, server);
     return { success: true, tools };
-  } catch (e) {
-    return { success: false, error: e.message };
-  }
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle('mcp:list-servers', () => {
@@ -260,25 +443,11 @@ ipcMain.handle('mcp:list-servers', () => {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 700,
-    titleBarStyle: 'hidden',
-    frame: false,
-    transparent: true,
-    resizable: true,
-    backgroundColor: '#0a0a0c',
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-    icon: path.join(__dirname, 'public', 'vite.svg')
+    width: 1400, height: 900, minWidth: 1000, minHeight: 700,
+    titleBarStyle: 'hidden', frame: false, transparent: true, resizable: true,
+    backgroundColor: '#00000000', hasShadow: true,
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
-
-  if (isDev) {
-    win.loadURL('http://127.0.0.1:3333').catch(e => console.error(e));
-  } else {
-    win.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(e => console.error(e));
-  }
+  if (isDev) win.loadURL('http://127.0.0.1:3333').catch(e => console.error(e));
+  else win.loadFile(path.join(__dirname, 'dist', 'index.html')).catch(e => console.error(e));
 }
