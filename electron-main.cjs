@@ -149,7 +149,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     const prefix = "PLANNING ARCHITECT MODE: Provide a specific plan. Do not run tools. ";
     let fullCmd = `"${binPath}"`;
-    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan --yolo -p ${shellEscape(prefix + command)}`;
+    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
     else if (director === 'jules') fullCmd += ` new ${shellEscape(prefix + command)}`;
     else fullCmd += ` chat ${shellEscape(prefix + command)}`;
     const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
@@ -181,9 +181,9 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     return;
   }
 
-  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan}`;
+  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan.trim()}`;
   const escapedPrompt = shellEscape(prompt);
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo --yolo -p ${escapedPrompt}`;
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo -p ${escapedPrompt}`;
   
   console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
   
