@@ -141,7 +141,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
     // 🛡️ [FAST ARCHITECT] Optimized for speed and clear hand-off
-    const prefix = "FAST ARCHITECT MODE: Provide a concise surgical plan. CRITICAL: End your response with a 'TECHNICAL SPEC' block containing the exact file path and content. Do not run tools. ";
+    // 🛡️ [THE SUCCESS CONFIGURATION] 
+    const prefix = "PLANNING ARCHITECT MODE: Provide a specific text plan and then say 'PLAN COMPLETE'. Do not run tools. Do not wait for approval. The Coder will implement your plan automatically. ";
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
       fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
