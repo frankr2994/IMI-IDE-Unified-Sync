@@ -580,7 +580,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview -p ${shellEscape(enhancedCommand)}`;
+      // 🚀 [PLAN-ONLY] Force read-only mode to prevent tool errors and focus on strategy
+      fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(enhancedCommand)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(enhancedCommand)}`;
     } else {
@@ -609,9 +610,9 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     child.stderr.on('data', (data) => { 
       const chunk = data.toString();
-      // 🛡️ NOISE FILTER: Ignore stack traces and internal MCP protocol errors in the chat UI
-      if (chunk.includes('[MCP error]') || chunk.includes('at McpError') || chunk.includes('at Client') || chunk.includes('node:internal')) {
-        console.warn('[Bridge Filtered Error]:', chunk);
+      // 🛡️ NOISE FILTER: More aggressive technical block
+      const noise = ['[MCP error]', 'at McpError', 'at Client', 'at transport', 'node:internal', 'ChildProcess', 'McpError', 'Scheduling MCP', 'Executing MCP', 'refresh complete', 'Loaded cached credentials'];
+      if (noise.some(n => chunk.includes(n))) {
         return;
       }
       event.sender.send('command-chunk', { messageId, chunk }); 
