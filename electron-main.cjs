@@ -625,18 +625,36 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     const req = https.request(options, (res) => {
       let fullText = '';
+      let buffer = '';
+
+      if (res.statusCode !== 200) {
+        let errBody = '';
+        res.on('data', (d) => errBody += d.toString());
+        res.on('end', () => {
+          event.sender.send('command-error', { messageId, error: `API Error (${res.statusCode}): ${errBody}` });
+        });
+        return;
+      }
+
       res.on('data', (chunk) => {
-        const lines = chunk.toString().split('\n').filter(l => l.trim());
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep the last partial line in buffer
+
         for (const line of lines) {
-          if (line.includes('[DONE]')) continue;
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          
           try {
-            const json = JSON.parse(line.replace('data: ', ''));
-            const content = director === 'claude' ? (json.delta?.text || '') : (json.choices?.[0]?.delta?.content || '');
+            const json = JSON.parse(trimmed.replace('data: ', ''));
+            const content = director === 'claude' ? (json.delta?.text || json.content?.[0]?.text || '') : (json.choices?.[0]?.delta?.content || '');
             if (content) {
               fullText += content;
               event.sender.send('command-chunk', { messageId, chunk: content });
             }
-          } catch (e) {}
+          } catch (e) {
+            // Silently ignore parse errors for non-data lines
+          }
         }
       });
       res.on('end', () => {
