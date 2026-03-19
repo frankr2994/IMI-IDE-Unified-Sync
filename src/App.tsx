@@ -475,21 +475,21 @@ const App = () => {
                         )}
                         <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
                           {renderContent(m.text)}
-                          {m.isStreaming && (
-                            <div style={{ marginTop: '15px' }}>
-                              <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em' }}>PROCESSING STREAM...</div>
-                              <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)' }}>
-                                <motion.div 
-                                  initial={{ width: '0%' }}
-                                  animate={{ width: '100%' }}
-                                  transition={{ duration: 15, ease: "linear", repeat: Infinity }}
-                                  className="quota-fill" 
-                                  style={{ background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} 
-                                />
-                              </div>
-                            </div>
-                          )}
                         </div>
+                        {m.isStreaming && (
+                          <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em', color: 'var(--primary)' }}>RECEIVING DATA STREAM...</div>
+                            <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)' }}>
+                              <motion.div 
+                                initial={{ width: '0%' }}
+                                animate={{ width: '100%' }}
+                                transition={{ duration: 30, ease: "linear" }}
+                                className="quota-fill" 
+                                style={{ background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} 
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
