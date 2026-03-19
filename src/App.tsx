@@ -87,7 +87,6 @@ const App = () => {
   const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [gitInstalled, setGitInstalled] = useState(true);
   const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
-  const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
   const [settingsSearch, setSettingsSearch] = useState('');
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
   const [snapshotMode, setSnapshotMode] = useState(true);
@@ -730,120 +729,190 @@ const App = () => {
           )}
 
           {activeTab === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '30px' }}>System Configuration</h3>
-                
-                <div style={{ marginBottom: '40px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
-                    <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
-                  </div>
-                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
+            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '2rem 2rem 1rem 2rem' }}>
+                  <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>System Configuration</h3>
+                  <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Manage your workspace, credentials, and AI fleet.</p>
                 </div>
 
-                <div style={{ marginBottom: '40px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>SYSTEM PREFERENCES</div>
+                {/* Sub-Navigation */}
+                <div style={{ display: 'flex', gap: '20px', padding: '0 2rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
+                  {[
+                    { id: 'general', label: 'PREFERENCES', icon: <Settings2 size={14}/> },
+                    { id: 'apis', label: 'APIs & KEYS', icon: <Key size={14}/> },
+                    { id: 'sync', label: 'GITHUB & SYNC', icon: <RefreshCw size={14}/> },
+                    { id: 'telemetry', label: 'TELEMETRY', icon: <Gauge size={14}/> },
+                    { id: 'automation', label: 'AUTOMATION', icon: <ShieldCheck size={14}/> }
+                  ].map(tab => (
+                    <button 
+                      key={tab.id}
+                      onClick={() => setSettingsActiveSubTab(tab.id)}
+                      style={{ 
+                        padding: '15px 5px', background: 'none', border: 'none', 
+                        color: settingsActiveSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)',
+                        fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        borderBottom: settingsActiveSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {tab.icon} {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ padding: '2rem', height: '450px', overflowY: 'auto' }}>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                    {/* Theme Selector */}
-                    <div>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px', letterSpacing: '0.05em' }}>THEME SELECTOR</div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {['glass', 'dark', 'neon'].map(t => (
-                          <button 
-                            key={t} 
-                            onClick={() => { setTheme(t); setIsSaving(true); setTimeout(() => saveConfig(), 100); }}
-                            style={{ 
-                              flex: 1, padding: '10px', borderRadius: '10px', 
-                              border: '1px solid var(--glass-border)', 
-                              background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                              color: '#fff', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer',
-                              textTransform: 'uppercase',
-                              transition: 'all 0.3s ease'
-                            }}
-                          >
-                            {t}
-                          </button>
-                        ))}
+                  {/* CATEGORY: GENERAL PREFERENCES */}
+                  {settingsActiveSubTab === 'general' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
+                          <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
+                        </div>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
                       </div>
-                    </div>
 
-                    {/* Log Retention */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, letterSpacing: '0.05em' }}>LOG RETENTION</div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{logRetention} LOGS</div>
-                      </div>
-                      <input 
-                        type="range" min="5" max="50" 
-                        value={logRetention} 
-                        onChange={e => setLogRetention(parseInt(e.target.value))}
-                        onMouseUp={() => saveConfig()}
-                        style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>SECURE CREDENTIALS</div>
-                    <div style={{ position: 'relative' }}>
-                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-                      <input 
-                        value={settingsSearch} 
-                        onChange={e => setSettingsSearch(e.target.value)} 
-                        placeholder="Filter Keys..." 
-                        className="chat-input" 
-                        style={{ width: '180px', paddingLeft: '30px', height: '32px', fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)' }} 
-                      />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    {[
-                      { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
-                      { key: 'JULES', val: julesApiKey, set: setJulesApiKey, ph: 'Jules AI Token...' },
-                      { key: 'GITHUB', val: githubToken, set: setGithubToken, ph: 'GitHub PAT...' },
-                      { key: 'OPENAI', val: openaiKey, set: setOpenaiKey, ph: 'OpenAI Key (ChatGPT)...' },
-                      { key: 'CLAUDE', val: claudeKey, set: setClaudeKey, ph: 'Claude Key...' },
-                      { key: 'DEEPSEEK', val: deepseekKey, set: setDeepseekKey, ph: 'DeepSeek Key...' },
-                      { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
-                      { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
-                      { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
-                    ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
-                      <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, letterSpacing: '0.05em' }}>{item.key}</div>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                          <input 
-                            type="password" 
-                            value={item.val} 
-                            onChange={e => item.set(e.target.value)} 
-                            placeholder={item.ph} 
-                            className="chat-input" 
-                            style={{ paddingRight: '80px', width: '100%', height: '45px' }}
-                          />
-                          {item.val && (
-                            <div style={{ position: 'absolute', right: '10px', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,255,170,0.1)', padding: '4px 8px', borderRadius: '6px' }}>
-                              <CheckCircle2 size={10} color="#00ffaa" />
-                              <span style={{ fontSize: '0.5rem', fontWeight: 900, color: '#00ffaa' }}>LINKED</span>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>APPEARANCE & UI</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>THEME SELECTOR</div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              {['glass', 'dark', 'neon'].map(t => (
+                                <button key={t} onClick={() => { setTheme(t); saveConfig(); }} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: '#fff', fontWeight: 800, fontSize: '0.65rem', cursor: 'pointer', textTransform: 'uppercase' }}>{t}</button>
+                              ))}
                             </div>
-                          )}
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5 }}>LOG RETENTION</div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{logRetention} LOGS</div>
+                            </div>
+                            <input type="range" min="5" max="50" value={logRetention} onChange={e => setLogRetention(parseInt(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  
+                    </motion.div>
+                  )}
+
+                  {/* CATEGORY: APIs & KEYS */}
+                  {settingsActiveSubTab === 'apis' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>SECURE CREDENTIALS</div>
+                        <div style={{ position: 'relative' }}>
+                          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                          <input value={settingsSearch} onChange={e => setSettingsSearch(e.target.value)} placeholder="Search Keys..." className="chat-input" style={{ width: '180px', paddingLeft: '30px', height: '32px', fontSize: '0.7rem' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        {[
+                          { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
+                          { key: 'JULES', val: julesApiKey, set: setJulesApiKey, ph: 'Jules AI Token...' },
+                          { key: 'GITHUB', val: githubToken, set: setGithubToken, ph: 'GitHub PAT...' },
+                          { key: 'OPENAI', val: openaiKey, set: setOpenaiKey, ph: 'OpenAI Key (ChatGPT)...' },
+                          { key: 'CLAUDE', val: claudeKey, set: setClaudeKey, ph: 'Claude Key...' },
+                          { key: 'DEEPSEEK', val: deepseekKey, set: setDeepseekKey, ph: 'DeepSeek Key...' },
+                          { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
+                          { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
+                          { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' }
+                        ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
+                          <div key={item.key} style={{ position: 'relative' }}>
+                            <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>{item.key}</div>
+                            <input type="password" value={item.val} onChange={e => item.set(e.target.value)} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
+                            {item.val && <CheckCircle2 size={12} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '28px' }} />}
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* CATEGORY: GITHUB & SYNC */}
+                  {settingsActiveSubTab === 'sync' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>CLOUD SYNC ENGINE</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>SYNC FREQUENCY</div>
+                            <select className="chat-input" style={{ height: '40px', fontSize: '0.8rem' }}>
+                              <option value="60">Every 60 Seconds</option>
+                              <option value="300">Every 5 Minutes</option>
+                              <option value="manual">Manual Only</option>
+                            </select>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>CONFLICT STRATEGY</div>
+                            <select className="chat-input" style={{ height: '40px', fontSize: '0.8rem' }}>
+                              <option value="rebase">Auto-Rebase (Clean)</option>
+                              <option value="stash">Stash & Pull (Safe)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* CATEGORY: TELEMETRY */}
+                  {settingsActiveSubTab === 'telemetry' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>SYSTEM MONITORING</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Real-time CPU Tracking</span>
+                            <div style={{ width: '40px', height: '20px', background: 'var(--primary)', borderRadius: '10px', position: 'relative' }}><div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', right: '2px', top: '2px' }}></div></div>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>API Token Usage Monitor</span>
+                            <div style={{ width: '40px', height: '20px', background: 'var(--primary)', borderRadius: '10px', position: 'relative' }}><div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', right: '2px', top: '2px' }}></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* CATEGORY: AUTOMATION */}
+                  {settingsActiveSubTab === 'automation' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>AGENT ORCHESTRATION</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Autonomous Hand-off</div>
+                              <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Allow Brain to trigger Coder automatically</div>
+                            </div>
+                            <div style={{ width: '40px', height: '20px', background: 'var(--primary)', borderRadius: '10px', position: 'relative' }}><div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', right: '2px', top: '2px' }}></div></div>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Direct GitHub Commits</div>
+                              <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>Let Coder push directly to main branch</div>
+                            </div>
+                            <div style={{ width: '40px', height: '20px', background: '#333', borderRadius: '10px', position: 'relative' }}><div style={{ width: '16px', height: '16px', background: '#fff', borderRadius: '50%', position: 'absolute', left: '2px', top: '2px' }}></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                </div>
+
+                <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
                   <button 
                     onClick={saveConfig} 
                     className="btn-premium" 
-                    style={{ marginTop: '30px', width: '100%', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
+                    style={{ width: '100%', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
                   >
                     {isSaving ? (
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                         <ShieldCheck size={18} /> SETTINGS SYNCHRONIZED
                       </span>
-                    ) : 'SAVE ALL CREDENTIALS'}
+                    ) : 'SAVE ALL CONFIGURATIONS'}
                   </button>
                 </div>
             </motion.div>
