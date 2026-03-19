@@ -48,6 +48,7 @@ const App = () => {
   const [quota, setQuota] = useState(65);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Idle');
+  const [coderStatus, setCoderStatus] = useState('Idle');
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
@@ -296,6 +297,11 @@ const App = () => {
       setSyncStatus('Idle');
     });
 
+    ipc.on('coder-status', (_: any, status: string) => {
+      setCoderStatus(status);
+      if (status !== 'Idle') addLog('system', `Coder: ${status}`);
+    });
+
     return () => {
       clearInterval(interval);
       ipc.removeAllListeners('command-chunk');
@@ -303,6 +309,7 @@ const App = () => {
       ipc.removeAllListeners('command-error');
       ipc.removeAllListeners('sync-status');
       ipc.removeAllListeners('sync-end');
+      ipc.removeAllListeners('coder-status');
     };
   }, []);
 
@@ -577,7 +584,25 @@ const App = () => {
                     </div>
                     <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
                  </div>
-                 <div className="devtools-content" style={{ height: '515px', padding: '15px', overflowY: 'auto', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+
+                 {coderStatus !== 'Idle' && (
+                   <div style={{ padding: '15px', background: 'rgba(0,255,136,0.05)', borderBottom: '1px solid rgba(0,255,136,0.1)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.1em' }}>CODER ACTIVE</span>
+                        <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#00ff88', opacity: 0.8 }}>{coderStatus.toUpperCase()}...</span>
+                      </div>
+                      <div className="quota-bar" style={{ height: '3px', background: 'rgba(0,255,136,0.1)', margin: 0 }}>
+                        <motion.div 
+                          initial={{ width: '0%' }}
+                          animate={{ width: '100%' }}
+                          transition={{ duration: 20, ease: "linear" }}
+                          style={{ height: '100%', background: '#00ff88', boxShadow: '0 0 10px rgba(0,255,136,0.5)' }}
+                        />
+                      </div>
+                   </div>
+                 )}
+
+                 <div className="devtools-content" style={{ height: coderStatus !== 'Idle' ? '465px' : '515px', padding: '15px', overflowY: 'auto', fontSize: '0.75rem', fontFamily: 'monospace', transition: 'height 0.3s' }}>
                     {logs.map(l => (
                       <div key={l.id} style={{ marginBottom: '6px', color: l.type === 'ag' ? '#00ff88' : (l.type === 'gemini' ? '#4facfe' : '#ffffff88') }}>
                         <span style={{ opacity: 0.4 }}>[{new Date(l.id).toLocaleTimeString()}]</span> {l.msg}
