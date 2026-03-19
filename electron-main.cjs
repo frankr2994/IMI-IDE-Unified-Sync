@@ -31,6 +31,8 @@ let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY 
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
 let ACTIVE_ENGINE = 'jules';
+let THEME = 'glass';
+let LOG_RETENTION = 15;
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
@@ -52,6 +54,8 @@ const saveGlobalState = () => {
       julesApiKey: JULES_KEY, 
       googleMapsKey: GOOGLE_MAPS_KEY, 
       activeEngine: ACTIVE_ENGINE, 
+      theme: THEME,
+      logRetention: LOG_RETENTION,
       mcpServersList, 
       projectRoot: currentProjectRoot 
     };
@@ -76,6 +80,8 @@ try {
       JULES_KEY = state.config.julesApiKey || '';
       GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; 
       ACTIVE_ENGINE = state.config.activeEngine || 'jules';
+      THEME = state.config.theme || 'glass';
+      LOG_RETENTION = state.config.logRetention || 15;
       mcpServersList = state.config.mcpServersList || [];
       if (state.config.projectRoot && fs.existsSync(state.config.projectRoot)) currentProjectRoot = state.config.projectRoot;
     }
@@ -93,6 +99,8 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.llamaKey !== undefined) LLAMA_KEY = config.llamaKey;
   if (config.perplexityKey !== undefined) PERPLEXITY_KEY = config.perplexityKey;
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
+  if (config.theme !== undefined) THEME = config.theme;
+  if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
   if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
   saveGlobalState(); 
   return { success: true };
@@ -109,6 +117,8 @@ ipcMain.handle('get-api-config', () => ({
   perplexityKey: PERPLEXITY_KEY,
   julesApiKey: JULES_KEY, 
   activeEngine: ACTIVE_ENGINE, 
+  theme: THEME,
+  logRetention: LOG_RETENTION,
   projectRoot: currentProjectRoot
 }));
 

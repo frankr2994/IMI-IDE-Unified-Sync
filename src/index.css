@@ -475,3 +475,24 @@ body {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* Themes */
+body.theme-dark {
+  --bg-dark: #050507;
+  --card-bg: rgba(0, 0, 0, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  background-image: linear-gradient(to bottom, #050507, #0a0a0e);
+}
+
+body.theme-neon {
+  --primary: #00ff88;
+  --primary-glow: rgba(0, 255, 136, 0.6);
+  --secondary: #ff00ff;
+  --bg-dark: #000000;
+  --card-bg: rgba(0, 0, 0, 0.7);
+  --glass-border: rgba(0, 255, 136, 0.3);
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(0, 255, 136, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(255, 0, 255, 0.15) 0%, transparent 50%),
+    linear-gradient(to bottom, #000000, #050505);
+}

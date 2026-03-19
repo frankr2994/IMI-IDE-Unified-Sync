@@ -91,7 +91,7 @@ const App = () => {
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
   const [snapshotMode, setSnapshotMode] = useState(true);
   const [theme, setTheme] = useState('glass');
-  const [logRetention, setLogRetention] = useState(10);
+  const [logRetention, setLogRetention] = useState(15);
   const [snapshotFrequency, setSnapshotFrequency] = useState(5);
   
   interface Log { id: number; type: string; msg: string; }
@@ -108,7 +108,7 @@ const App = () => {
   const addLog = (type: string, msg: string) => {
     setLogs(prev => {
       if (prev.length > 0 && prev[prev.length - 1].msg === msg) return prev;
-      return [...prev.slice(-15), { id: Date.now(), type, msg }];
+      return [...prev.slice(-(logRetention - 1)), { id: Date.now(), type, msg }];
     });
   };
 
@@ -153,6 +153,8 @@ const App = () => {
       setJulesApiKey(config.julesApiKey || '');
       setGoogleMapsKey(config.googleMapsKey || '');
       setProjectRootInput(config.projectRoot || '');
+      if (config.theme) setTheme(config.theme);
+      if (config.logRetention) setLogRetention(config.logRetention);
     }
   };
 
@@ -200,7 +202,9 @@ const App = () => {
       geminiKey, githubToken, 
       openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey, customApiKey, julesApiKey, googleMapsKey, 
       activeEngine, activeDirector,
-      projectRoot: projectRootInput
+      projectRoot: projectRootInput,
+      theme,
+      logRetention
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -312,6 +316,10 @@ const App = () => {
       ipc.removeAllListeners('coder-status');
     };
   }, []);
+
+  useEffect(() => {
+    document.body.className = theme === 'glass' ? '' : `theme-${theme}`;
+  }, [theme]);
 
   const renderContent = (text: string) => {
     if (!text) return null;
@@ -728,6 +736,50 @@ const App = () => {
                     <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
                   </div>
                   <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
+                </div>
+
+                <div style={{ marginBottom: '40px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>SYSTEM PREFERENCES</div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+                    {/* Theme Selector */}
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px', letterSpacing: '0.05em' }}>THEME SELECTOR</div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {['glass', 'dark', 'neon'].map(t => (
+                          <button 
+                            key={t} 
+                            onClick={() => { setTheme(t); setIsSaving(true); setTimeout(() => saveConfig(), 100); }}
+                            style={{ 
+                              flex: 1, padding: '10px', borderRadius: '10px', 
+                              border: '1px solid var(--glass-border)', 
+                              background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                              color: '#fff', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer',
+                              textTransform: 'uppercase',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Log Retention */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, letterSpacing: '0.05em' }}>LOG RETENTION</div>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{logRetention} LOGS</div>
+                      </div>
+                      <input 
+                        type="range" min="5" max="50" 
+                        value={logRetention} 
+                        onChange={e => setLogRetention(parseInt(e.target.value))}
+                        onMouseUp={() => saveConfig()}
+                        style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
