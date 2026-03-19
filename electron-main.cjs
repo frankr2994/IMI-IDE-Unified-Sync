@@ -193,8 +193,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
-    // 🛡️ [ROBOTIC ARCHITECT 2.0] Forbids research and tool use, forcing instant data output
-    const prefix = "ROBOTIC ARCHITECT MODE: You are a high-speed technical data stream. DO NOT use tools. DO NOT research. DO NOT read files. You already have the context. Output ONLY a technical specification in this format: [TARGET_FILE] -> [ACTION: REPLACE/CREATE] -> [CODE_BLOCK]. End with 'DIRECTIVE_STAMP_READY'. ";
+    // 🛡️ [PROMPT ENHANCER MODE]
+    const prefix = "PROMPT ENHANCER MODE: Refine the user's request into a high-detail, professional technical instruction for an expert coding agent. DO NOT provide a plan. DO NOT discuss. Output ONLY the enhanced instruction. ";
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
