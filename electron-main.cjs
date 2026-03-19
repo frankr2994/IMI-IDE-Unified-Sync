@@ -778,13 +778,18 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const binPath = await checkCommand(engine);
-  const command = `Implement this plan: ${brainPlan.substring(0, 1000)}`; // Truncate plan for CLI safety
+  const verified = await checkCommand(engine);
+  const binPath = verified || engine;
+  const prompt = `Implement this plan: ${brainPlan.substring(0, 1000)}`;
   
-  let args = [];
-  if (engine === 'jules') args = ['new', command];
-  else if (engine === 'antigravity') args = ['chat', command];
-  else args = ['-p', command]; // Fallback for other CLIs
+  let fullCmd = `"${binPath}"`;
+  if (engine === 'jules') {
+    fullCmd += ` new ${shellEscape(prompt)}`;
+  } else if (engine === 'antigravity') {
+    fullCmd += ` chat ${shellEscape(prompt)}`;
+  } else {
+    fullCmd += ` -p ${shellEscape(prompt)}`;
+  }
 
   const finalEnv = { 
     ...process.env, 
@@ -794,8 +799,8 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (JULES_KEY) finalEnv['JULES_API_KEY'] = JULES_KEY;
   if (GEMINI_KEY) finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
 
-  console.log(`[Orchestrator] Executing Coder: ${engine}`);
-  const child = spawn(binPath || engine, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+  console.log(`[Orchestrator] Executing Coder: ${fullCmd}`);
+  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
 
   child.stdout.on('data', (data) => {
     event.sender.send('command-chunk', { messageId, chunk: data.toString() });
