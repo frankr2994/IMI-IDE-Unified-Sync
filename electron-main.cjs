@@ -606,6 +606,21 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullOutput.length / 4);
       saveGlobalState();
       event.sender.send('command-end', { messageId, code });
+      
+      // 🚀 [AUTONOMOUS HAND-OFF] for CLI (Gemini -> Jules)
+      const codingKeywords = ['build', 'make', 'create', 'app', 'feature', 'implement', 'fix', 'refactor', 'continue', 'project', 'file', 'code', 'add', 'update', 'change'];
+      const isCodingRequest = command.toLowerCase().split(' ').some(word => codingKeywords.includes(word));
+      
+      if (isCodingRequest && payload.engine && payload.engine !== director) {
+        event.sender.send('command-chunk', { 
+          messageId, 
+          chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` 
+        });
+        setTimeout(() => {
+          triggerCoderImplementation(event, payload.engine, fullOutput, messageId);
+        }, 1000);
+      }
+
       triggerGitSync();
     });
   } else {
@@ -715,6 +730,26 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         tokenStats[director] = (tokenStats[director] || 0) + Math.ceil((command.length + fullText.length) / 4);
         saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
+        
+        // 🚀 [AUTONOMOUS HAND-OFF]
+        // If the Brain (API) finishes and we have an implementation engine selected
+        const codingKeywords = ['build', 'make', 'create', 'app', 'feature', 'implement', 'fix', 'refactor', 'continue', 'project', 'file', 'code', 'add', 'update', 'change'];
+        const isCodingRequest = codingKeywords.some(word => command.toLowerCase().includes(word));
+        
+        if (isCodingRequest && payload.engine && payload.engine !== director) {
+          console.log(`[Orchestrator] Brain plan complete. Handing off to ${payload.engine}...`);
+          // Notify the UI of the hand-off
+          event.sender.send('command-chunk', { 
+            messageId, 
+            chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` 
+          });
+          
+          // Trigger the Coder implementation automatically
+          setTimeout(() => {
+            triggerCoderImplementation(event, payload.engine, fullText, messageId);
+          }, 1000);
+        }
+
         triggerGitSync();
       });
     });
@@ -727,6 +762,47 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     req.end();
   }
 });
+
+async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
+  const binPath = await checkCommand(engine);
+  const command = `Implement this plan: ${brainPlan.substring(0, 1000)}`; // Truncate plan for CLI safety
+  
+  let args = [];
+  if (engine === 'jules') args = ['new', command];
+  else if (engine === 'antigravity') args = ['chat', command];
+  else args = ['-p', command]; // Fallback for other CLIs
+
+  const finalEnv = { 
+    ...process.env, 
+    ...getMCPEnv(),
+    FORCE_COLOR: '1' 
+  };
+  if (JULES_KEY) finalEnv['JULES_API_KEY'] = JULES_KEY;
+  if (GEMINI_KEY) finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
+
+  console.log(`[Orchestrator] Executing Coder: ${engine}`);
+  const child = spawn(binPath || engine, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+
+  child.stdout.on('data', (data) => {
+    event.sender.send('command-chunk', { messageId, chunk: data.toString() });
+  });
+
+  child.stderr.on('data', (data) => {
+    // Basic filter for coder too
+    if (!data.toString().includes('at Client')) {
+      event.sender.send('command-chunk', { messageId, chunk: data.toString() });
+    }
+  });
+
+  child.on('close', (code) => {
+    event.sender.send('command-chunk', { 
+      messageId, 
+      chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ${engine.toUpperCase()} IMPLEMENTATION FINISHED ---` 
+    });
+    event.sender.send('command-end', { messageId, code });
+    triggerGitSync();
+  });
+}
 
 // Deprecated for new streaming UI but kept for legacy compat
 ipcMain.handle('execute-command', async (event, payload) => {
