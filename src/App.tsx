@@ -179,7 +179,9 @@ const App = () => {
   const updateRoot = async () => {
     const result = await (ipc as any).invoke('set-project-root', projectRootInput);
     if (result.success) {
-      alert('Project Root Updated!');
+      // Auto-save config when root is updated to ensure persistence
+      await saveConfig();
+      alert('Project Root Updated & Saved!');
       fetchStats();
     } else {
       alert('Error: ' + result.error);
@@ -190,8 +192,9 @@ const App = () => {
     setIsSaving(true);
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
-      openaiKey, claudeKey, deepseekKey, mistralKey, customApiKey, julesApiKey, googleMapsKey, 
-      activeEngine, activeDirector 
+      openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey, customApiKey, julesApiKey, googleMapsKey, 
+      activeEngine, activeDirector,
+      projectRoot: projectRootInput
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -653,17 +656,18 @@ const App = () => {
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
                 <h3 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '30px' }}>System Configuration</h3>
                 
-                <div style={{ marginBottom: '30px' }}>
+                <div style={{ marginBottom: '40px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="Project Path..." className="chat-input" style={{ flex: 1 }} />
+                    <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
                     <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
                   </div>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>SECURE CREDENTIALS</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>SECURE CREDENTIALS</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     {[
                       { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
                       { key: 'JULES', val: julesApiKey, set: setJulesApiKey, ph: 'Jules AI Token...' },
@@ -675,37 +679,39 @@ const App = () => {
                       { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
                       { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
                     ].map(item => (
-                      <div key={item.key} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <div style={{ position: 'absolute', left: '-100px', width: '90px', textAlign: 'right', fontSize: '0.6rem', fontWeight: 900, opacity: 0.4 }}>{item.key}</div>
-                        <input 
-                          type="password" 
-                          value={item.val} 
-                          onChange={e => item.set(e.target.value)} 
-                          placeholder={item.ph} 
-                          className="chat-input" 
-                          style={{ paddingRight: '80px' }}
-                        />
-                        {item.val && (
-                          <div style={{ position: 'absolute', right: '15px', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,255,170,0.1)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,170,0.2)' }}>
-                            <CheckCircle2 size={12} color="#00ffaa" />
-                            <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#00ffaa' }}>LINKED</span>
-                          </div>
-                        )}
+                      <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, letterSpacing: '0.05em' }}>{item.key}</div>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <input 
+                            type="password" 
+                            value={item.val} 
+                            onChange={e => item.set(e.target.value)} 
+                            placeholder={item.ph} 
+                            className="chat-input" 
+                            style={{ paddingRight: '80px', width: '100%', height: '45px' }}
+                          />
+                          {item.val && (
+                            <div style={{ position: 'absolute', right: '10px', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,255,170,0.1)', padding: '4px 8px', borderRadius: '6px' }}>
+                              <CheckCircle2 size={10} color="#00ffaa" />
+                              <span style={{ fontSize: '0.5rem', fontWeight: 900, color: '#00ffaa' }}>LINKED</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
-                    
-                    <button 
-                      onClick={saveConfig} 
-                      className="btn-premium" 
-                      style={{ marginTop: '10px', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
-                    >
-                      {isSaving ? (
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                          <ShieldCheck size={18} /> CREDENTIALS SYNCED
-                        </span>
-                      ) : 'SAVE ALL CREDENTIALS'}
-                    </button>
                   </div>
+                  
+                  <button 
+                    onClick={saveConfig} 
+                    className="btn-premium" 
+                    style={{ marginTop: '30px', width: '100%', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
+                  >
+                    {isSaving ? (
+                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                        <ShieldCheck size={18} /> SETTINGS SYNCHRONIZED
+                      </span>
+                    ) : 'SAVE ALL CREDENTIALS'}
+                  </button>
                 </div>
             </motion.div>
           )}

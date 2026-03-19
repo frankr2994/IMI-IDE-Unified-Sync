@@ -46,6 +46,8 @@ let OPENAI_KEY = '';
 let CLAUDE_KEY = '';
 let DEEPSEEK_KEY = '';
 let MISTRAL_KEY = '';
+let LLAMA_KEY = '';
+let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = '';
 let JULES_KEY = '';
 let GOOGLE_MAPS_KEY = '';
@@ -65,6 +67,8 @@ try {
       if (state.config.claudeKey) CLAUDE_KEY = state.config.claudeKey;
       if (state.config.deepseekKey) DEEPSEEK_KEY = state.config.deepseekKey;
       if (state.config.mistralKey) MISTRAL_KEY = state.config.mistralKey;
+      if (state.config.llamaKey) LLAMA_KEY = state.config.llamaKey;
+      if (state.config.perplexityKey) PERPLEXITY_KEY = state.config.perplexityKey;
       if (state.config.customApiKey) CUSTOM_API_KEY = state.config.customApiKey;
       if (state.config.julesApiKey) JULES_KEY = state.config.julesApiKey;
       if (state.config.googleMapsKey) GOOGLE_MAPS_KEY = state.config.googleMapsKey;
@@ -110,6 +114,8 @@ const saveGlobalState = () => {
     currentState.config.claudeKey = CLAUDE_KEY;
     currentState.config.deepseekKey = DEEPSEEK_KEY;
     currentState.config.mistralKey = MISTRAL_KEY;
+    currentState.config.llamaKey = LLAMA_KEY;
+    currentState.config.perplexityKey = PERPLEXITY_KEY;
     currentState.config.customApiKey = CUSTOM_API_KEY;
     currentState.config.julesApiKey = JULES_KEY;
     currentState.config.googleMapsKey = GOOGLE_MAPS_KEY;
@@ -130,10 +136,16 @@ ipcMain.handle('save-api-config', (event, config) => {
   CLAUDE_KEY = config.claudeKey ?? CLAUDE_KEY;
   DEEPSEEK_KEY = config.deepseekKey ?? DEEPSEEK_KEY;
   MISTRAL_KEY = config.mistralKey ?? MISTRAL_KEY;
+  LLAMA_KEY = config.llamaKey ?? LLAMA_KEY;
+  PERPLEXITY_KEY = config.perplexityKey ?? PERPLEXITY_KEY;
   CUSTOM_API_KEY = config.customApiKey ?? CUSTOM_API_KEY;
   JULES_KEY = config.julesApiKey ?? JULES_KEY;
   GOOGLE_MAPS_KEY = config.googleMapsKey ?? GOOGLE_MAPS_KEY;
   ACTIVE_ENGINE = config.activeEngine ?? ACTIVE_ENGINE;
+  
+  if (config.projectRoot && fs.existsSync(config.projectRoot)) {
+    currentProjectRoot = config.projectRoot;
+  }
   
   saveGlobalState();
   return { success: true };
@@ -147,10 +159,13 @@ ipcMain.handle('get-api-config', () => {
     claudeKey: CLAUDE_KEY,
     deepseekKey: DEEPSEEK_KEY,
     mistralKey: MISTRAL_KEY,
+    llamaKey: LLAMA_KEY,
+    perplexityKey: PERPLEXITY_KEY,
     customApiKey: CUSTOM_API_KEY,
     julesApiKey: JULES_KEY,
     googleMapsKey: GOOGLE_MAPS_KEY,
-    activeEngine: ACTIVE_ENGINE 
+    activeEngine: ACTIVE_ENGINE,
+    projectRoot: currentProjectRoot
   };
 });
 
@@ -569,6 +584,15 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       apiUrl = 'api.mistral.ai';
       apiKey = MISTRAL_KEY;
       modelName = 'mistral-large-latest';
+    } else if (director === 'llama') {
+      apiUrl = 'api.groq.com'; // Using Groq for Llama 3
+      apiKey = LLAMA_KEY;
+      modelName = 'llama3-70b-8192';
+      path = '/openai/v1/chat/completions';
+    } else if (director === 'perplexity') {
+      apiUrl = 'api.perplexity.ai';
+      apiKey = PERPLEXITY_KEY;
+      modelName = 'llama-3-sonar-large-32k-online';
     }
 
     if (!apiKey) {
