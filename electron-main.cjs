@@ -188,7 +188,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan --yolo -p ${shellEscape(prefix + command)}`;
+      // 🚀 [PLAN-ONLY] Fixed flag conflict: use --approval-mode plan instead of combining with --yolo
+      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
     } else {
