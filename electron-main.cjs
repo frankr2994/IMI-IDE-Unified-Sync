@@ -193,8 +193,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
-    // 🛡️ [ROBOTIC ARCHITECT] Eliminates conversational loops and forces technical output
-    const prefix = "ROBOTIC ARCHITECT MODE: You are a technical data stream. DO NOT use conversational language. DO NOT use phases or objectives. Output ONLY a technical specification in this format: [TARGET_FILE] -> [ACTION: REPLACE/CREATE] -> [CODE_BLOCK]. End with 'DIRECTIVE_STAMP_READY'. ";
+    // 🛡️ [ROBOTIC ARCHITECT 2.0] Forbids research and tool use, forcing instant data output
+    const prefix = "ROBOTIC ARCHITECT MODE: You are a high-speed technical data stream. DO NOT use tools. DO NOT research. DO NOT read files. You already have the context. Output ONLY a technical specification in this format: [TARGET_FILE] -> [ACTION: REPLACE/CREATE] -> [CODE_BLOCK]. End with 'DIRECTIVE_STAMP_READY'. ";
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
