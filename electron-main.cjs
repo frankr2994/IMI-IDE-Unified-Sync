@@ -128,6 +128,12 @@ function checkCommand(cmd) {
   });
 }
 
+const getMCPEnv = () => {
+  let mcpEnv = {};
+  mcpServersList.forEach(s => { if (s.env) mcpEnv = { ...mcpEnv, ...s.env }; });
+  return mcpEnv;
+};
+
 async function triggerGitSync() {
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
