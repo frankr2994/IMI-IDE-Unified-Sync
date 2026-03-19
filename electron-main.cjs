@@ -193,12 +193,11 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
-    // 🛡️ [THE SUCCESS CONFIGURATION]
-    const prefix = "PLANNING ARCHITECT MODE: Provide a specific text plan and then say 'PLAN COMPLETE'. Do not run tools. Do not wait for approval. The Coder will implement your plan automatically. ";
+    // 🛡️ [ROBOTIC ARCHITECT] Eliminates conversational loops and forces technical output
+    const prefix = "ROBOTIC ARCHITECT MODE: You are a technical data stream. DO NOT use conversational language. DO NOT use phases or objectives. Output ONLY a technical specification in this format: [TARGET_FILE] -> [ACTION: REPLACE/CREATE] -> [CODE_BLOCK]. End with 'DIRECTIVE_STAMP_READY'. ";
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
-      // 🚀 [PLAN-ONLY] Fixed flag conflict: use --approval-mode plan instead of combining with --yolo
       fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
