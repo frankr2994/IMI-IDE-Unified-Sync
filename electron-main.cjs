@@ -348,7 +348,9 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
         }
       } catch (e) {}
     }
-    fullCmd += ` new ${repoFlag}${shellEscape(prompt)}`;
+    // 🚀 FORCE MODE: Instruct Jules to implement immediately
+    const forcePrompt = `PLAN APPROVED. PROCEED TO IMPLEMENT IMMEDIATELY: ${prompt}`;
+    fullCmd += ` new ${repoFlag}${shellEscape(forcePrompt)}`;
   } else if (engine.toLowerCase() === 'antigravity') {
     fullCmd += ` chat ${shellEscape(prompt)}`;
   } else {
