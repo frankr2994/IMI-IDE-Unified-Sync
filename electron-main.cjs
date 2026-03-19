@@ -363,8 +363,27 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
       }
 
       event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: JULES CLOUD FINISHED ---` });
-      event.sender.send('command-end', { messageId, code: 0 });
-      triggerGitSync();
+      
+      // 🚀 [INSTANT CLOUD-TO-LOCAL SYNC]
+      if (gitPath) {
+        event.sender.send('command-chunk', { messageId, chunk: `\n[System] Synchronizing Cloud changes to Desktop...` });
+        exec(`"${gitPath}" pull --rebase origin master`, { cwd: currentProjectRoot }, (err) => {
+          if (!err) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n[System] Sync Success! Changes are now live on your Desktop.` });
+            // Now check for modified files
+            exec(`"${gitPath}" diff --name-only origin/master..HEAD`, { cwd: currentProjectRoot }, (dErr, dStdout) => {
+              if (!dErr && dStdout.trim()) {
+                event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${dStdout.trim()}` });
+              }
+            });
+          } else {
+            event.sender.send('command-chunk', { messageId, chunk: `\n[System] Local sync warning: ${err.message}` });
+          }
+          event.sender.send('command-end', { messageId, code: 0 });
+        });
+      } else {
+        event.sender.send('command-end', { messageId, code: 0 });
+      }
       return;
     } catch (e) {
       console.warn('[Orchestrator] Jules Cloud Bridge failed, falling back to local...', e.message);
