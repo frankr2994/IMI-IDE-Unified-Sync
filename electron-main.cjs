@@ -187,37 +187,47 @@ async function triggerGitSync() {
 // [TURBO] STREAMING COMMAND EXECUTION BRIDGE
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
-  const isCli = ['gemini', 'jules', 'antigravity'].includes(director);
   
-  if (isCli) {
-    const binPath = await checkCommand(director);
-    if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
+  // 🚀 [THE ULTIMATE FIX] Move Gemini (Brain) to direct API to stop the overthinking loop
+  if (director === 'gemini') {
+    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini API Key missing in Settings." }); return; }
     
-    // 🛡️ [PROMPT ENHANCER MODE]
-    const prefix = "PROMPT ENHANCER MODE: If the request is a general question or casual chat, answer normally. If it is a coding or file request, refine it into a high-detail professional technical instruction for an expert coding agent without discussion. ";
-    let fullCmd = `"${binPath}"`;
+    const prefix = "PROMPT ENHANCER MODE: Refine the user's request into a high-detail, technical instruction for a coding robot. DO NOT discuss. DO NOT provide a plan. User Request: ";
+    const url = `generativelanguage.googleapis.com`;
+    const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
     
-    if (director === 'gemini') {
-      // 🚀 [ZERO-LOOP] Removed --approval-mode plan to stop Gemini from talking to sub-agents.
-      // It will now just output the enhanced prompt and finish instantly.
-      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" -p ${shellEscape(prefix + command)}`;
-    } else if (director === 'jules') {
-      fullCmd += ` new ${shellEscape(prefix + command)}`;
-    } else {
-      fullCmd += ` chat ${shellEscape(prefix + command)}`;
-    }
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
+    req.setHeader('Content-Type', 'application/json');
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prefix + command }] }] });
 
-    console.log(`[Bridge] Spawning ${director}: ${fullCmd}`);
-    const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
-    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-    
-    let output = '';
-    child.stdout.on('data', (d) => { 
-      const str = d.toString();
-      output += str; 
-      event.sender.send('command-chunk', { messageId, chunk: str }); 
+    let fullText = '';
+    req.on('response', (res) => {
+      res.on('data', (chunk) => {
+        try {
+          const raw = chunk.toString();
+          // The API returns an array of objects
+          const cleanRaw = raw.startsWith('[') ? raw.substring(1) : raw.startsWith(',') ? raw.substring(1) : raw;
+          const json = JSON.parse(cleanRaw.endsWith(']') ? cleanRaw.slice(0, -1) : cleanRaw);
+          const content = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (content) { fullText += content; event.sender.send('command-chunk', { messageId, chunk: content }); }
+        } catch(e) {}
+      });
+      res.on('end', () => {
+        event.sender.send('command-end', { messageId, code: 0 });
+        const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
+        if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== 'gemini') {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+        }
+        triggerGitSync();
+      });
     });
-    
+    req.write(body); req.end();
+    return;
+  }
+
+  const isCli = ['jules', 'antigravity'].includes(director);
+  if (isCli) {
     child.stderr.on('data', (d) => {
       const chunk = d.toString();
       const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
