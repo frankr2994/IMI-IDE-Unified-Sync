@@ -140,11 +140,10 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
-    // 🛡️ [FAST ARCHITECT] Fixed flag conflicts and looping
-    const prefix = "FAST ARCHITECT MODE: Provide a concise surgical plan. If you see a folder named 'Test File', save your file inside it as 'story.md'. Do not run tools. Output plan now. ";
+    // 🛡️ [FAST ARCHITECT] Optimized for speed and clear hand-off
+    const prefix = "FAST ARCHITECT MODE: Provide a concise surgical plan. CRITICAL: End your response with a 'TECHNICAL SPEC' block containing the exact file path and content. Do not run tools. ";
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
-      // 🚀 [TURBO] Disable MCP and tools for the Brain to prevent warnings and lag
       fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
