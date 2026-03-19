@@ -163,26 +163,32 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
       }
       triggerGitSync();
-    });
-  }
-});
+    async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
+      const binPath = await checkCommand('gemini');
+      if (!binPath) {
+        event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        return;
+      }
 
-async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const binPath = await checkCommand('gemini');
-  const prompt = `CRITICAL: You are in EXECUTION MODE. Use 'write_file' to implement this plan immediately. Plan: ${brainPlan.trim()}`;
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
-  const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
-  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-  child.on('close', (code) => {
-    const gitPath = verifiedPaths['git'];
-    if (gitPath) exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
-    event.sender.send('command-end', { messageId, code });
-    triggerGitSync();
-  });
-}
+      const prompt = `CRITICAL: You are in EXECUTION MODE. Use 'write_file' to implement this plan immediately. Plan: ${brainPlan.trim()}`;
+      const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
+      const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
 
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+      const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
+      child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
+      child.on('close', (code) => {
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
+        const gitPath = verifiedPaths['git'];
+        if (gitPath) exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
+        event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
+        event.sender.send('command-end', { messageId, code });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        triggerGitSync();
+      });
+    }
 function createWindow() {
   mainWindow = new BrowserWindow({ width: 1400, height: 900, frame: false, transparent: true, webPreferences: { nodeIntegration: true, contextIsolation: false } });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
