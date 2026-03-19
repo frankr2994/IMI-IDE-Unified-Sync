@@ -144,7 +144,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const prefix = "FAST ARCHITECT MODE: Provide a concise surgical plan. If you see a folder named 'Test File', save your file inside it as 'story.md'. Do not run tools. Output plan now. ";
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview --approval-mode plan -p ${shellEscape(prefix + command)}`;
+      // 🚀 [TURBO] Disable MCP and tools for the Brain to prevent warnings and lag
+      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
     } else {
@@ -169,7 +170,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   const binPath = await checkCommand('gemini');
   const prompt = `CRITICAL: You are in EXECUTION MODE. Use 'write_file' to implement this plan immediately. Plan: ${brainPlan.trim()}`;
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo -p ${shellEscape(prompt)}`;
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
   const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
   const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
