@@ -163,18 +163,29 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const prompt = `PLAN APPROVED. IMPLEMENT IMMEDIATELY SURGICALLY: ${brainPlan.substring(0, 3000)}`;
-  let repo = '';
-  try {
-    const git = await checkCommand('git');
-    if (git) {
-      const url = execSync(`"${git}" remote get-url origin`, { cwd: currentProjectRoot }).toString();
-      const match = url.match(/github\.com[\/:](.+?\/.+?)(?:\.git)?\s*$/);
-      if (match) repo = `--repo ${match[1].trim()} `;
-    }
-  } catch(e) {}
-  const fullCmd = engine.toLowerCase() === 'jules' ? `npx -y @google/jules new ${repo}${shellEscape(prompt)}` : `"${engine}" chat ${shellEscape(prompt)}`;
-  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
+  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan}`;
+  
+  // 🚀 HIGH-RELIABILITY CODER: Use Gemini with Tools enabled for Implementation
+  const binPath = await checkCommand('gemini');
+  if (!binPath) {
+    event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
+    return;
+  }
+
+  // Use YOLO mode so it doesn't wait for approval during implementation
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo --yolo -p ${shellEscape(prompt)}`;
+  
+  console.log(`[Orchestrator] Executing Coder (Gemini-Engine): ${fullCmd}`);
+  
+  const finalEnv = { 
+    ...process.env, 
+    ...getMCPEnv(), 
+    FORCE_COLOR: '1', 
+    GEMINI_API_KEY: GEMINI_KEY,
+    GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN 
+  };
+
+  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
   child.on('close', () => {
     const gitPath = verifiedPaths['git'];
