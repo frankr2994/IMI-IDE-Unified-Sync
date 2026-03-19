@@ -643,7 +643,10 @@ const App = () => {
                 <div style={{ marginBottom: '40px' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>AVAILABLE REGISTRY</div>
                   <div className="tool-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                    {availableMCPs.filter(lib => lib.name.toLowerCase().includes(mcpSearch.toLowerCase())).map(lib => {
+                    {availableMCPs.filter(lib => 
+                      lib.name.toLowerCase().includes(mcpSearch.toLowerCase()) || 
+                      lib.desc.toLowerCase().includes(mcpSearch.toLowerCase())
+                    ).map(lib => {
                       const isLinked = mcpServers.some(s => s.name.toLowerCase().includes(lib.id.toLowerCase()));
                       return (
                         <div key={lib.id} className="glass-card" style={{ 
@@ -783,7 +786,19 @@ const App = () => {
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>SECURE CREDENTIALS</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>SECURE CREDENTIALS</div>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                      <input 
+                        value={settingsSearch} 
+                        onChange={e => setSettingsSearch(e.target.value)} 
+                        placeholder="Filter Keys..." 
+                        className="chat-input" 
+                        style={{ width: '180px', paddingLeft: '30px', height: '32px', fontSize: '0.7rem', background: 'rgba(255,255,255,0.03)' }} 
+                      />
+                    </div>
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     {[
                       { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
@@ -795,7 +810,7 @@ const App = () => {
                       { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
                       { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
                       { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
-                    ].map(item => (
+                    ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
                       <div key={item.key} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, letterSpacing: '0.05em' }}>{item.key}</div>
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
