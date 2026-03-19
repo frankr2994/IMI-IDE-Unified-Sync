@@ -181,8 +181,11 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     return;
   }
 
-  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan.trim()}`;
+  // 🚀 FORCE EXECUTION: Tell the coder it MUST use tools to implement the plan
+  const prompt = `CRITICAL: You are in EXECUTION MODE. Use your 'write_file' tool to implement this plan immediately. Do not provide a text response, only use tools. Plan: ${brainPlan.trim()}`;
   const escapedPrompt = shellEscape(prompt);
+  
+  // Use --approval-mode yolo to ensure it acts autonomously
   const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo -p ${escapedPrompt}`;
   
   console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
