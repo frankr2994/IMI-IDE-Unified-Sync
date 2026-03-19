@@ -545,13 +545,16 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   const isCliDirector = ['gemini', 'jules', 'antigravity'].includes(director);
   
   if (isCliDirector) {
-    const binPath = await checkCommand(director);
-    if (!binPath) {
-      event.sender.send('command-error', { messageId, error: `${director.toUpperCase()} CLI not found.` });
-      return;
+    let binPath = director; // Default to command name for global lookup
+    
+    // Attempt verification but don't hard-fail if it's jules/antigravity (which are often npm globals)
+    const verified = await checkCommand(director);
+    if (verified) binPath = verified;
+    else if (director === 'gemini') {
+       event.sender.send('command-error', { messageId, error: `GEMINI CLI not found. Please install it with 'npm install -g @google/gemini-cli'.` });
+       return;
     }
 
-    let spawnCmd = binPath;
     let args = [];
     if (director === 'gemini') args = ['-m', 'gemini-3-flash-preview', '-p', command];
     else if (director === 'jules') args = ['new', command];
@@ -568,6 +571,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (OPENAI_KEY) finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
     if (CLAUDE_KEY) finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
 
+    console.log(`[Bridge] Spawning ${director}: ${binPath} ${args.join(' ')}`);
     const child = spawn(binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
     
