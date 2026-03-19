@@ -198,7 +198,9 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
+      // 🚀 [ZERO-LOOP] Removed --approval-mode plan to stop Gemini from talking to sub-agents.
+      // It will now just output the enhanced prompt and finish instantly.
+      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
     } else {
