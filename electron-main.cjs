@@ -7,6 +7,7 @@ const { exec, spawn, execSync } = require('child_process');
 
 const shellEscape = (str) => {
   if (!str) return '""';
+  // 🛡️ Robust Windows Shell Escaping
   const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
   return `"${escaped}"`;
 };
@@ -33,11 +34,27 @@ let ACTIVE_ENGINE = 'jules';
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
+// --- PERSISTENCE ---
 const saveGlobalState = () => {
   try {
     const stateDir = path.dirname(GLOBAL_STATE_PATH);
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
-    const config = { geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, mcpServersList, projectRoot: currentProjectRoot };
+    const config = { 
+      geminiKey: GEMINI_KEY, 
+      githubToken: GITHUB_TOKEN, 
+      openaiKey: OPENAI_KEY, 
+      claudeKey: CLAUDE_KEY, 
+      deepseekKey: DEEPSEEK_KEY, 
+      mistralKey: MISTRAL_KEY, 
+      llamaKey: LLAMA_KEY, 
+      perplexityKey: PERPLEXITY_KEY, 
+      customApiKey: CUSTOM_API_KEY, 
+      julesApiKey: JULES_KEY, 
+      googleMapsKey: GOOGLE_MAPS_KEY, 
+      activeEngine: ACTIVE_ENGINE, 
+      mcpServersList, 
+      projectRoot: currentProjectRoot 
+    };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
   } catch (e) { console.error('[Bridge] Save Error:', e); }
 };
@@ -47,18 +64,25 @@ try {
     const state = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
     if (state.tokenUsage) tokenStats = state.tokenUsage;
     if (state.config) {
-      GEMINI_KEY = state.config.geminiKey || ''; GITHUB_TOKEN = state.config.githubToken || '';
-      OPENAI_KEY = state.config.openaiKey || ''; CLAUDE_KEY = state.config.claudeKey || '';
-      DEEPSEEK_KEY = state.config.deepseekKey || ''; MISTRAL_KEY = state.config.mistralKey || '';
-      LLAMA_KEY = state.config.llamaKey || ''; PERPLEXITY_KEY = state.config.perplexityKey || '';
-      CUSTOM_API_KEY = state.config.customApiKey || ''; JULES_KEY = state.config.julesApiKey || '';
-      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'jules';
+      GEMINI_KEY = state.config.geminiKey || ''; 
+      GITHUB_TOKEN = state.config.githubToken || '';
+      OPENAI_KEY = state.config.openaiKey || ''; 
+      CLAUDE_KEY = state.config.claudeKey || '';
+      DEEPSEEK_KEY = state.config.deepseekKey || ''; 
+      MISTRAL_KEY = state.config.mistralKey || '';
+      LLAMA_KEY = state.config.llamaKey || ''; 
+      PERPLEXITY_KEY = state.config.perplexityKey || '';
+      CUSTOM_API_KEY = state.config.customApiKey || ''; 
+      JULES_KEY = state.config.julesApiKey || '';
+      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; 
+      ACTIVE_ENGINE = state.config.activeEngine || 'jules';
       mcpServersList = state.config.mcpServersList || [];
       if (state.config.projectRoot && fs.existsSync(state.config.projectRoot)) currentProjectRoot = state.config.projectRoot;
     }
   }
 } catch (e) { console.error('[Bridge] Load Error:', e); }
 
+// --- IPC HANDLERS ---
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
   if (config.githubToken !== undefined) GITHUB_TOKEN = config.githubToken;
@@ -70,13 +94,22 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.perplexityKey !== undefined) PERPLEXITY_KEY = config.perplexityKey;
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
   if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
-  saveGlobalState(); return { success: true };
+  saveGlobalState(); 
+  return { success: true };
 });
 
 ipcMain.handle('get-api-config', () => ({
-  geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY,
-  deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
-  julesApiKey: JULES_KEY, activeEngine: ACTIVE_ENGINE, projectRoot: currentProjectRoot
+  geminiKey: GEMINI_KEY, 
+  githubToken: GITHUB_TOKEN, 
+  openaiKey: OPENAI_KEY, 
+  claudeKey: CLAUDE_KEY,
+  deepseekKey: DEEPSEEK_KEY, 
+  mistralKey: MISTRAL_KEY, 
+  llamaKey: LLAMA_KEY, 
+  perplexityKey: PERPLEXITY_KEY,
+  julesApiKey: JULES_KEY, 
+  activeEngine: ACTIVE_ENGINE, 
+  projectRoot: currentProjectRoot
 }));
 
 ipcMain.handle('get-system-usage', async () => ({
@@ -87,7 +120,11 @@ ipcMain.handle('get-system-usage', async () => ({
 }));
 
 ipcMain.handle('get-token-usage', () => tokenStats);
-ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
+ipcMain.handle('get-project-stats', () => ({ 
+  projectRoot: currentProjectRoot, 
+  platform: os.platform(), 
+  freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) 
+}));
 
 ipcMain.handle('save-context-snapshot', async (event, snapshot) => {
   const snapshotPath = path.join(currentProjectRoot, '.imi-context-snapshot.json');
@@ -131,66 +168,118 @@ async function triggerGitSync() {
   if (!gitPath || !currentProjectRoot) return;
   if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
   const cmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync" && "${gitPath}" pull --rebase origin master && "${gitPath}" push origin master`;
-  exec(cmd, { cwd: currentProjectRoot }, () => { if (mainWindow) mainWindow.webContents.send('sync-end'); });
+  exec(cmd, { cwd: currentProjectRoot }, (err) => { 
+    if (mainWindow) mainWindow.webContents.send('sync-end'); 
+    if (err) console.error('[Sync] Git Sync Error:', err.message);
+  });
 }
 
+// [TURBO] STREAMING COMMAND EXECUTION BRIDGE
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
-  if (['gemini', 'jules', 'antigravity'].includes(director)) {
+  const isCli = ['gemini', 'jules', 'antigravity'].includes(director);
+  
+  if (isCli) {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
-    // 🛡️ [FAST ARCHITECT] Optimized for speed and clear hand-off
-    // 🛡️ [THE SUCCESS CONFIGURATION] 
+    // 🛡️ [THE SUCCESS CONFIGURATION]
     const prefix = "PLANNING ARCHITECT MODE: Provide a specific text plan and then say 'PLAN COMPLETE'. Do not run tools. Do not wait for approval. The Coder will implement your plan automatically. ";
     let fullCmd = `"${binPath}"`;
+    
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
+      fullCmd += ` -m gemini-3-flash-preview --allowed-tools "" --allowed-mcp-server-names "" --approval-mode plan --yolo -p ${shellEscape(prefix + command)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(prefix + command)}`;
     } else {
       fullCmd += ` chat ${shellEscape(prefix + command)}`;
     }
 
+    console.log(`[Bridge] Spawning ${director}: ${fullCmd}`);
     const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
     const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    
     let output = '';
-    child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
+    child.stdout.on('data', (d) => { 
+      const str = d.toString();
+      output += str; 
+      event.sender.send('command-chunk', { messageId, chunk: str }); 
+    });
+    
+    child.stderr.on('data', (d) => {
+      const chunk = d.toString();
+      const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
+      if (!noise.some(n => chunk.includes(n))) {
+        event.sender.send('command-chunk', { messageId, chunk });
+      }
+    });
+
     child.on('close', (code) => {
       event.sender.send('command-end', { messageId, code });
-      if (['add', 'create', 'file', 'update', 'change', 'poem', 'story'].some(w => command.toLowerCase().includes(w)) && payload.engine && payload.engine !== director) {
+      const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement'];
+      if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== director) {
         event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
         setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
       }
       triggerGitSync();
-    async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-      if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
-      const binPath = await checkCommand('gemini');
-      if (!binPath) {
-        event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
-        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-        return;
-      }
+    });
+  } else {
+    // Basic API logic for ChatGPT/Claude
+    event.sender.send('command-error', { messageId, error: "Cloud API models currently in optimization. Please use Gemini for the Brain test." });
+  }
+});
 
-      const prompt = `CRITICAL: You are in EXECUTION MODE. Use 'write_file' to implement this plan immediately. Plan: ${brainPlan.trim()}`;
-      const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
-      const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
+async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
+  if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
+  const binPath = await checkCommand('gemini');
+  if (!binPath) {
+    event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    return;
+  }
 
-      if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-      const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-      child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-      child.on('close', (code) => {
-        if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
-        const gitPath = verifiedPaths['git'];
-        if (gitPath) exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
-        event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
-        event.sender.send('command-end', { messageId, code });
-        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-        triggerGitSync();
+  // 🚀 [FORCE BUILDER] Use YOLO mode to ensure file creation
+  const prompt = `SURGICAL BUILDER MODE: Use your 'write_file' tool to implement this plan exactly. Do not discuss, just code. Plan: ${brainPlan.trim()}`;
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
+  
+  console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
+  const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
+  
+  if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
+  
+  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
+  child.stderr.on('data', (d) => {
+    const chunk = d.toString();
+    if (!chunk.includes('at Client') && !chunk.includes('node:internal')) event.sender.send('command-chunk', { messageId, chunk });
+  });
+
+  child.on('close', (code) => {
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
+    const gitPath = verifiedPaths['git'];
+    if (gitPath) {
+      exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => {
+        if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
       });
     }
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
+    event.sender.send('command-end', { messageId, code });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    triggerGitSync();
+  });
+}
+
 function createWindow() {
-  mainWindow = new BrowserWindow({ width: 1400, height: 900, frame: false, transparent: true, webPreferences: { nodeIntegration: true, contextIsolation: false } });
+  mainWindow = new BrowserWindow({ 
+    width: 1400, 
+    height: 900, 
+    frame: false, 
+    transparent: true, 
+    webPreferences: { 
+      nodeIntegration: true, 
+      contextIsolation: false 
+    } 
+  });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
 }
@@ -200,6 +289,7 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) { if (win.isMaximized()) win.unmaximize(); else win.maximize(); } });
 ipcMain.on('window-close', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.close(); });
+
 ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
