@@ -494,13 +494,13 @@ const App = () => {
                         {m.isStreaming && (
                           <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
                             <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em', color: 'var(--primary)' }}>RECEIVING DATA STREAM...</div>
-                            <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)' }}>
+                            <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
                               <motion.div 
-                                initial={{ width: '0%' }}
-                                animate={{ width: '100%' }}
-                                transition={{ duration: 30, ease: "linear" }}
+                                initial={{ x: '-100%' }}
+                                animate={{ x: '100%' }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                                 className="quota-fill" 
-                                style={{ background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} 
+                                style={{ width: '50%', background: 'var(--primary)', boxShadow: '0 0 15px var(--primary)' }} 
                               />
                             </div>
                           </div>
