@@ -528,6 +528,14 @@ function startDirectiveWatcher() {
   });
 }
 
+const getMCPEnv = () => {
+  let mcpEnv = {};
+  mcpServersList.forEach(s => {
+    if (s.env) mcpEnv = { ...mcpEnv, ...s.env };
+  });
+  return mcpEnv;
+};
+
 // [TURBO] STREAMING COMMAND EXECUTION BRIDGE
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
@@ -547,9 +555,16 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     else if (director === 'jules') args = ['prompt', command, '--theme', 'dark'];
     else args = ['chat', command];
 
-    const finalEnv = { ...process.env, FORCE_COLOR: '1' };
+    const finalEnv = { 
+      ...process.env, 
+      ...getMCPEnv(), // 🚀 Inject all linked MCP credentials
+      FORCE_COLOR: '1' 
+    };
     if (GEMINI_KEY) finalEnv['GEMINI_API_KEY'] = GEMINI_KEY;
     if (JULES_KEY) finalEnv['JULES_API_KEY'] = JULES_KEY;
+    if (GITHUB_TOKEN) finalEnv['GITHUB_PERSONAL_ACCESS_TOKEN'] = GITHUB_TOKEN;
+    if (OPENAI_KEY) finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
+    if (CLAUDE_KEY) finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
 
     const child = spawn(binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
