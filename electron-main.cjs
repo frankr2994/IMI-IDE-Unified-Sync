@@ -194,7 +194,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
     
     // 🛡️ [PROMPT ENHANCER MODE]
-    const prefix = "PROMPT ENHANCER MODE: Refine the user's request into a high-detail, professional technical instruction for an expert coding agent. DO NOT provide a plan. DO NOT discuss. Output ONLY the enhanced instruction. ";
+    const prefix = "PROMPT ENHANCER MODE: If the request is a general question or casual chat, answer normally. If it is a coding or file request, refine it into a high-detail professional technical instruction for an expert coding agent without discussion. ";
     let fullCmd = `"${binPath}"`;
     
     if (director === 'gemini') {
@@ -226,8 +226,15 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     child.on('close', (code) => {
       event.sender.send('command-end', { messageId, code });
-      const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement'];
-      if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== director) {
+      
+      // 🛡️ [INTELLIGENCE FILTER] Only hand off if it's a legitimate coding/file task
+      const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'code', 'write', 'modify', 'setup'];
+      const casualKeywords = ['weather', 'who are you', 'hello', 'hi', 'joke', 'time', 'search', 'what is', 'how to'];
+      
+      const isCodingAction = codingKeywords.some(word => command.toLowerCase().includes(word));
+      const isCasualChat = casualKeywords.some(word => command.toLowerCase().includes(word)) && !isCodingAction;
+
+      if (isCodingAction && !isCasualChat && payload.engine && payload.engine !== director) {
         event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
         setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
       }
@@ -242,14 +249,14 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
   
-  const prompt = `SURGICAL BUILDER MODE: Use your tools to implement this plan exactly. Do not discuss, just code. Plan: ${brainPlan.trim()}`;
+  // 🚀 [AGENTIC ENGINE MODE] Jules receives the enhanced prompt and uses its own intelligence
+  const prompt = brainPlan.trim();
   const escapedPrompt = shellEscape(prompt);
   
   let fullCmd = '';
   let finalEnv = { ...process.env, ...getMCPEnv(), FORCE_COLOR: '1', GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN };
 
   if (engine.toLowerCase() === 'jules') {
-    // 🛡️ Use the proven npx route for Jules
     let repo = '';
     try {
       const git = await checkCommand('git');
