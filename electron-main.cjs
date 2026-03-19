@@ -330,72 +330,30 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const surgicalPrefix = "SURGICAL IMPLEMENTATION: Apply ONLY requested changes. ";
-  const cloudPrompt = `${surgicalPrefix} Plan: ${brainPlan}`;
-  const cliPrompt = `${surgicalPrefix} Plan: ${brainPlan.substring(0, 1500)}`;
-
-  // 🚀 CLOUD-FIRST: If Jules is linked in the Hub, use the API Bridge (No Install Required)
-  const julesMCP = activeMCPServers.get('Jules') || activeMCPServers.get('jules');
-  if (engine.toLowerCase() === 'jules' && julesMCP) {
-    console.log('[Orchestrator] Jules Cloud Bridge active. Sending task...');
-    try {
-      event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Jules Cloud...` });
-      
-      const toolName = julesMCP.tools.find(t => t.name.toLowerCase().includes('jules'))?.name || 'ask_jules';
-      
-      // 🛡️ Give the Cloud Agent 5 minutes to implement
-      const result = await julesMCP.rpc('tools/call', {
-        name: toolName,
-        arguments: { prompt: cloudPrompt }
-      }, 300000);
-      
-      const responseText = result.content?.[0]?.text || JSON.stringify(result);
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Jules Cloud] ${responseText}` });
-      
-      // 📂 REPORTER: Check what actually changed locally (if cloud jules used local mcp)
-      const gitPath = verifiedPaths['git'];
-      if (gitPath) {
-        exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => {
-          if (!err && stdout.trim()) {
-            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
-          }
-        });
-      }
-
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: JULES CLOUD FINISHED ---` });
-      
-      // 🚀 [INSTANT CLOUD-TO-LOCAL SYNC]
-      if (gitPath) {
-        event.sender.send('command-chunk', { messageId, chunk: `\n[System] Synchronizing Cloud changes to Desktop...` });
-        exec(`"${gitPath}" pull --rebase origin master`, { cwd: currentProjectRoot }, (err) => {
-          if (!err) {
-            event.sender.send('command-chunk', { messageId, chunk: `\n[System] Sync Success! Changes are now live on your Desktop.` });
-            // Now check for modified files
-            exec(`"${gitPath}" diff --name-only origin/master..HEAD`, { cwd: currentProjectRoot }, (dErr, dStdout) => {
-              if (!dErr && dStdout.trim()) {
-                event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${dStdout.trim()}` });
-              }
-            });
-          } else {
-            event.sender.send('command-chunk', { messageId, chunk: `\n[System] Local sync warning: ${err.message}` });
-          }
-          event.sender.send('command-end', { messageId, code: 0 });
-        });
-      } else {
-        event.sender.send('command-end', { messageId, code: 0 });
-      }
-      return;
-    } catch (e) {
-      console.warn('[Orchestrator] Jules Cloud Bridge failed, falling back to local...', e.message);
-    }
-  }
-
-  // FALLBACK: Local CLI
   const verified = await checkCommand(engine);
+  const prompt = `SURGICAL IMPLEMENTATION: Apply ONLY requested changes. Plan: ${brainPlan.substring(0, 1500)}`;
   let fullCmd = `"${verified || engine}"`;
-  if (engine.toLowerCase() === 'jules') fullCmd += ` new ${shellEscape(cliPrompt)}`;
-  else if (engine.toLowerCase() === 'antigravity') fullCmd += ` chat ${shellEscape(cliPrompt)}`;
-  else fullCmd += ` -p ${shellEscape(cliPrompt)}`;
+  
+  if (engine.toLowerCase() === 'jules') {
+    // Attempt to parse repo name to satisfy Jules CLI
+    let repoFlag = '';
+    const gitPath = verifiedPaths['git'];
+    if (gitPath) {
+      try {
+        const { execSync } = require('child_process');
+        const remoteOut = execSync(`"${gitPath}" remote get-url origin`, { cwd: currentProjectRoot }).toString();
+        const match = remoteOut.match(/github\.com[\/:](.+?\/.+?)(?:\.git)?\s*$/);
+        if (match && match[1]) {
+          repoFlag = `--repo ${match[1].trim()} `;
+        }
+      } catch (e) {}
+    }
+    fullCmd += ` new ${repoFlag}${shellEscape(prompt)}`;
+  } else if (engine.toLowerCase() === 'antigravity') {
+    fullCmd += ` chat ${shellEscape(prompt)}`;
+  } else {
+    fullCmd += ` -p ${shellEscape(prompt)}`;
+  }
   
   const finalEnv = { 
     ...process.env, 
@@ -403,11 +361,17 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     FORCE_COLOR: '1', 
     JULES_API_KEY: JULES_KEY, 
     GEMINI_API_KEY: GEMINI_KEY,
-    GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN // 🚀 Inject GitHub for Coder CLI
+    GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN
   };
 
   const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
   child.stdout.on('data', (data) => event.sender.send('command-chunk', { messageId, chunk: data.toString() }));
+  child.stderr.on('data', (data) => {
+    const chunk = data.toString();
+    if (!chunk.includes('at Client') && !chunk.includes('node:internal')) {
+      event.sender.send('command-chunk', { messageId, chunk });
+    }
+  });
   child.on('close', () => {
     const gitPath = verifiedPaths['git'];
     if (gitPath) exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
