@@ -194,7 +194,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   const bin = await checkCommand(engine);
-  const prompt = `PLAN APPROVED. IMPLEMENT IMMEDIATELY: ${brainPlan.substring(0, 1500)}`;
+  const prompt = `PLAN APPROVED. IMPLEMENT IMMEDIATELY: ${brainPlan}`;
   let repo = '';
   try {
     const git = await checkCommand('git');
@@ -205,11 +205,16 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     }
   } catch(e) {}
   const fullCmd = `"${bin || engine}" new ${repo}${shellEscape(prompt)}`;
-  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
+  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN, FORCE_COLOR: '1' } });
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-  child.on('close', () => {
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ${engine.toUpperCase()} FINISHED ---` });
-    event.sender.send('command-end', { messageId, code: 0 });
+  child.stderr.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
+  child.on('close', (code) => {
+    const gitPath = verifiedPaths['git'];
+    if (gitPath) exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => { 
+      if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); 
+    });
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ${engine.toUpperCase()} FINISHED (Exit Code: ${code}) ---` });
+    event.sender.send('command-end', { messageId, code });
     triggerGitSync();
   });
 }
