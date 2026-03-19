@@ -147,6 +147,7 @@ const App = () => {
       setCustomApiKey(config.customApiKey || '');
       setJulesApiKey(config.julesApiKey || '');
       setGoogleMapsKey(config.googleMapsKey || '');
+      setProjectRootInput(config.projectRoot || '');
     }
   };
 

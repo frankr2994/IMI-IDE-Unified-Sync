@@ -172,9 +172,11 @@ ipcMain.handle('get-api-config', () => {
 ipcMain.handle('set-project-root', (event, newPath) => {
   if (fs.existsSync(newPath)) {
     currentProjectRoot = newPath;
+    console.log(`[Bridge] Project Root Updated: ${currentProjectRoot}`);
     saveGlobalState();
     return { success: true, root: currentProjectRoot };
   }
+  console.warn(`[Bridge] Failed to set Project Root: ${newPath} (Path does not exist)`);
   return { success: false, error: 'Path does not exist' };
 });
 
