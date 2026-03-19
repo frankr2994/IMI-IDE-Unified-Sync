@@ -48,6 +48,7 @@ const App = () => {
   const [quota, setQuota] = useState(65);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
   const [usage, setUsage] = useState({ cpu: '0', ram: '0', threads: 0, load: '0' });
   const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
@@ -186,11 +187,13 @@ const App = () => {
   };
 
   const saveConfig = async () => {
+    setIsSaving(true);
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
       openaiKey, claudeKey, deepseekKey, mistralKey, customApiKey, julesApiKey, googleMapsKey, 
       activeEngine, activeDirector 
     });
+    setTimeout(() => setIsSaving(false), 2000);
   };
   const connectMCPServer = async () => {
     if (!newServer.name || !newServer.command) return;
@@ -648,19 +651,60 @@ const App = () => {
 
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
-                <h3 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '20px' }}>System Configuration</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="Project Path..." className="chat-input" />
-                  <button onClick={updateRoot} className="btn-premium">Update Root</button>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
-                    <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} placeholder="Gemini Key" className="chat-input" />
-                    <input type="password" value={julesApiKey} onChange={e => setJulesApiKey(e.target.value)} placeholder="Jules Key" className="chat-input" />
-                    <input type="password" value={githubToken} onChange={e => setGithubToken(e.target.value)} placeholder="GitHub Token" className="chat-input" />
-                    <input type="password" value={openaiKey} onChange={e => setOpenaiKey(e.target.value)} placeholder="OpenAI Key (ChatGPT)" className="chat-input" />
-                    <input type="password" value={claudeKey} onChange={e => setClaudeKey(e.target.value)} placeholder="Claude Key" className="chat-input" />
-                    <input type="password" value={deepseekKey} onChange={e => setDeepseekKey(e.target.value)} placeholder="DeepSeek Key" className="chat-input" />
-                    <input type="password" value={mistralKey} onChange={e => setMistralKey(e.target.value)} placeholder="Mistral Key" className="chat-input" />
-                    <button onClick={saveConfig} className="btn-premium">Save Credentials</button>
+                <h3 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '30px' }}>System Configuration</h3>
+                
+                <div style={{ marginBottom: '30px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="Project Path..." className="chat-input" style={{ flex: 1 }} />
+                    <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>SECURE CREDENTIALS</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
+                      { key: 'JULES', val: julesApiKey, set: setJulesApiKey, ph: 'Jules AI Token...' },
+                      { key: 'GITHUB', val: githubToken, set: setGithubToken, ph: 'GitHub PAT...' },
+                      { key: 'OPENAI', val: openaiKey, set: setOpenaiKey, ph: 'OpenAI Key (ChatGPT)...' },
+                      { key: 'CLAUDE', val: claudeKey, set: setClaudeKey, ph: 'Claude Key...' },
+                      { key: 'DEEPSEEK', val: deepseekKey, set: setDeepseekKey, ph: 'DeepSeek Key...' },
+                      { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
+                      { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
+                      { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
+                    ].map(item => (
+                      <div key={item.key} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <div style={{ position: 'absolute', left: '-100px', width: '90px', textAlign: 'right', fontSize: '0.6rem', fontWeight: 900, opacity: 0.4 }}>{item.key}</div>
+                        <input 
+                          type="password" 
+                          value={item.val} 
+                          onChange={e => item.set(e.target.value)} 
+                          placeholder={item.ph} 
+                          className="chat-input" 
+                          style={{ paddingRight: '80px' }}
+                        />
+                        {item.val && (
+                          <div style={{ position: 'absolute', right: '15px', display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(0,255,170,0.1)', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(0,255,170,0.2)' }}>
+                            <CheckCircle2 size={12} color="#00ffaa" />
+                            <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#00ffaa' }}>LINKED</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    <button 
+                      onClick={saveConfig} 
+                      className="btn-premium" 
+                      style={{ marginTop: '10px', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
+                    >
+                      {isSaving ? (
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                          <ShieldCheck size={18} /> CREDENTIALS SYNCED
+                        </span>
+                      ) : 'SAVE ALL CREDENTIALS'}
+                    </button>
                   </div>
                 </div>
             </motion.div>
