@@ -554,7 +554,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     let spawnCmd = binPath;
     let args = [];
     if (director === 'gemini') args = ['-m', 'gemini-3-flash-preview', '-p', command];
-    else if (director === 'jules') args = ['prompt', command, '--theme', 'dark'];
+    else if (director === 'jules') args = ['new', command];
     else args = ['chat', command];
 
     const finalEnv = { 
