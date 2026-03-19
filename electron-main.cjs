@@ -588,7 +588,6 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       apiUrl = 'api.groq.com'; // Using Groq for Llama 3
       apiKey = LLAMA_KEY;
       modelName = 'llama3-70b-8192';
-      path = '/openai/v1/chat/completions';
     } else if (director === 'perplexity') {
       apiUrl = 'api.perplexity.ai';
       apiKey = PERPLEXITY_KEY;
@@ -600,7 +599,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       return;
     }
 
-    const path = director === 'claude' ? '/v1/messages' : '/v1/chat/completions';
+    let apiPath = director === 'claude' ? '/v1/messages' : (director === 'llama' ? '/openai/v1/chat/completions' : '/v1/chat/completions');
     const postData = JSON.stringify(director === 'claude' ? {
       model: modelName,
       max_tokens: 4096,
@@ -615,7 +614,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const options = {
       hostname: apiUrl,
       port: 443,
-      path: path,
+      path: apiPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
