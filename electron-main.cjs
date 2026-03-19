@@ -242,20 +242,37 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
-  const binPath = await checkCommand('gemini');
-  if (!binPath) {
-    event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-    return;
-  }
+  
+  const prompt = `SURGICAL BUILDER MODE: Use your tools to implement this plan exactly. Do not discuss, just code. Plan: ${brainPlan.trim()}`;
+  const escapedPrompt = shellEscape(prompt);
+  
+  let fullCmd = '';
+  let finalEnv = { ...process.env, ...getMCPEnv(), FORCE_COLOR: '1', GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN };
 
-  // 🚀 [FORCE BUILDER] Use YOLO mode to ensure file creation
-  const prompt = `SURGICAL BUILDER MODE: Use your 'write_file' tool to implement this plan exactly. Do not discuss, just code. Plan: ${brainPlan.trim()}`;
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${shellEscape(prompt)}`;
+  if (engine.toLowerCase() === 'jules') {
+    // 🛡️ Use the proven npx route for Jules
+    let repo = '';
+    try {
+      const git = await checkCommand('git');
+      if (git) {
+        const url = execSync(`"${git}" remote get-url origin`, { cwd: currentProjectRoot }).toString();
+        const match = url.match(/github\.com[\/:](.+?\/.+?)(?:\.git)?\s*$/);
+        if (match) repo = `--repo ${match[1].trim()} `;
+      }
+    } catch(e) {}
+    fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
+  } else {
+    // Fallback to Gemini-as-Coder
+    const binPath = await checkCommand('gemini');
+    if (!binPath) {
+      event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+      return;
+    }
+    fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${escapedPrompt}`;
+  }
   
-  console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
-  const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
-  
+  console.log(`[Orchestrator] Spawning Coder (${engine}): ${fullCmd}`);
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
   const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
   
