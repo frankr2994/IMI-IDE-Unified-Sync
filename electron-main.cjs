@@ -215,14 +215,20 @@ class MCPClient {
   }
 
   async connect() {
-    const binPath = await checkCommand(this.command);
-    if (!binPath) throw new Error(`${this.command} not found or blocked by shim filter.`);
-    
-    this.process = spawn(`"${binPath}"`, this.args, {
-      env: { ...process.env, ...this.env },
-      shell: true 
-    });
+    let binPath = this.command;
+    if (this.command !== 'npx') {
+      const verified = await checkCommand(this.command);
+      if (!verified) throw new Error(`${this.command} not found or blocked by shim filter.`);
+      binPath = verified;
+    }
 
+    // 🛡️ Windows Quote Hardening: Don't wrap if already wrapped
+    const finalSpawnCmd = binPath.startsWith('"') ? binPath : `"${binPath}"`;
+
+    this.process = spawn(finalSpawnCmd, this.args, {
+      env: { ...process.env, ...this.env },
+      shell: true
+    });
     // 1. Handshake: Initialize
     const init = await this.rpc('initialize', {
       protocolVersion: '2024-11-05',
@@ -311,13 +317,18 @@ async function triggerGitSync() {
     
     console.log(`[Sync] Triggering Bidirectional Cloud-Sync...`);
     const { exec } = require('child_process');
-    // Pull first, then push
-    const cmd = `"${gitPath}" pull && "${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation" && "${gitPath}" push`;
+    // 🛡️ Robust Sync: Pull with rebase to avoid merge commits, then push separately
+    const pullCmd = `"${gitPath}" pull --rebase origin master`;
+    const pushCmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation" && "${gitPath}" push origin master`;
     
-    exec(cmd, { cwd: currentProjectRoot }, (error) => {
-      syncActive = false;
-      if (!error) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
-      else console.error(`[Sync] High-Priority Push: FAILED.`, error);
+    exec(pullCmd, { cwd: currentProjectRoot }, (pullErr) => {
+      if (pullErr) console.warn(`[Sync] Pull Warning: ${pullErr.message}`);
+      
+      exec(pushCmd, { cwd: currentProjectRoot }, (pushErr) => {
+        syncActive = false;
+        if (!pushErr) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
+        else console.error(`[Sync] Push Failed:`, pushErr.message);
+      });
     });
   } catch (e) { syncActive = false; }
 }
@@ -464,10 +475,12 @@ async function autoConnectMCP() {
     try {
       if (mcp.command) {
         // Double check for App Installer shims before spawning
-        const binPath = await checkCommand(mcp.command);
-        if (!binPath && mcp.command !== 'npx') {
-          console.warn(`[Bridge] Disarming ${mcp.name}: Bin not found or is a shim.`);
-          continue;
+        if (mcp.command !== 'npx') {
+          const binPath = await checkCommand(mcp.command);
+          if (!binPath) {
+            console.warn(`[Bridge] Disarming ${mcp.name}: Bin not found or is a shim.`);
+            continue;
+          }
         }
 
         const finalEnv = { ...mcp.env };
