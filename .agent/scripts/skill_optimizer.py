@@ -17,10 +17,12 @@ session_start_time = time.time()
 
 def get_imi_state():
     try:
-        with open(STATE_PATH, 'r') as f:
-            return json.load(f)
+        if os.path.exists(STATE_PATH):
+            with open(STATE_PATH, 'r') as f:
+                return json.load(f)
     except Exception:
         return None
+    return None
 
 def send_directive(message, urgency='high', action='REFRESH_SKILLS'):
     directive = {
@@ -30,14 +32,19 @@ def send_directive(message, urgency='high', action='REFRESH_SKILLS'):
         "action": action,
         "timestamp": time.time()
     }
-    with open(DIRECTIVE_PATH, 'w') as f:
-        json.dump(directive, f, indent=2)
-    print(f"[ASOS] Directive Sent: {message}")
+    try:
+        os.makedirs(os.path.dirname(DIRECTIVE_PATH), exist_ok=True)
+        with open(DIRECTIVE_PATH, 'w') as f:
+            json.dump(directive, f, indent=2)
+        print(f"[ASOS] Directive Sent: {message}")
+    except Exception as e:
+        print(f"[ASOS] Error writing directive: {e}")
 
 def monitor_loop():
     global last_token_count
-    print("🚀 ASOS Monitor (Autonomous Skill Optimization) ACTIVE")
-    print(f"👀 Watching state: {STATE_PATH}")
+    # REMOVED EMOJIS TO PREVENT WINDOWS CRASH
+    print("[ASOS] Monitor (Autonomous Skill Optimization) ACTIVE")
+    print(f"[ASOS] Watching state: {STATE_PATH}")
     
     while True:
         state = get_imi_state()
@@ -68,3 +75,6 @@ if __name__ == "__main__":
         monitor_loop()
     except KeyboardInterrupt:
         sys.exit(0)
+    except Exception as e:
+        print(f"Monitor error: {e}")
+        sys.exit(1)

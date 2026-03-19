@@ -209,15 +209,17 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     let fullText = '';
     req.on('response', (res) => {
-      let buffer = '';
       res.on('data', (chunk) => {
-        buffer += chunk.toString();
-        // 🛡️ Robust Stream Parsing: Extract text from any number of JSON objects in the buffer
-        const regex = /"text":\s*"([^"]+)"/g;
-        let match;
-        while ((match = regex.exec(buffer)) !== null) {
-          const content = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-          if (!fullText.includes(content)) { // Basic deduplication for overlapping chunks
+        const raw = chunk.toString();
+        // 🛡️ FUZZY PARSER: Extract everything between "text": " and the closing "
+        const parts = raw.split('"text": "');
+        for (let i = 1; i < parts.length; i++) {
+          const content = parts[i].split('"')[0]
+            .replace(/\\n/g, '\n')
+            .replace(/\\"/g, '"')
+            .replace(/\\t/g, '\t');
+          
+          if (content && !fullText.endsWith(content)) {
             fullText += content;
             event.sender.send('command-chunk', { messageId, chunk: content });
           }
@@ -339,13 +341,25 @@ function createWindow() {
   });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    app.quit();
+  });
 }
 
 app.whenReady().then(() => { createWindow(); setInterval(triggerGitSync, 60000); });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => { app.quit(); });
+app.on('before-quit', () => { 
+  process.exit(0); 
+});
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) { if (win.isMaximized()) win.unmaximize(); else win.maximize(); } });
-ipcMain.on('window-close', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.close(); });
+ipcMain.on('window-close', () => { 
+  const win = BrowserWindow.getFocusedWindow(); 
+  if (win) win.close(); 
+  app.quit(); 
+});
 
 ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
