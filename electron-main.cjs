@@ -481,18 +481,15 @@ function fallbackLocalExport(projectPath) {
 
 async function autoConnectMCP() {
   console.log('[Bridge] Auto-connecting saved MCP servers...');
-  // Sequentialize to prevent racing file lookups or npx lock errors on Windows
-  for (const mcp of mcpServersList) {
+  
+  // 🚀 [TURBO] Parallelize connections to prevent sequential lag
+  const connectionPromises = mcpServersList.map(async (mcp) => {
     let binPath = mcp.command;
     try {
       if (mcp.command) {
-        // Double check for App Installer shims before spawning
         if (mcp.command !== 'npx') {
           const verified = await checkCommand(mcp.command);
-          if (!verified) {
-            console.warn(`[Bridge] Disarming ${mcp.name}: Bin not found or is a shim.`);
-            continue;
-          }
+          if (!verified) return;
           binPath = verified;
         }
 
@@ -504,22 +501,19 @@ async function autoConnectMCP() {
         if (mcp.name.toLowerCase().includes('github') && GITHUB_TOKEN) {
           finalEnv['GITHUB_PERSONAL_ACCESS_TOKEN'] = GITHUB_TOKEN;
         }
-        if (mcp.name.toLowerCase().includes('chatgpt') && OPENAI_KEY) {
-          finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
-        }
-        if (mcp.name.toLowerCase().includes('claude') && CLAUDE_KEY) {
-          finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
-        }
         
         const server = new MCPClient(mcp.name, binPath || mcp.command, mcp.args || [], finalEnv);
         await server.connect();
         activeMCPServers.set(mcp.name, server);
-        console.log(`[Bridge] Auto-connected: ${mcp.name}`);
+        console.log(`[Bridge] Connected: ${mcp.name}`);
       }
     } catch (e) {
-      console.error(`[Bridge] Failed to auto-connect ${mcp.name}:`, e.message);
+      console.error(`[Bridge] ${mcp.name} connection skipped:`, e.message);
     }
-  }
+  });
+
+  await Promise.all(connectionPromises);
+  console.log('[Bridge] MCP Fleet Ready.');
 }
 
 // 🛡️ [ASOS] AUTONOMOUS DIRECTIVE WATCHER

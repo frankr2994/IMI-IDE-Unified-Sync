@@ -260,7 +260,7 @@ const App = () => {
   useEffect(() => {
     loadConfig();
     fetchStats();
-    const interval = setInterval(fetchStats, 10000);
+    const interval = setInterval(fetchStats, 60000); // 🚀 [PERF] Scaled to 60s to prevent disk thrashing
     
     const onChunk = (event: any, data: any) => {
       setMessages(prev => prev.map(m => 
