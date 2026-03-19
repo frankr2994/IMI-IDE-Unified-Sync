@@ -170,9 +170,9 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   if (isCli) {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
-    const prefix = "PLANNING ARCHITECT MODE: Provide a plan. Do not run tools. ";
+    const prefix = "PLANNING ARCHITECT MODE: Provide a specific text plan and then say 'PLAN COMPLETE'. Do not run tools. Do not wait for approval. Jules will implement your plan automatically. ";
     let fullCmd = `"${binPath}"`;
-    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
+    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan --yolo -p ${shellEscape(prefix + command)}`;
     else if (director === 'jules') fullCmd += ` new ${shellEscape(prefix + command)}`;
     else fullCmd += ` chat ${shellEscape(prefix + command)}`;
     const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' } });
