@@ -195,11 +195,14 @@ async function triggerGitSync() {
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
   
-  // 🚀 [THE ULTIMATE FIX] Move Gemini (Brain) to direct API to stop the overthinking loop
-  if (director === 'gemini') {
-    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini API Key missing in Settings." }); return; }
+    // 🛡️ [GLOBAL BLUEPRINT PROTOCOL]
+    // Ensures ALL Brain models output a standardized technical spec for ANY Coder
+    const prefix = "GLOBAL BLUEPRINT PROTOCOL: You are the Lead Architect. Refine the user's request into a 'CODER-READY PAYLOAD'. " +
+                   "Output a clear section named 'TECHNICAL SPECIFICATION' with the exact code logic, file paths, and changes required. " +
+                   "DO NOT discuss or plan. Your output must be interpretable by any autonomous coding agent. End with 'BLUEPRINT_LOCKED'. ";
     
-    const prefix = "PROMPT ENHANCER MODE: Refine the user's request into a high-detail, technical instruction for a coding robot. DO NOT discuss. DO NOT provide a plan. User Request: ";
+    // Move Gemini Brain to direct API to stop the overthinking loop
+    if (director === 'gemini') {
     const url = `generativelanguage.googleapis.com`;
     const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
     
@@ -266,8 +269,51 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       triggerGitSync();
     });
   } else {
-    // Basic API logic for ChatGPT/Claude
-    event.sender.send('command-error', { messageId, error: "Cloud API models currently in optimization. Please use Gemini for the Brain test." });
+    // 🌐 [DIRECT API MODELS] ChatGPT, Claude, etc.
+    let apiUrl = ''; let apiKey = ''; let modelName = '';
+    if (director === 'chatgpt') { apiUrl = 'api.openai.com'; apiKey = OPENAI_KEY; modelName = 'gpt-4o'; }
+    else if (director === 'claude') { apiUrl = 'api.anthropic.com'; apiKey = CLAUDE_KEY; modelName = 'claude-3-5-sonnet-20240620'; }
+    else if (director === 'deepseek') { apiUrl = 'api.deepseek.com'; apiKey = DEEPSEEK_KEY; modelName = 'deepseek-chat'; }
+    else if (director === 'mistral') { apiUrl = 'api.mistral.ai'; apiKey = MISTRAL_KEY; modelName = 'mistral-large-latest'; }
+    else if (director === 'llama') { apiUrl = 'api.groq.com'; apiKey = LLAMA_KEY; modelName = 'llama3-70b-8192'; }
+    else if (director === 'perplexity') { apiUrl = 'api.perplexity.ai'; apiKey = PERPLEXITY_KEY; modelName = 'llama-3-sonar-large-32k-online'; }
+
+    if (!apiKey) { event.sender.send('command-error', { messageId, error: `API Key for ${director.toUpperCase()} missing.` }); return; }
+
+    const apiPath = director === 'claude' ? '/v1/messages' : (director === 'llama' ? '/openai/v1/chat/completions' : '/v1/chat/completions');
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: apiUrl, path: apiPath });
+    req.setHeader('Content-Type', 'application/json');
+    if (director === 'claude') { req.setHeader('x-api-key', apiKey); req.setHeader('anthropic-version', '2023-06-01'); }
+    else req.setHeader('Authorization', `Bearer ${apiKey}`);
+
+    // 🚀 Inject the Global Blueprint Protocol prefix
+    const body = JSON.stringify(director === 'claude' ? { model: modelName, max_tokens: 4096, messages: [{ role: 'user', content: prefix + command }], stream: true } : { model: modelName, messages: [{ role: 'user', content: prefix + command }], stream: true });
+    
+    let fullText = '';
+    req.on('response', (res) => {
+      res.on('data', (chunk) => {
+        const lines = chunk.toString().split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(trimmed.substring(6));
+            const content = director === 'claude' ? (json.delta?.text || '') : (json.choices?.[0]?.delta?.content || '');
+            if (content) { fullText += content; event.sender.send('command-chunk', { messageId, chunk: content }); }
+          } catch(e) {}
+        }
+      });
+      res.on('end', () => {
+        event.sender.send('command-end', { messageId, code: 0 });
+        const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
+        if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== director) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+        }
+        triggerGitSync();
+      });
+    });
+    req.write(body); req.end();
   }
 });
 
