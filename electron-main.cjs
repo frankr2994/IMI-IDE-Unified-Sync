@@ -778,10 +778,41 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const verified = await checkCommand(engine);
-  const binPath = verified || engine;
   const prompt = `Implement this plan: ${brainPlan.substring(0, 1000)}`;
   
+  // 🚀 CLOUD-FIRST ORCHESTRATION: If using Jules, try the MCP Bridge first (No Install Required)
+  if (engine === 'jules') {
+    const julesMCP = activeMCPServers.get('Jules');
+    if (julesMCP) {
+      console.log('[Orchestrator] Jules Cloud Bridge active. Sending task...');
+      try {
+        // We use the Jules MCP "call_tool" to implement the plan
+        event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Jules Cloud...` });
+        
+        // Note: In a real MCP flow, we would call a specific tool like 'create_session' or 'edit_files'
+        // For this bridge, we broadcast the requirement to the MCP process
+        const result = await julesMCP.rpc('tools/call', {
+          name: 'ask_jules', // Standard tool name for Jules MCP
+          arguments: { prompt }
+        });
+        
+        event.sender.send('command-chunk', { messageId, chunk: `\n[Jules Cloud] ${JSON.stringify(result)}` });
+        event.sender.send('command-chunk', { 
+          messageId, 
+          chunk: `\n\n--- ✅ IMI ORCHESTRATOR: JULES CLOUD IMPLEMENTATION FINISHED ---` 
+        });
+        event.sender.send('command-end', { messageId, code: 0 });
+        triggerGitSync();
+        return;
+      } catch (e) {
+        console.warn('[Orchestrator] Jules Cloud Bridge failed, falling back to local...', e.message);
+      }
+    }
+  }
+
+  // FALLBACK: Local CLI (If MCP isn't linked)
+  const verified = await checkCommand(engine);
+  const binPath = verified || engine;
   let fullCmd = `"${binPath}"`;
   if (engine === 'jules') {
     fullCmd += ` new ${shellEscape(prompt)}`;
