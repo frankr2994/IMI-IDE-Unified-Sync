@@ -323,33 +323,21 @@ async function triggerGitSync() {
   syncActive = true;
   try {
     const gitPath = await checkCommand('git');
-    if (!gitPath) { syncActive = false; return; }
+    if (!gitPath) { syncActive = true; return; } // Keep blocked if git missing
     
-    console.log(`[Sync] Triggering Bidirectional Cloud-Sync...`);
-    if (mainWindow) mainWindow.webContents.send('sync-status', 'Connecting');
+    // 🛡️ Silent Sync Discovery
+    if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
     
     const { exec } = require('child_process');
-    // 🛡️ Improved Sync Strategy:
-    // 1. Add & Commit local changes to make the tree clean
-    // 2. Pull with rebase to integrate remote changes
-    // 3. Push the integrated work
     const commitCmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation"`;
     const pullCmd = `"${gitPath}" pull --rebase origin master`;
     const pushCmd = `"${gitPath}" push origin master`;
     
-    if (mainWindow) mainWindow.webContents.send('sync-status', 'Committing');
     exec(commitCmd, { cwd: currentProjectRoot }, (commitErr) => {
-      
-      if (mainWindow) mainWindow.webContents.send('sync-status', 'Pulling');
       exec(pullCmd, { cwd: currentProjectRoot }, (pullErr) => {
-        if (pullErr) console.warn(`[Sync] Pull Warning: ${pullErr.message}`);
-        
-        if (mainWindow) mainWindow.webContents.send('sync-status', 'Pushing');
         exec(pushCmd, { cwd: currentProjectRoot }, (pushErr) => {
           syncActive = false;
           if (mainWindow) mainWindow.webContents.send('sync-end');
-          if (!pushErr) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
-          else console.error(`[Sync] Push Failed:`, pushErr.message);
         });
       });
     });
@@ -593,13 +581,16 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
        return;
     }
 
+    const surgicalPrefix = "SURGICAL EDIT MODE: Provide only the specific logic or file changes needed. Do not rewrite existing unchanged code. ";
+    const enhancedCommand = surgicalPrefix + command;
+
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
-      fullCmd += ` -m gemini-3-flash-preview -p ${shellEscape(command)}`;
+      fullCmd += ` -m gemini-3-flash-preview -p ${shellEscape(enhancedCommand)}`;
     } else if (director === 'jules') {
-      fullCmd += ` new ${shellEscape(command)}`;
+      fullCmd += ` new ${shellEscape(enhancedCommand)}`;
     } else {
-      fullCmd += ` chat ${shellEscape(command)}`;
+      fullCmd += ` chat ${shellEscape(enhancedCommand)}`;
     }
 
     const finalEnv = { 
@@ -638,7 +629,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       
       // 🚀 [AUTONOMOUS HAND-OFF] for CLI (Gemini -> Jules)
       const codingKeywords = ['build', 'make', 'create', 'app', 'feature', 'implement', 'fix', 'refactor', 'continue', 'project', 'file', 'code', 'add', 'update', 'change'];
-      const isCodingRequest = command.toLowerCase().split(' ').some(word => codingKeywords.includes(word));
+      const isCodingRequest = codingKeywords.some(word => command.toLowerCase().includes(word));
       
       if (isCodingRequest && payload.engine && payload.engine !== director) {
         event.sender.send('command-chunk', { 
@@ -793,48 +784,60 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const prompt = `Implement this plan: ${brainPlan.substring(0, 1000)}`;
+  const surgicalPrefix = "SURGICAL IMPLEMENTATION: Apply ONLY the changes requested in the plan. Do not touch unrelated files. ";
+  const cloudPrompt = `${surgicalPrefix} Implement this plan exactly: ${brainPlan}`;
+  const cliPrompt = `${surgicalPrefix} Implement this plan: ${brainPlan.substring(0, 800)}...`;
   
-  // 🚀 CLOUD-FIRST ORCHESTRATION: If using Jules, try the MCP Bridge first (No Install Required)
-  if (engine === 'jules') {
-    const julesMCP = activeMCPServers.get('Jules');
-    if (julesMCP) {
-      console.log('[Orchestrator] Jules Cloud Bridge active. Sending task...');
-      try {
-        // We use the Jules MCP "call_tool" to implement the plan
-        event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Jules Cloud...` });
-        
-        // Note: In a real MCP flow, we would call a specific tool like 'create_session' or 'edit_files'
-        // For this bridge, we broadcast the requirement to the MCP process
-        const result = await julesMCP.rpc('tools/call', {
-          name: 'ask_jules', // Standard tool name for Jules MCP
-          arguments: { prompt }
+  // 🚀 CLOUD-FIRST ORCHESTRATION: Case-insensitive lookup
+  const julesMCP = activeMCPServers.get('Jules') || activeMCPServers.get('jules');
+  if (engine.toLowerCase() === 'jules' && julesMCP) {
+    console.log('[Orchestrator] Jules Cloud Bridge active. Sending task...');
+    try {
+      event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Jules Cloud...` });
+      
+      const toolName = julesMCP.tools.find(t => t.name.toLowerCase().includes('jules'))?.name || 'ask_jules';
+      
+      const result = await julesMCP.rpc('tools/call', {
+        name: toolName,
+        arguments: { prompt: cloudPrompt }
+      });
+      
+      const responseText = result.content?.[0]?.text || JSON.stringify(result);
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Jules Cloud] ${responseText}` });
+      
+      // 📂 REPORTER: Check what actually changed
+      const gitPath = await checkCommand('git');
+      if (gitPath) {
+        const { exec } = require('child_process');
+        exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => {
+          if (!err && stdout.trim()) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
+          }
         });
-        
-        event.sender.send('command-chunk', { messageId, chunk: `\n[Jules Cloud] ${JSON.stringify(result)}` });
-        event.sender.send('command-chunk', { 
-          messageId, 
-          chunk: `\n\n--- ✅ IMI ORCHESTRATOR: JULES CLOUD IMPLEMENTATION FINISHED ---` 
-        });
-        event.sender.send('command-end', { messageId, code: 0 });
-        triggerGitSync();
-        return;
-      } catch (e) {
-        console.warn('[Orchestrator] Jules Cloud Bridge failed, falling back to local...', e.message);
       }
+
+      event.sender.send('command-chunk', { 
+        messageId, 
+        chunk: `\n\n--- ✅ IMI ORCHESTRATOR: JULES CLOUD IMPLEMENTATION FINISHED ---` 
+      });
+      event.sender.send('command-end', { messageId, code: 0 });
+      triggerGitSync();
+      return;
+    } catch (e) {
+      console.warn('[Orchestrator] Jules Cloud Bridge failed, falling back to local...', e.message);
     }
   }
 
-  // FALLBACK: Local CLI (If MCP isn't linked)
+  // FALLBACK: Local CLI
   const verified = await checkCommand(engine);
   const binPath = verified || engine;
   let fullCmd = `"${binPath}"`;
-  if (engine === 'jules') {
-    fullCmd += ` new ${shellEscape(prompt)}`;
-  } else if (engine === 'antigravity') {
-    fullCmd += ` chat ${shellEscape(prompt)}`;
+  if (engine.toLowerCase() === 'jules') {
+    fullCmd += ` new ${shellEscape(cliPrompt)}`;
+  } else if (engine.toLowerCase() === 'antigravity') {
+    fullCmd += ` chat ${shellEscape(cliPrompt)}`;
   } else {
-    fullCmd += ` -p ${shellEscape(prompt)}`;
+    fullCmd += ` -p ${shellEscape(cliPrompt)}`;
   }
 
   const finalEnv = { 
@@ -859,7 +862,18 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     }
   });
 
-  child.on('close', (code) => {
+  child.on('close', async (code) => {
+    // 📂 REPORTER: Check what changed locally
+    const gitPath = await checkCommand('git');
+    if (gitPath) {
+      const { exec } = require('child_process');
+      exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => {
+        if (!err && stdout.trim()) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
+        }
+      });
+    }
+
     event.sender.send('command-chunk', { 
       messageId, 
       chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ${engine.toUpperCase()} IMPLEMENTATION FINISHED ---` 

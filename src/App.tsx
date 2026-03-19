@@ -105,7 +105,10 @@ const App = () => {
   ]);
 
   const addLog = (type: string, msg: string) => {
-    setLogs(prev => [...prev.slice(-10), { id: Date.now(), type, msg }]);
+    setLogs(prev => {
+      if (prev.length > 0 && prev[prev.length - 1].msg === msg) return prev;
+      return [...prev.slice(-15), { id: Date.now(), type, msg }];
+    });
   };
 
   const fetchStats = async () => {
