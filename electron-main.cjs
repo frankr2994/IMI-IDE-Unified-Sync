@@ -575,13 +575,13 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
        return;
     }
 
-    const surgicalPrefix = "SURGICAL EDIT MODE: Provide only the specific logic or file changes needed. Do not rewrite existing unchanged code. ";
+    const surgicalPrefix = "PLANNING ARCHITECT MODE: You have ZERO access to tools. Your only job is to provide a step-by-step text plan or specific code blocks. Do not attempt to run any tools. Jules will implement your plan later. ";
     const enhancedCommand = surgicalPrefix + command;
 
     let fullCmd = `"${binPath}"`;
     if (director === 'gemini') {
-      // 🚀 [PLAN-ONLY] Force read-only mode to prevent tool errors and focus on strategy
-      fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode plan -p ${shellEscape(enhancedCommand)}`;
+      // 🚀 [PLAN-ONLY] Force read-only mode and DISABLE all tools to prevent execution errors
+      fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan -p ${shellEscape(enhancedCommand)}`;
     } else if (director === 'jules') {
       fullCmd += ` new ${shellEscape(enhancedCommand)}`;
     } else {
