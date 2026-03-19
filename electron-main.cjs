@@ -152,9 +152,15 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan --yolo -p ${shellEscape(prefix + command)}`;
     else if (director === 'jules') fullCmd += ` new ${shellEscape(prefix + command)}`;
     else fullCmd += ` chat ${shellEscape(prefix + command)}`;
-    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' } });
+    const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
+    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let output = '';
-    child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
+    
+    child.stdout.on('data', (d) => { 
+      const dataStr = d.toString();
+      output += dataStr; 
+      event.sender.send('command-chunk', { messageId, chunk: dataStr }); 
+    });
     child.on('close', (code) => {
       event.sender.send('command-end', { messageId, code });
       if (['add', 'create', 'file', 'update', 'change', 'poem'].some(w => command.toLowerCase().includes(w)) && payload.engine && payload.engine !== director) {
