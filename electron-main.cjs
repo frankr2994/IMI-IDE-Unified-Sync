@@ -163,19 +163,17 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan}`;
-  
-  // 🚀 HIGH-RELIABILITY CODER: Use Gemini with Tools enabled for Implementation
   const binPath = await checkCommand('gemini');
   if (!binPath) {
     event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
     return;
   }
 
-  // Use YOLO mode so it doesn't wait for approval during implementation
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo --yolo -p ${shellEscape(prompt)}`;
+  const prompt = `IMPLEMENTATION MODE: Apply the following plan surgically to the local files. Plan: ${brainPlan}`;
+  const escapedPrompt = shellEscape(prompt);
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo --yolo -p ${escapedPrompt}`;
   
-  console.log(`[Orchestrator] Executing Coder (Gemini-Engine): ${fullCmd}`);
+  console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
   
   const finalEnv = { 
     ...process.env, 
@@ -186,12 +184,33 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   };
 
   const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-  child.on('close', () => {
+  
+  child.stdout.on('data', (d) => {
+    console.log(`[Coder STDOUT] ${d}`);
+    event.sender.send('command-chunk', { messageId, chunk: d.toString() });
+  });
+
+  child.stderr.on('data', (d) => {
+    console.log(`[Coder STDERR] ${d}`);
+    const chunk = d.toString();
+    const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
+    if (!noise.some(n => chunk.includes(n))) {
+      event.sender.send('command-chunk', { messageId, chunk });
+    }
+  });
+
+  child.on('close', (code) => {
+    console.log(`[Orchestrator] Coder closed with code ${code}`);
     const gitPath = verifiedPaths['git'];
-    if (gitPath) exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ${engine.toUpperCase()} FINISHED ---` });
-    event.sender.send('command-end', { messageId, code: 0 });
+    if (gitPath) {
+      exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => {
+        if (!err && stdout.trim()) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
+        }
+      });
+    }
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED (Exit Code: ${code}) ---` });
+    event.sender.send('command-end', { messageId, code });
     triggerGitSync();
   });
 }
