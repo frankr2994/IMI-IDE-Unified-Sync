@@ -570,8 +570,21 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     const child = spawn(binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
-    child.stdout.on('data', (data) => { fullOutput += data.toString(); event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
-    child.stderr.on('data', (data) => { event.sender.send('command-chunk', { messageId, chunk: data.toString() }); });
+    
+    child.stdout.on('data', (data) => { 
+      fullOutput += data.toString(); 
+      event.sender.send('command-chunk', { messageId, chunk: data.toString() }); 
+    });
+
+    child.stderr.on('data', (data) => { 
+      const chunk = data.toString();
+      // 🛡️ NOISE FILTER: Ignore stack traces and internal MCP protocol errors in the chat UI
+      if (chunk.includes('[MCP error]') || chunk.includes('at McpError') || chunk.includes('at Client') || chunk.includes('node:internal')) {
+        console.warn('[Bridge Filtered Error]:', chunk);
+        return;
+      }
+      event.sender.send('command-chunk', { messageId, chunk }); 
+    });
     child.on('close', (code) => {
       tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullOutput.length / 4);
       saveGlobalState();
