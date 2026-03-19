@@ -327,17 +327,25 @@ async function triggerGitSync() {
     
     console.log(`[Sync] Triggering Bidirectional Cloud-Sync...`);
     const { exec } = require('child_process');
-    // 🛡️ Robust Sync: Pull with rebase to avoid merge commits, then push separately
+    // 🛡️ Improved Sync Strategy:
+    // 1. Add & Commit local changes to make the tree clean
+    // 2. Pull with rebase to integrate remote changes
+    // 3. Push the integrated work
+    const commitCmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation"`;
     const pullCmd = `"${gitPath}" pull --rebase origin master`;
-    const pushCmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync Implementation" && "${gitPath}" push origin master`;
+    const pushCmd = `"${gitPath}" push origin master`;
     
-    exec(pullCmd, { cwd: currentProjectRoot }, (pullErr) => {
-      if (pullErr) console.warn(`[Sync] Pull Warning: ${pullErr.message}`);
+    exec(commitCmd, { cwd: currentProjectRoot }, (commitErr) => {
+      // We continue even if commit fails (might be nothing to commit)
       
-      exec(pushCmd, { cwd: currentProjectRoot }, (pushErr) => {
-        syncActive = false;
-        if (!pushErr) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
-        else console.error(`[Sync] Push Failed:`, pushErr.message);
+      exec(pullCmd, { cwd: currentProjectRoot }, (pullErr) => {
+        if (pullErr) console.warn(`[Sync] Pull Warning: ${pullErr.message}`);
+        
+        exec(pushCmd, { cwd: currentProjectRoot }, (pushErr) => {
+          syncActive = false;
+          if (!pushErr) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
+          else console.error(`[Sync] Push Failed:`, pushErr.message);
+        });
       });
     });
   } catch (e) { syncActive = false; }
