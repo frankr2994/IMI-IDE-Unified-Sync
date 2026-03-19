@@ -571,8 +571,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (OPENAI_KEY) finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
     if (CLAUDE_KEY) finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
 
-    console.log(`[Bridge] Spawning ${director}: ${binPath} ${args.join(' ')}`);
-    const child = spawn(binPath, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    console.log(`[Bridge] Spawning ${director}: "${binPath}" ${args.join(' ')}`);
+    const child = spawn(`"${binPath}"`, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
     
     child.stdout.on('data', (data) => { 
@@ -791,7 +791,11 @@ function checkCommand(cmd) {
       });
 
       if (realPaths.length > 0) {
-        const foundPath = realPaths[0].trim();
+        // 🚀 Windows Preference: Prefer .cmd or .exe versions to avoid spawning shell scripts
+        let foundPath = realPaths[0].trim();
+        const preferred = realPaths.find(p => p.toLowerCase().endsWith('.cmd') || p.toLowerCase().endsWith('.exe'));
+        if (preferred) foundPath = preferred.trim();
+
         console.log(`[Bridge] Command Verified & Cached: ${cmd} -> ${foundPath}`);
         verifiedPaths[cmd] = foundPath; // 🚀 Store in cache
         resolve(foundPath);
