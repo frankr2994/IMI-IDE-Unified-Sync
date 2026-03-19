@@ -177,11 +177,18 @@ async function triggerGitSync() {
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
   if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
-  const cmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync" && "${gitPath}" pull --rebase --autostash origin master && "${gitPath}" push origin master`;
-  exec(cmd, { cwd: currentProjectRoot }, (err) => { 
-    if (mainWindow) mainWindow.webContents.send('sync-end'); 
-    if (err) console.error('[Sync] Git Sync Error:', err.message);
-  });
+  
+  const git = (cmd) => new Promise(res => exec(`"${gitPath}" ${cmd}`, { cwd: currentProjectRoot }, res));
+
+  try {
+    await git('add .');
+    // Commit only if there are changes
+    await git('commit -m "IMI Auto-Sync"'); 
+    await git('pull --rebase --autostash origin master');
+    await git('push origin master');
+  } catch(e) {}
+  
+  if (mainWindow) mainWindow.webContents.send('sync-end');
 }
 
 // [TURBO] STREAMING COMMAND EXECUTION BRIDGE
@@ -202,15 +209,19 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
     let fullText = '';
     req.on('response', (res) => {
+      let buffer = '';
       res.on('data', (chunk) => {
-        try {
-          const raw = chunk.toString();
-          // The API returns an array of objects
-          const cleanRaw = raw.startsWith('[') ? raw.substring(1) : raw.startsWith(',') ? raw.substring(1) : raw;
-          const json = JSON.parse(cleanRaw.endsWith(']') ? cleanRaw.slice(0, -1) : cleanRaw);
-          const content = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          if (content) { fullText += content; event.sender.send('command-chunk', { messageId, chunk: content }); }
-        } catch(e) {}
+        buffer += chunk.toString();
+        // 🛡️ Robust Stream Parsing: Extract text from any number of JSON objects in the buffer
+        const regex = /"text":\s*"([^"]+)"/g;
+        let match;
+        while ((match = regex.exec(buffer)) !== null) {
+          const content = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          if (!fullText.includes(content)) { // Basic deduplication for overlapping chunks
+            fullText += content;
+            event.sender.send('command-chunk', { messageId, chunk: content });
+          }
+        }
       });
       res.on('end', () => {
         event.sender.send('command-end', { messageId, code: 0 });
