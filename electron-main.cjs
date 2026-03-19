@@ -319,6 +319,61 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
+
+  if (engine.toLowerCase() === 'imi-core') {
+    if (!GEMINI_KEY) {
+      event.sender.send('command-error', { messageId, error: "Gemini API Key missing for IMI CORE." });
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+      return;
+    }
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+    event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Initializing Internal Engine...` });
+
+    const corePrompt = `You are IMI CORE, an internal implementation engine.
+Plan: ${brainPlan}
+Output ONLY valid JSON. No markdown formatting. Format:
+[
+  { "file": "relative/path/to/file", "content": "full new file content" }
+]
+Only output the JSON array.`;
+
+    const url = `generativelanguage.googleapis.com`;
+    const apiPath = `/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}`;
+    
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
+    req.setHeader('Content-Type', 'application/json');
+    const body = JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] });
+
+    let fullText = '';
+    req.on('response', (res) => {
+      res.on('data', (chunk) => { fullText += chunk.toString(); });
+      res.on('end', () => {
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
+        try {
+          const jsonResponse = JSON.parse(fullText);
+          let content = jsonResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+          const edits = JSON.parse(content);
+          let modifiedFiles = [];
+          for (const edit of edits) {
+            const fullPath = path.join(currentProjectRoot, edit.file);
+            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+            fs.writeFileSync(fullPath, edit.content);
+            modifiedFiles.push(edit.file);
+          }
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED (IMI CORE) ---\n${modifiedFiles.join('\n')}` });
+        } catch(e) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE Error] Failed to parse internal output: ${e.message}` });
+        }
+        event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
+        event.sender.send('command-end', { messageId, code: 0 });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        triggerGitSync();
+      });
+    });
+    req.write(body); req.end();
+    return;
+  }
   
   // 🚀 [AGENTIC ENGINE MODE] Jules receives the enhanced prompt and uses its own intelligence
   const prompt = brainPlan.trim();

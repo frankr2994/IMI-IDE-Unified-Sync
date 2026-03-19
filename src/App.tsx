@@ -559,14 +559,15 @@ const App = () => {
                         <div style={{ position: 'relative' }}>
                           <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', height: '40px', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-14px', left: '10px', fontSize: '0.5rem', opacity: 0.5 }}>CODER</div>
-                            <Layers size={12} />
-                            <span style={{ flex: 1 }}>JULES</span>
+                            {activeEngine === 'jules' ? <Layers size={12} /> : <Cpu size={12} />}
+                            <span style={{ flex: 1 }}>{activeEngine === 'jules' ? 'JULES' : 'IMI CORE'}</span>
                             <ChevronRight size={12} style={{ transform: isCoderDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
                           </div>
                           <AnimatePresence>
                             {isCoderDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '150px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100 }}>
-                                <div onClick={() => { setActiveEngine('jules'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: 'rgba(0, 255, 136, 0.1)' }}>JULES</div>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 5px)', left: 0, width: '150px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden' }}>
+                                <div onClick={() => { setActiveEngine('jules'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: activeEngine === 'jules' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'jules' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>JULES</div>
+                                <div onClick={() => { setActiveEngine('imi-core'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: activeEngine === 'imi-core' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'imi-core' ? 'rgba(0, 255, 136, 0.1)' : 'transparent' }}>IMI CORE</div>
                               </motion.div>
                             )}
                           </AnimatePresence>
