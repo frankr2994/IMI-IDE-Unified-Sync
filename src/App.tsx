@@ -47,6 +47,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [quota, setQuota] = useState(65);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('Idle');
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
@@ -283,11 +284,22 @@ const App = () => {
     ipc.on('command-end', onEnd);
     ipc.on('command-error', onError);
 
+    ipc.on('sync-status', (_: any, status: string) => {
+      setSyncStatus(status);
+      addLog('system', `Sync: ${status}`);
+    });
+
+    ipc.on('sync-end', () => {
+      setSyncStatus('Idle');
+    });
+
     return () => {
       clearInterval(interval);
       ipc.removeAllListeners('command-chunk');
       ipc.removeAllListeners('command-end');
       ipc.removeAllListeners('command-error');
+      ipc.removeAllListeners('sync-status');
+      ipc.removeAllListeners('sync-end');
     };
   }, []);
 
@@ -458,7 +470,23 @@ const App = () => {
                             {m.isStreaming && <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>● LIVE</div>}
                           </div>
                         )}
-                        <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>{renderContent(m.text)}</div>
+                        <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
+                          {renderContent(m.text)}
+                          {m.isStreaming && (
+                            <div style={{ marginTop: '15px' }}>
+                              <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em' }}>PROCESSING STREAM...</div>
+                              <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)' }}>
+                                <motion.div 
+                                  initial={{ width: '0%' }}
+                                  animate={{ width: '100%' }}
+                                  transition={{ duration: 15, ease: "linear", repeat: Infinity }}
+                                  className="quota-fill" 
+                                  style={{ background: 'var(--primary)', boxShadow: '0 0 10px var(--primary)' }} 
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -535,7 +563,15 @@ const App = () => {
 
               <div className="devtools-panel">
                  <div className="devtools-header" style={{ padding: '10px 15px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)' }}>
-                    <span>SYS CONSOLE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>SYS CONSOLE</span>
+                      {syncStatus !== 'Idle' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--primary)' }}>
+                          <RefreshCw size={10} className="spin" />
+                          <span style={{ fontSize: '0.55rem' }}>GIT: {syncStatus.toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
                     <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
                  </div>
                  <div className="devtools-content" style={{ height: '515px', padding: '15px', overflowY: 'auto', fontSize: '0.75rem', fontFamily: 'monospace' }}>

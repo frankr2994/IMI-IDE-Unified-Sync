@@ -326,6 +326,8 @@ async function triggerGitSync() {
     if (!gitPath) { syncActive = false; return; }
     
     console.log(`[Sync] Triggering Bidirectional Cloud-Sync...`);
+    if (mainWindow) mainWindow.webContents.send('sync-status', 'Connecting');
+    
     const { exec } = require('child_process');
     // 🛡️ Improved Sync Strategy:
     // 1. Add & Commit local changes to make the tree clean
@@ -335,14 +337,17 @@ async function triggerGitSync() {
     const pullCmd = `"${gitPath}" pull --rebase origin master`;
     const pushCmd = `"${gitPath}" push origin master`;
     
+    if (mainWindow) mainWindow.webContents.send('sync-status', 'Committing');
     exec(commitCmd, { cwd: currentProjectRoot }, (commitErr) => {
-      // We continue even if commit fails (might be nothing to commit)
       
+      if (mainWindow) mainWindow.webContents.send('sync-status', 'Pulling');
       exec(pullCmd, { cwd: currentProjectRoot }, (pullErr) => {
         if (pullErr) console.warn(`[Sync] Pull Warning: ${pullErr.message}`);
         
+        if (mainWindow) mainWindow.webContents.send('sync-status', 'Pushing');
         exec(pushCmd, { cwd: currentProjectRoot }, (pushErr) => {
           syncActive = false;
+          if (mainWindow) mainWindow.webContents.send('sync-end');
           if (!pushErr) console.log(`[Sync] Bidirectional Sync: SUCCESS.`);
           else console.error(`[Sync] Push Failed:`, pushErr.message);
         });
