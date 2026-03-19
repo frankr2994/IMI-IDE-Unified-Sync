@@ -791,11 +791,18 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
       
       const toolName = julesMCP.tools.find(t => t.name.toLowerCase().includes('jules'))?.name || 'ask_jules';
       
+      // 🛡️ [HEARTBEAT] Set a safety timeout for the cloud response
+      const implementationTimeout = setTimeout(() => {
+        event.sender.send('command-chunk', { messageId, chunk: `\n[System] Jules Cloud response delayed. Checking local file state...` });
+        event.sender.send('command-end', { messageId, code: 0 });
+      }, 45000);
+
       const result = await julesMCP.rpc('tools/call', {
         name: toolName,
         arguments: { prompt: cloudPrompt }
       });
       
+      clearTimeout(implementationTimeout);
       const responseText = result.content?.[0]?.text || JSON.stringify(result);
       event.sender.send('command-chunk', { messageId, chunk: `\n[Jules Cloud] ${responseText}` });
       
