@@ -177,7 +177,7 @@ async function triggerGitSync() {
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
   if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
-  const cmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync" && "${gitPath}" pull --rebase origin master && "${gitPath}" push origin master`;
+  const cmd = `"${gitPath}" add . && "${gitPath}" commit -m "IMI Auto-Sync" && "${gitPath}" pull --rebase --autostash origin master && "${gitPath}" push origin master`;
   exec(cmd, { cwd: currentProjectRoot }, (err) => { 
     if (mainWindow) mainWindow.webContents.send('sync-end'); 
     if (err) console.error('[Sync] Git Sync Error:', err.message);
