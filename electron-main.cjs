@@ -33,18 +33,11 @@ let ACTIVE_ENGINE = 'jules';
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
-// --- PERSISTENCE ---
 const saveGlobalState = () => {
   try {
     const stateDir = path.dirname(GLOBAL_STATE_PATH);
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
-    const config = { 
-      geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, 
-      claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, 
-      llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, 
-      julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, 
-      mcpServersList, projectRoot: currentProjectRoot 
-    };
+    const config = { geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, mcpServersList, projectRoot: currentProjectRoot };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
   } catch (e) { console.error('[Bridge] Save Error:', e); }
 };
@@ -66,7 +59,6 @@ try {
   }
 } catch (e) { console.error('[Bridge] Load Error:', e); }
 
-// --- IPC HANDLERS ---
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
   if (config.githubToken !== undefined) GITHUB_TOKEN = config.githubToken;
@@ -128,12 +120,6 @@ function checkCommand(cmd) {
   });
 }
 
-const getMCPEnv = () => {
-  let mcpEnv = {};
-  mcpServersList.forEach(s => { if (s.env) mcpEnv = { ...mcpEnv, ...s.env }; });
-  return mcpEnv;
-};
-
 async function triggerGitSync() {
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
@@ -142,89 +128,53 @@ async function triggerGitSync() {
   exec(cmd, { cwd: currentProjectRoot }, () => { if (mainWindow) mainWindow.webContents.send('sync-end'); });
 }
 
+const getMCPEnv = () => {
+  let mcpEnv = {};
+  mcpServersList.forEach(s => { if (s.env) mcpEnv = { ...mcpEnv, ...s.env }; });
+  return mcpEnv;
+};
+
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
   if (['gemini', 'jules', 'antigravity'].includes(director)) {
     const binPath = await checkCommand(director);
     if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
-    const prefix = "PLANNING ARCHITECT MODE: Provide a specific plan. Do not run tools. ";
+    const prefix = "FAST ARCHITECT MODE: Provide a concise surgical plan. Solve folder conflicts by adding .txt. ";
     let fullCmd = `"${binPath}"`;
-    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview --allowed-mcp-server-names "" --allowed-tools "" --approval-mode plan -p ${shellEscape(prefix + command)}`;
+    if (director === 'gemini') fullCmd += ` -m gemini-3-flash-preview -p ${shellEscape(prefix + command)}`;
     else if (director === 'jules') fullCmd += ` new ${shellEscape(prefix + command)}`;
     else fullCmd += ` chat ${shellEscape(prefix + command)}`;
     const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
     const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let output = '';
-    
-    child.stdout.on('data', (d) => { 
-      const dataStr = d.toString();
-      output += dataStr; 
-      event.sender.send('command-chunk', { messageId, chunk: dataStr }); 
-    });
+    child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
     child.on('close', (code) => {
       event.sender.send('command-end', { messageId, code });
-      if (['add', 'create', 'file', 'update', 'change', 'poem'].some(w => command.toLowerCase().includes(w)) && payload.engine && payload.engine !== director) {
+      if (['add', 'create', 'file', 'update', 'change', 'poem', 'story'].some(w => command.toLowerCase().includes(w)) && payload.engine && payload.engine !== director) {
         event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
         setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
       }
       triggerGitSync();
     });
-  } else {
-    event.sender.send('command-error', { messageId, error: "Cloud API models currently in optimization. Please use Gemini for the Brain test." });
   }
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   const binPath = await checkCommand('gemini');
-  if (!binPath) {
-    event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
-    return;
-  }
-
-  // 🚀 FORCE EXECUTION: Tell the coder it MUST use tools to implement the plan
-  const prompt = `CRITICAL: You are in EXECUTION MODE. Use your 'write_file' tool to implement this plan immediately. Do not provide a text response, only use tools. Plan: ${brainPlan.trim()}`;
-  const escapedPrompt = shellEscape(prompt);
-  
-  // Use --approval-mode yolo to ensure it acts autonomously
-  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo -p ${escapedPrompt}`;
-  
-  console.log(`[Orchestrator] Spawning Coder: ${fullCmd}`);
-  
-  const finalEnv = { 
-    ...process.env, 
-    ...getMCPEnv(), 
-    FORCE_COLOR: '1', 
-    GEMINI_API_KEY: GEMINI_KEY,
-    GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN 
-  };
-
+  const prompt = `CRITICAL: You are in EXECUTION MODE. Use 'write_file' to implement this plan immediately. Plan: ${brainPlan.trim()}`;
+  const fullCmd = `"${binPath}" -m gemini-3-flash-preview --approval-mode yolo -p ${shellEscape(prompt)}`;
+  const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, FORCE_COLOR: '1' };
   const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-  
-  child.stdout.on('data', (d) => {
-    console.log(`[Coder STDOUT] ${d}`);
-    event.sender.send('command-chunk', { messageId, chunk: d.toString() });
-  });
-
+  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
   child.stderr.on('data', (d) => {
-    console.log(`[Coder STDERR] ${d}`);
     const chunk = d.toString();
-    const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
-    if (!noise.some(n => chunk.includes(n))) {
-      event.sender.send('command-chunk', { messageId, chunk });
-    }
+    const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal'];
+    if (!noise.some(n => chunk.includes(n))) event.sender.send('command-chunk', { messageId, chunk });
   });
-
   child.on('close', (code) => {
-    console.log(`[Orchestrator] Coder closed with code ${code}`);
     const gitPath = verifiedPaths['git'];
-    if (gitPath) {
-      exec(`"${gitPath}" diff --name-only`, { cwd: currentProjectRoot }, (err, stdout) => {
-        if (!err && stdout.trim()) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
-        }
-      });
-    }
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED (Exit Code: ${code}) ---` });
+    if (gitPath) exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => { if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` }); });
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
     event.sender.send('command-end', { messageId, code });
     triggerGitSync();
   });
