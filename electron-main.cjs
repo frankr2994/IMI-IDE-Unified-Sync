@@ -5,6 +5,16 @@ const os = require('os');
 const https = require('https');
 const { exec, spawn } = require('child_process');
 
+const shellEscape = (str) => {
+  if (!str) return '""';
+  // 🛡️ Robust Windows Shell Escaping: 
+  // 1. Double the quotes
+  // 2. Wrap the whole thing in double quotes
+  // 3. Remove newlines to prevent CLI breakages
+  const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
+  return `"${escaped}"`;
+};
+
 let mainWindow = null; // 🚀 Global reference for system broadcasting
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -568,10 +578,14 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
        return;
     }
 
-    let args = [];
-    if (director === 'gemini') args = ['-m', 'gemini-3-flash-preview', '-p', command];
-    else if (director === 'jules') args = ['new', command];
-    else args = ['chat', command];
+    let fullCmd = `"${binPath}"`;
+    if (director === 'gemini') {
+      fullCmd += ` -m gemini-3-flash-preview -p ${shellEscape(command)}`;
+    } else if (director === 'jules') {
+      fullCmd += ` new ${shellEscape(command)}`;
+    } else {
+      fullCmd += ` chat ${shellEscape(command)}`;
+    }
 
     const finalEnv = { 
       ...process.env, 
@@ -584,8 +598,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (OPENAI_KEY) finalEnv['OPENAI_API_KEY'] = OPENAI_KEY;
     if (CLAUDE_KEY) finalEnv['ANTHROPIC_API_KEY'] = CLAUDE_KEY;
 
-    console.log(`[Bridge] Spawning ${director}: "${binPath}" ${args.join(' ')}`);
-    const child = spawn(`"${binPath}"`, args, { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    console.log(`[Bridge] Spawning ${director}: ${fullCmd}`);
+    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
     let fullOutput = '';
     
     child.stdout.on('data', (data) => { 
