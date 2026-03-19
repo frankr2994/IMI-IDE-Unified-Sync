@@ -482,15 +482,17 @@ async function autoConnectMCP() {
   console.log('[Bridge] Auto-connecting saved MCP servers...');
   // Sequentialize to prevent racing file lookups or npx lock errors on Windows
   for (const mcp of mcpServersList) {
+    let binPath = mcp.command;
     try {
       if (mcp.command) {
         // Double check for App Installer shims before spawning
         if (mcp.command !== 'npx') {
-          const binPath = await checkCommand(mcp.command);
-          if (!binPath) {
+          const verified = await checkCommand(mcp.command);
+          if (!verified) {
             console.warn(`[Bridge] Disarming ${mcp.name}: Bin not found or is a shim.`);
             continue;
           }
+          binPath = verified;
         }
 
         const finalEnv = { ...mcp.env };
