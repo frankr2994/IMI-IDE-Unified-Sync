@@ -566,7 +566,6 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     let apiUrl = '';
     let apiKey = '';
     let modelName = '';
-    let body = {};
 
     if (director === 'chatgpt') {
       apiUrl = 'api.openai.com';
@@ -585,7 +584,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       apiKey = MISTRAL_KEY;
       modelName = 'mistral-large-latest';
     } else if (director === 'llama') {
-      apiUrl = 'api.groq.com'; // Using Groq for Llama 3
+      apiUrl = 'api.groq.com';
       apiKey = LLAMA_KEY;
       modelName = 'llama3-70b-8192';
     } else if (director === 'perplexity') {
@@ -595,12 +594,29 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     }
 
     if (!apiKey) {
-      event.sender.send('command-error', { messageId, error: `API Key for ${director.toUpperCase()} is missing.` });
+      event.sender.send('command-error', { messageId, error: `API Key for ${director.toUpperCase()} is missing. Please check Settings.` });
       return;
     }
 
-    let apiPath = director === 'claude' ? '/v1/messages' : (director === 'llama' ? '/openai/v1/chat/completions' : '/v1/chat/completions');
-    const postData = JSON.stringify(director === 'claude' ? {
+    const { net } = require('electron');
+    const apiPath = director === 'claude' ? '/v1/messages' : (director === 'llama' ? '/openai/v1/chat/completions' : '/v1/chat/completions');
+    
+    const req = net.request({
+      method: 'POST',
+      protocol: 'https:',
+      hostname: apiUrl,
+      path: apiPath
+    });
+
+    req.setHeader('Content-Type', 'application/json');
+    if (director === 'claude') {
+      req.setHeader('x-api-key', apiKey);
+      req.setHeader('anthropic-version', '2023-06-01');
+    } else {
+      req.setHeader('Authorization', `Bearer ${apiKey}`);
+    }
+
+    const body = JSON.stringify(director === 'claude' ? {
       model: modelName,
       max_tokens: 4096,
       messages: [{ role: 'user', content: command }],
@@ -611,27 +627,15 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       stream: true
     });
 
-    const options = {
-      hostname: apiUrl,
-      port: 443,
-      path: apiPath,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        ...(director === 'claude' ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Authorization': undefined } : {})
-      }
-    };
+    let fullText = '';
+    let buffer = '';
 
-    const req = https.request(options, (res) => {
-      let fullText = '';
-      let buffer = '';
-
+    req.on('response', (res) => {
       if (res.statusCode !== 200) {
-        let errBody = '';
-        res.on('data', (d) => errBody += d.toString());
+        let errData = '';
+        res.on('data', (chunk) => { errData += chunk.toString(); });
         res.on('end', () => {
-          event.sender.send('command-error', { messageId, error: `API Error (${res.statusCode}): ${errBody}` });
+          event.sender.send('command-error', { messageId, error: `API Error ${res.statusCode}: ${errData}` });
         });
         return;
       }
@@ -639,34 +643,40 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       res.on('data', (chunk) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
-        buffer = lines.pop(); // Keep the last partial line in buffer
+        buffer = lines.pop();
 
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || trimmed === 'data: [DONE]') continue;
-          
+          if (!trimmed.startsWith('data: ')) continue;
+
           try {
-            const json = JSON.parse(trimmed.replace('data: ', ''));
-            const content = director === 'claude' ? (json.delta?.text || json.content?.[0]?.text || '') : (json.choices?.[0]?.delta?.content || '');
+            const json = JSON.parse(trimmed.substring(6));
+            const content = director === 'claude' ? (json.delta?.text || '') : (json.choices?.[0]?.delta?.content || '');
             if (content) {
               fullText += content;
               event.sender.send('command-chunk', { messageId, chunk: content });
             }
-          } catch (e) {
-            // Silently ignore parse errors for non-data lines
-          }
+          } catch (e) {}
         }
       });
+
       res.on('end', () => {
-        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        if (!fullText) {
+          event.sender.send('command-chunk', { messageId, chunk: '[System] API connected but returned no content. Check your key/usage.' });
+        }
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil((command.length + fullText.length) / 4);
         saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
         triggerGitSync();
       });
     });
 
-    req.on('error', (e) => { event.sender.send('command-error', { messageId, error: e.message }); });
-    req.write(postData);
+    req.on('error', (err) => {
+      event.sender.send('command-error', { messageId, error: `Connection Error: ${err.message}` });
+    });
+
+    req.write(body);
     req.end();
   }
 });
