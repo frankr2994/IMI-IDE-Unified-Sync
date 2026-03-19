@@ -279,7 +279,6 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
-  const bin = await checkCommand(engine);
   const prompt = `PLAN APPROVED. IMPLEMENT IMMEDIATELY SURGICALLY: ${brainPlan.substring(0, 3000)}`;
   
   let repo = '';
@@ -292,8 +291,16 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     }
   } catch(e) {}
 
-  const fullCmd = `"${bin || engine}" new ${repo}${shellEscape(prompt)}`;
-  console.log(`[Orchestrator] Executing Coder ${engine}: ${fullCmd}`);
+  let fullCmd = '';
+  if (engine.toLowerCase() === 'jules') {
+    // 🛡️ High-Reliability Mode: Use npx to bypass binary path issues on Windows
+    fullCmd = `npx @google/jules new ${repo}${shellEscape(prompt)}`;
+  } else {
+    const bin = await checkCommand(engine);
+    fullCmd = `"${bin || engine}" ${engine.toLowerCase()==='antigravity'?'chat':'-p'} ${shellEscape(prompt)}`;
+  }
+
+  console.log(`[Orchestrator] Executing Coder: ${fullCmd}`);
   
   const finalEnv = { 
     ...process.env, 
