@@ -216,14 +216,23 @@ User message: `;
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
     // Handle browser-open commands directly without involving Gemini
-    const urlMatch = command.match(/https?:\/\/[^\s]+/);
-    const isBrowserCmd = /(open|launch|go to|navigate|browse)/i.test(command) && urlMatch;
+    const isBrowserCmd = /(open|launch|go to|navigate|browse)/i.test(command);
     if (isBrowserCmd) {
-      const url = urlMatch[0];
-      shell.openExternal(url);
-      event.sender.send('command-chunk', { messageId, chunk: `🌐 Opening browser: ${url}` });
-      event.sender.send('command-end', { messageId, code: 0 });
-      return;
+      // Extract all https:// URLs
+      const explicitUrls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
+      // Extract bare site names after "go to <name>" / "open <name>" that aren't already captured
+      const siteMatches = [...command.matchAll(/(?:go to|open|navigate to|browse to)\s+([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,})?)/gi)]
+        .map(m => m[1])
+        .filter(s => !s.match(/^https?:\/\//))
+        .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
+      const allUrls = [...new Set([...explicitUrls, ...siteMatches])];
+      if (allUrls.length > 0) {
+        let msg = '';
+        for (const url of allUrls) { shell.openExternal(url); msg += `🌐 Opening browser: ${url}\n`; }
+        event.sender.send('command-chunk', { messageId, chunk: msg.trim() });
+        event.sender.send('command-end', { messageId, code: 0 });
+        return;
+      }
     }
 
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
