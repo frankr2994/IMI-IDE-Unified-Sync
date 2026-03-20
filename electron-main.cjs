@@ -30,7 +30,7 @@ let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY 
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = ''; let CUSTOM_API_URL = ''; let CUSTOM_API_MODEL = ''; 
 let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
-let ACTIVE_ENGINE = 'antigravity'; let THEME = 'glass'; let LOG_RETENTION = 15;
+let ACTIVE_BRAIN = 'gemini'; let ACTIVE_CODER = 'imi-core'; let THEME = 'glass'; let LOG_RETENTION = 15;
 let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
 // ≡ƒºá Brain AI config
 let BRAIN_MODEL = 'gemini-2.5-flash'; let BRAIN_TEMPERATURE = 0.7; let BRAIN_MAX_TOKENS = 8192; let STRATEGY_VERSION = '1.0.1';
@@ -46,7 +46,8 @@ const saveGlobalState = () => {
       claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, 
       llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, 
       customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
-      julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, 
+      julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, 
+      activeBrain: ACTIVE_BRAIN, activeCoder: ACTIVE_CODER,
       theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
       mcpServersList, projectRoot: currentProjectRoot 
     };
@@ -68,10 +69,15 @@ try {
       CUSTOM_API_URL = state.config.customApiUrl || '';
       CUSTOM_API_MODEL = state.config.customApiModel || '';
       JULES_KEY = state.config.julesApiKey || '';
-      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'imi-core';
+      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; 
+      ACTIVE_BRAIN = state.config.activeBrain || 'gemini';
+      ACTIVE_CODER = state.config.activeCoder || state.config.activeEngine || 'imi-core';
       THEME = state.config.theme || 'glass'; LOG_RETENTION = state.config.logRetention || 15;
       if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
-      mcpServersList = state.config.mcpServersList || [];
+      // Clean up duplicates if any
+      const rawMCPs = state.config.mcpServersList || [];
+      mcpServersList = Array.from(new Set(rawMCPs.map(s => s.name)))
+        .map(name => rawMCPs.find(s => s.name === name));
       if (state.config.projectRoot && fs.existsSync(state.config.projectRoot)) currentProjectRoot = state.config.projectRoot;
     }
   }
@@ -90,6 +96,8 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.customApiUrl !== undefined) CUSTOM_API_URL = config.customApiUrl;
   if (config.customApiModel !== undefined) CUSTOM_API_MODEL = config.customApiModel;
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
+  if (config.activeBrain !== undefined) ACTIVE_BRAIN = config.activeBrain;
+  if (config.activeCoder !== undefined) ACTIVE_CODER = config.activeCoder;
   if (config.theme !== undefined) THEME = config.theme;
   if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
   if (config.brainModel !== undefined) BRAIN_MODEL = config.brainModel;
@@ -109,7 +117,7 @@ ipcMain.handle('get-api-config', () => ({
   geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY,
   deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
   customApiKey: CUSTOM_API_KEY, customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
-  julesApiKey: JULES_KEY, activeEngine: ACTIVE_ENGINE, projectRoot: currentProjectRoot,
+  julesApiKey: JULES_KEY, activeBrain: ACTIVE_BRAIN, activeCoder: ACTIVE_CODER, projectRoot: currentProjectRoot,
   theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
   brainModel: BRAIN_MODEL, brainTemperature: BRAIN_TEMPERATURE, brainMaxTokens: BRAIN_MAX_TOKENS, strategyVersion: STRATEGY_VERSION
 }));
@@ -188,7 +196,7 @@ Your primary role is the STRATEGY layer (analyzing requests and planning solutio
 PROJECT MEMORY:
 - App Name: IMI IDE MERGE INTEGRATIONS (version 1.0.4)
 - Project Root: ${currentProjectRoot}
-- Active Coder Engine: ${ACTIVE_ENGINE}
+- Active Coder Engine: ${ACTIVE_CODER}
 - Stack: Electron (electron-main.cjs), React + Vite (src/App.tsx), TypeScript
 - Architecture: Brain (strategy AI) ΓåÆ Orchestrator (hand-off) ΓåÆ Coder (implementation)
 - The Coder engine is Antigravity (an AI coding assistant in the user's IDE)
