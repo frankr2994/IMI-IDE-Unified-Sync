@@ -105,6 +105,11 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
   if (config.theme !== undefined) THEME = config.theme;
   if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
+  if (config.syncFrequency !== undefined) {
+    SYNC_INTERVAL_MS = parseInt(config.syncFrequency) * 1000;
+    if (syncTimer) clearInterval(syncTimer);
+    syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
+  }
   if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
   saveGlobalState(); 
   return { success: true };
@@ -123,6 +128,7 @@ ipcMain.handle('get-api-config', () => ({
   activeEngine: ACTIVE_ENGINE, 
   theme: THEME,
   logRetention: LOG_RETENTION,
+  syncFrequency: SYNC_INTERVAL_MS / 1000,
   projectRoot: currentProjectRoot
 }));
 
@@ -453,7 +459,10 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => { createWindow(); setInterval(triggerGitSync, 60000); });
+app.whenReady().then(() => { 
+  createWindow(); 
+  syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); 
+});
 app.on('window-all-closed', () => { app.quit(); });
 app.on('before-quit', () => { 
   process.exit(0); 
