@@ -269,7 +269,15 @@ const App = () => {
   useEffect(() => {
     loadConfig();
     fetchStats();
-    const interval = setInterval(fetchStats, 60000); // 🚀 [PERF] Scaled to 60s to prevent disk thrashing
+    // 🚀 [BALANCED PERF]
+    const statsInterval = setInterval(fetchStats, 60000); // Heavy disk scan: 1 min
+    const telemetryInterval = setInterval(async () => {
+      const sysUsage = await (ipc as any).invoke('get-system-usage');
+      if (sysUsage) {
+        setUsage(sysUsage);
+        setQuota(parseFloat(sysUsage.cpu));
+      }
+    }, 3000); // Light CPU telemetry: 3 seconds
     
     const onChunk = (event: any, data: any) => {
       setMessages(prev => prev.map(m => 
@@ -315,7 +323,8 @@ const App = () => {
     });
 
     return () => {
-      clearInterval(interval);
+      clearInterval(statsInterval);
+      clearInterval(telemetryInterval);
       ipc.removeAllListeners('command-chunk');
       ipc.removeAllListeners('command-end');
       ipc.removeAllListeners('command-error');
