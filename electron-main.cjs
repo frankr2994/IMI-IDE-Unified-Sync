@@ -388,8 +388,8 @@ User message: `;
   child.stdout.on('data', (d) => {
     const clean = cleanOutput(d.toString());
     if (!clean) return;
-    output += clean + ' ';
-    event.sender.send('command-chunk', { messageId, chunk: clean + ' ' });
+    output += clean;
+    event.sender.send('command-chunk', { messageId, chunk: clean });
   });
   child.stderr.on('data', (d) => {
     const clean = cleanOutput(d.toString());
