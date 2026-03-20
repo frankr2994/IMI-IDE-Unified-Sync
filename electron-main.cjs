@@ -182,10 +182,10 @@ async function triggerGitSync() {
 
   try {
     await git('add .');
-    // Commit only if there are changes
     await git('commit -m "IMI Auto-Sync"'); 
     await git('pull --rebase --autostash origin master');
     await git('push origin master');
+    if (mainWindow) mainWindow.webContents.send('sync-time', new Date().toLocaleTimeString());
   } catch(e) {}
   
   if (mainWindow) mainWindow.webContents.send('sync-end');

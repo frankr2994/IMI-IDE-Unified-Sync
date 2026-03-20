@@ -302,6 +302,10 @@ const App = () => {
       setSyncStatus('Idle');
     });
 
+    ipc.on('sync-time', (_: any, time: string) => {
+      setLastSyncTime(time);
+    });
+
     ipc.on('coder-status', (_: any, status: string) => {
       setCoderStatus(status);
       if (status !== 'Idle') addLog('system', `Coder: ${status}`);
@@ -465,10 +469,18 @@ const App = () => {
           {activeTab === 'command center' && (
             <motion.div key="cc" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '25px', height: '600px' }}>
               <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)' }}>
+                <div style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div className="spin"><RefreshCw size={14} color="var(--primary)" /></div>
                     <span style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em' }}>ORCHESTRATOR BROADCAST</span>
+                  </div>
+                  
+                  {/* Last Sync Indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,255,136,0.05)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(0,255,136,0.1)' }}>
+                    <ShieldCheck size={12} color="#00ff88" />
+                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.05em' }}>
+                      LAST GITHUB PULSE: {lastSyncTime || 'PENDING'}
+                    </span>
                   </div>
                 </div>
                 <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
