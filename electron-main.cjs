@@ -456,4 +456,46 @@ ipcMain.on('window-close', () => { app.quit(); });
 ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
+ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
+  if (!GEMINI_KEY) return { success: false, error: "API Key missing." };
+  try {
+    const postData = JSON.stringify({
+      contents: [{
+        parts: [
+          { text: "Transcribe the following audio exactly. Return ONLY the transcribed text, nothing else. Do not use quotes or markdown." },
+          { inlineData: { mimeType: "audio/webm", data: base64Audio } }
+        ]
+      }],
+      generationConfig: { temperature: 0.1 }
+    });
+
+    return new Promise((resolve) => {
+      const req = net.request({
+        method: 'POST', protocol: 'https:',
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`
+      });
+      req.setHeader('Content-Type', 'application/json');
+      req.write(postData);
+      
+      let body = '';
+      req.on('response', (res) => {
+        res.on('data', d => body += d.toString());
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(body);
+            let text = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            resolve({ success: true, text: text.trim() });
+          } catch(err) {
+            resolve({ success: false, error: "Failed to parse API response" });
+          }
+        });
+      });
+      req.on('error', err => resolve({ success: false, error: err.message }));
+      req.end();
+    });
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
 ipcMain.on('open-external-url', (e, url) => { shell.openExternal(url); });
