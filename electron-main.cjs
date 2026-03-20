@@ -262,6 +262,29 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   const isCli = ['jules', 'antigravity'].includes(director);
   if (isCli) {
+    const binPath = await checkCommand(director);
+    if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
+    
+    let fullCmd = `"${binPath}"`;
+    if (director === 'jules') fullCmd += ` new ${shellEscape(command)}`;
+    else if (director === 'antigravity') {
+      // 🚀 [INTERACTIVE BRAIN] Open Antigravity in a new CMD window
+      fullCmd = `start cmd /k "${binPath} chat ${shellEscape(command)}"`;
+    } else {
+      fullCmd += ` chat ${shellEscape(command)}`;
+    }
+
+    console.log(`[Bridge] Spawning ${director}: ${fullCmd}`);
+    const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
+    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    
+    let output = '';
+    child.stdout.on('data', (d) => { 
+      const str = d.toString();
+      output += str; 
+      event.sender.send('command-chunk', { messageId, chunk: str }); 
+    });
+    
     child.stderr.on('data', (d) => {
       const chunk = d.toString();
       const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
