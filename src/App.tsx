@@ -906,6 +906,7 @@ const App = () => {
                   ))}
                 </div>
 
+                {mcpHubTab === 'mcp' && <>
                 {/* Live npm search bar */}
                 <div style={{ marginBottom: '24px' }}>
                   <form onSubmit={e => { e.preventDefault(); searchNpm(mcpSearch); }} style={{ display: 'flex', gap: '10px' }}>
@@ -1061,6 +1062,8 @@ const App = () => {
                   </div>
                 </div>
                 )}
+
+                </>}
 
                 {/* ── GitHub Libraries Tab ── */}
                 {mcpHubTab === 'github' && (
