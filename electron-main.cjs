@@ -487,9 +487,19 @@ RULES:
     
     // Inject the Auto-Discovery script to automatically click 'Send' in Antigravity
     const autoPilotScript = `
-      (function() {
+      (async function() {
           console.log("🌉 Connecting to Bridge to bypass CORS...");
-          const bridgeId = "874C4DBBEE53686E7B3E7D40F12362CC";
+          
+          let bridgeId = "874C4DBBEE53686E7B3E7D40F12362CC";
+          try {
+             // Try to Auto-Discover the dynamic Bridge ID so the user doesn't have to keep fixing it
+             const r = await fetch("http://127.0.0.1:9000/json/list").catch(e=>null);
+             if (r) {
+                const j = await r.json();
+                if (j && j.length > 0 && j[0].id) bridgeId = j[0].id;
+             }
+          } catch(err) {}
+
           const bridgeWs = new WebSocket(\`ws://127.0.0.1:9000/devtools/page/\${bridgeId}\`);
       
           bridgeWs.onopen = () => bridgeWs.send(JSON.stringify({ id: 1, method: "Target.getTargets" }));
@@ -529,7 +539,7 @@ RULES:
                   });
               }
           };
-          bridgeWs.onerror = () => console.error("❌ Bridge failed on 9000.");
+          bridgeWs.onerror = () => console.error("❌ Bridge failed on 9000. Make sure your IDE/Bridge uses this port.");
       })();
     `;
     if (mainWindow) mainWindow.webContents.executeJavaScript(autoPilotScript);
