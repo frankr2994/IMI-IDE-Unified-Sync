@@ -950,6 +950,91 @@ const App = () => {
             </motion.div>
           )}
 
+          {activeTab === 'skills' && (
+            <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>⚡ SKILL ENGINE</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>Self-optimizing zero-token request handler · Goal: 90% efficiency</div>
+                </div>
+                <button onClick={async () => { const r = await (ipc as any).invoke('skills-optimize'); alert(`Optimization complete\nEfficiency: ${skillEfficiency}%\nRemoved: ${r.removed} weak skills`); fetchStats(); }} className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.65rem' }}>🔄 OPTIMIZE NOW</button>
+              </div>
+
+              {/* Stats Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1px', background: 'var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+                {[
+                  { label: 'EFFICIENCY', value: `${skillEfficiency}%`, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 50 ? '#ffa500' : '#ff416c', goal: '90%' },
+                  { label: 'SKILL HITS', value: skillStats.skillHits?.toLocaleString() || '0', color: '#4facfe', goal: 'requests handled' },
+                  { label: 'TOKENS SAVED', value: skillStats.tokensSaved?.toLocaleString() || '0', color: '#9b4dff', goal: 'est. saved' },
+                  { label: 'ACTIVE SKILLS', value: skills.filter(s => s.active).length, color: '#00ff88', goal: `${skills.length} total` },
+                ].map(s => (
+                  <div key={s.label} style={{ padding: '15px 20px', background: 'rgba(0,0,0,0.2)' }}>
+                    <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: '6px' }}>{s.label}</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '2px' }}>goal: {s.goal}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Efficiency bar */}
+              <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>Token Efficiency Progress</span>
+                  <span style={{ fontSize: '0.6rem', color: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)' }}>{skillEfficiency}% / 90% goal</span>
+                </div>
+                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? 'linear-gradient(90deg,#00ff88,#4facfe)' : 'linear-gradient(90deg,var(--primary),#4facfe)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                </div>
+              </div>
+
+              {/* Skills list */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: '12px' }}>SKILL LIBRARY</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {skills.map(skill => (
+                    <div key={skill.id} style={{ background: skill.active ? 'rgba(155,77,255,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${skill.active ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '10px', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 900, color: skill.active ? 'white' : 'var(--text-dim)' }}>{skill.name}</span>
+                          {skill.autoCreated && <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '4px', color: '#00ff88' }}>AUTO</span>}
+                          <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{skill.type}</span>
+                        </div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '6px' }}>{skill.desc}</div>
+                        <div style={{ display: 'flex', gap: '15px' }}>
+                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Uses: <b style={{ color: 'white' }}>{skill.uses}</b></span>
+                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Saved: <b style={{ color: '#9b4dff' }}>{skill.tokensSaved?.toLocaleString()} tkns</b></span>
+                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Score: <b style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</b></span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                        <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: skill.active ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer' }}>{skill.active ? 'ON' : 'OFF'}</button>
+                        {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (
+                          <button onClick={async () => { if (confirm(`Remove skill "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add custom skill */}
+                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.15)', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '12px' }}>+ CREATE CUSTOM SKILL</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input value={newSkillName} onChange={e => setNewSkillName(e.target.value)} placeholder="Skill name (e.g. Open Spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                    <input value={newSkillPattern} onChange={e => setNewSkillPattern(e.target.value)} placeholder="Trigger pattern (e.g. open spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                    <input value={newSkillResponse} onChange={e => setNewSkillResponse(e.target.value)} placeholder="Cached response (leave blank for passthrough)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                    <button onClick={async () => {
+                      if (!newSkillName || !newSkillPattern) return;
+                      await (ipc as any).invoke('skills-add', { name: newSkillName, pattern: newSkillPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), type: newSkillResponse ? 'cached' : 'passthrough', cachedResponse: newSkillResponse || null, desc: 'Custom user skill' });
+                      setNewSkillName(''); setNewSkillPattern(''); setNewSkillResponse('');
+                      fetchStats();
+                    }} className="btn-premium" style={{ padding: '8px 20px', fontSize: '0.65rem' }}>ADD SKILL</button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '2rem 2rem 1rem 2rem' }}>
