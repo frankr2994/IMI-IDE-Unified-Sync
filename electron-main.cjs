@@ -401,13 +401,29 @@ RULES:
 
 
   // JULES FALLBACK (High Reliability)
-  const child = spawn(`jules new ${shellEscape(prompt)}`, [], { 
+  if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+  event.sender.send('command-chunk', { messageId, chunk: `\n[Jules] Launching Jules asynchronous session...` });
+  
+  // Create a temporary file to hold the prompt to securely bypass Windows CMD 8192-char limit
+  const julesPromptPath = path.join(os.tmpdir(), `jules_prompt_${Date.now()}.txt`);
+  fs.writeFileSync(julesPromptPath, prompt, 'utf-8');
+
+  const child = spawn(`type "${julesPromptPath}" | jules new`, [], { 
     cwd: currentProjectRoot, 
     shell: true, 
-    env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } 
+    env: { 
+      ...process.env, 
+      JULES_API_KEY: JULES_KEY, 
+      GOOGLE_API_KEY: JULES_KEY, // Jules frequently requires GOOGLE_API_KEY mapping
+      GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN 
+    } 
   });
+  
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
+  child.stderr.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: `\n[Sys] ${d.toString()}` }));
   child.on('close', (code) => {
+    try { fs.unlinkSync(julesPromptPath); } catch(e) {}
+    event.sender.send('command-chunk', { messageId, chunk: `\n[Jules] Process exited with code ${code}.` });
     event.sender.send('command-end', { messageId, code });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
