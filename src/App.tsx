@@ -969,8 +969,16 @@ const App = () => {
                               {isLinked ? <CheckCircle2 size={14} /> : 'LINK'}
                             </button>
                           </div>
-                          <h4 style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '4px' }}>{lib.name}</h4>
-                          <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: '1.4' }}>{lib.desc}</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{lib.name}</h4>
+                            <span
+                              onClick={() => (ipc as any).send('open-external-url', `https://www.npmjs.com/package/${lib.pkg}`)}
+                              title={`Open ${lib.pkg} on npm`}
+                              style={{ fontSize: '0.6rem', color: '#4facfe', cursor: 'pointer', opacity: 0.7, textDecoration: 'underline' }}
+                            >npm ↗</span>
+                          </div>
+                          <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '4px' }}>{lib.desc}</p>
+                          <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>{lib.pkg}</p>
                         </div>
                       );
                     })}
@@ -981,24 +989,31 @@ const App = () => {
                 <div>
                   <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', marginBottom: '20px' }}>LINKED SERVICES ({mcpServers.length})</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {mcpServers.map((s, i) => (
-                      <div key={i} className="glass-card" style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '15px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <div className={`status-indicator ${s.status === 'online' ? 'status-online' : ''}`}></div>
-                          <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{s.name}</span>
+                    {mcpServers.map((s, i) => {
+                      const pkgName = s.name.split(':')[0].trim();
+                      const npmUrl = `https://www.npmjs.com/package/${pkgName}`;
+                      return (
+                        <div key={i} className="glass-card" style={{ padding: '0.9rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div className={`status-indicator ${s.status === 'online' ? 'status-online' : ''}`}></div>
+                            <div>
+                              <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{pkgName}</span>
+                              <span
+                                onClick={() => (ipc as any).send('open-external-url', npmUrl)}
+                                title="Open on npm"
+                                style={{ marginLeft: '8px', fontSize: '0.6rem', color: '#4facfe', cursor: 'pointer', opacity: 0.7, textDecoration: 'underline' }}
+                              >npm ↗</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={async () => { await (ipc as any).invoke('mcp:global-remove', pkgName); updateMcpList(); }}
+                            style={{ background: 'transparent', border: 'none', color: '#ff4b2b', cursor: 'pointer', opacity: 0.6 }}
+                          >
+                            <X size={18} />
+                          </button>
                         </div>
-                        <button 
-                          onClick={async () => {
-                            const name = s.name.split(':')[0].trim();
-                            await (ipc as any).invoke('mcp:global-remove', name);
-                            updateMcpList();
-                          }}
-                          style={{ background: 'transparent', border: 'none', color: '#ff4b2b', cursor: 'pointer', opacity: 0.6 }}
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {mcpServers.length === 0 && (
                       <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.3 }}>
                         <Database size={48} style={{ marginBottom: '15px' }} />
