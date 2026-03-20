@@ -14,6 +14,72 @@ const shellEscape = (str) => {
 let mainWindow = null;
 const isDev = process.env.NODE_ENV === 'development';
 
+// ══════════════════════════════════════════════════════════════
+// 🗄️  IMI STORE — fast local storage, zero API calls, zero tokens
+// ══════════════════════════════════════════════════════════════
+const IMI_STORE_PATH = path.join(os.homedir(), '.imi', 'store.json');
+const MAX_MESSAGES_PER_PROJECT = 100; // LRU cap per project
+
+class ImiStore {
+  constructor() {
+    this._mem = {};          // in-memory map (fast reads)
+    this._dirty = false;
+    this._saveTimer = null;
+    this._load();
+  }
+
+  _load() {
+    try {
+      if (fs.existsSync(IMI_STORE_PATH)) {
+        this._mem = JSON.parse(fs.readFileSync(IMI_STORE_PATH, 'utf-8'));
+      }
+    } catch(e) { this._mem = {}; }
+  }
+
+  // Debounced write — batches saves, no disk thrashing
+  _scheduleSave() {
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      try {
+        const dir = path.dirname(IMI_STORE_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(IMI_STORE_PATH, JSON.stringify(this._mem), 'utf-8');
+      } catch(e) { console.error('[ImiStore] save error:', e.message); }
+    }, 500);
+  }
+
+  get(key, fallback = null) {
+    return key in this._mem ? this._mem[key] : fallback;
+  }
+
+  set(key, value) {
+    this._mem[key] = value;
+    this._scheduleSave();
+  }
+
+  // Append a chat message, keeping only last MAX_MESSAGES_PER_PROJECT
+  appendMessage(projectKey, msg) {
+    const k = `chat:${projectKey}`;
+    if (!this._mem[k]) this._mem[k] = [];
+    this._mem[k].push({ ...msg, ts: Date.now() });
+    if (this._mem[k].length > MAX_MESSAGES_PER_PROJECT) {
+      this._mem[k] = this._mem[k].slice(-MAX_MESSAGES_PER_PROJECT);
+    }
+    this._scheduleSave();
+  }
+
+  getMessages(projectKey) {
+    return this._mem[`chat:${projectKey}`] || [];
+  }
+
+  clearMessages(projectKey) {
+    delete this._mem[`chat:${projectKey}`];
+    this._scheduleSave();
+  }
+}
+
+const imiStore = new ImiStore();
+
 const sterilizePath = (inputPath) => {
   if (!inputPath) return '';
   return inputPath.split(path.delimiter).filter(p => {
