@@ -7,7 +7,7 @@ const { exec, spawn, execSync } = require('child_process');
 
 const shellEscape = (str) => {
   if (!str) return '""';
-  // 🛡️ Robust Windows Shell Escaping: Remove newlines and double the quotes
+  // 🛡️ Robust Windows Shell Escaping
   const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
   return `"${escaped}"`;
 };
@@ -48,7 +48,6 @@ const saveGlobalState = () => {
       mcpServersList, projectRoot: currentProjectRoot 
     };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
-    // 🚀 LIVE BROADCAST: Tell the dashboard tokens updated
     if (mainWindow) mainWindow.webContents.send('token-stats-update', tokenStats);
   } catch (e) { console.error('[Bridge] Save Error:', e); }
 };
@@ -162,31 +161,24 @@ async function triggerGitSync() {
   if (mainWindow) mainWindow.webContents.send('sync-end');
 }
 
-// [TURBO] STREAMING COMMAND EXECUTION BRIDGE
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
-  
-  // 🚀 [THE SUCCESS CONFIGURATION]
   const blueprintPrefix = "GLOBAL BLUEPRINT PROTOCOL: Refine this request into a TECHNICAL SPECIFICATION for a coding agent. Output only the spec. User Request: ";
   
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
-    
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Request: ";
-    
     const url = `generativelanguage.googleapis.com`;
     const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] });
-
+    req.write(JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] }));
     let fullText = '';
     req.on('response', (res) => {
       res.on('data', (chunk) => {
         const raw = chunk.toString();
-        // 🛡️ BRUTE-FORCE PARSER
         const textParts = raw.split('"text": "');
         for (let i = 1; i < textParts.length; i++) {
           const content = textParts[i].split('"')[0].replace(/\\n/g, '\n').replace(/\\"/g, '"');
@@ -197,6 +189,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         }
       });
       res.on('end', () => {
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
         if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
           event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
@@ -205,31 +199,26 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         triggerGitSync();
       });
     });
-    req.write(body); req.end();
+    req.end();
     return;
   }
 
-  // CLI Directors
   const binPath = await checkCommand(director);
   if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
   const child = spawn(`"${binPath}"`, ['chat', shellEscape(command)], { cwd: currentProjectRoot, shell: true, env: { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY } });
   let output = '';
   child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
-  child.on('close', (code) => {
-    event.sender.send('command-end', { messageId, code });
-    triggerGitSync();
-  });
+  child.on('close', (code) => { event.sender.send('command-end', { messageId, code }); triggerGitSync(); });
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
+  const prompt = `SURGICAL BUILDER MODE: Implement this plan exactly. Plan: ${brainPlan.trim()}`;
 
   if (engine.toLowerCase() === 'imi-core') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Key missing." }); return; }
     const corePrompt = `You are IMI CORE. Plan: ${brainPlan} Output ONLY JSON: [{ "file": "path", "content": "full content" }]`;
-    const url = `generativelanguage.googleapis.com`;
-    const apiPath = `/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}`;
-    const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}` });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] }));
     let fullText = '';
@@ -247,6 +236,8 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
             fs.writeFileSync(fp, edit.content);
           }
           event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Implementation Complete.` });
+          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
+          saveGlobalState();
         } catch(e) {}
         event.sender.send('command-end', { messageId, code: 0 });
         if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
@@ -257,33 +248,24 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     return;
   }
 
-  // --- CODER: JULES or ANTIGRAVITY ---
-  const prompt = `SURGICAL BUILDER MODE: Implement this plan exactly. Plan: ${brainPlan.trim()}`;
-  let fullCmd = '';
-  const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
-
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [INTERACTIVE POWERSHELL] Opens a CMD window that stays open for user interaction
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Interactive Antigravity Terminal...` });
+    const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Antigravity via Pipe...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    
-    // Use cmd /k to keep the window alive
-    const cmdToRun = `"${binAg}" chat ${shellEscape(prompt)}`;
-    spawn('cmd.exe', ['/c', 'start', 'cmd', '/k', cmdToRun], { detached: true, stdio: 'ignore' }).unref();
-    
-    setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY TERMINAL READY ---` });
+    // Using the PIPE method for background interaction
+    const finalCmd = `echo ${shellEscape(prompt)} | "${binAg}" chat -`;
+    exec(finalCmd, { cwd: currentProjectRoot }, (err, stdout) => {
+      if (!err) event.sender.send('command-chunk', { messageId, chunk: stdout || "\n[Antigravity] Process started in background." });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
-    }, 3000);
+    });
     return;
   }
 
-  // FALLBACK JULES
-  const julesBin = await checkCommand('jules');
-  fullCmd = `npx -y @google/jules new ${shellEscape(prompt)}`;
-  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
+  // JULES FALLBACK
+  const child = spawn(`npx -y @google/jules new ${shellEscape(prompt)}`, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
   child.on('close', (code) => {
     event.sender.send('command-end', { messageId, code });
