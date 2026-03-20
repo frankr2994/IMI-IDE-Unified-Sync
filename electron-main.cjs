@@ -217,11 +217,13 @@ User message: `;
 
     // Detect browser-intent and route to autonomous Browser Agent (Gemini CLI + Puppeteer MCP)
     const cmdL = command.toLowerCase();
-    const hasBrowserIntent =
-      /\b(browser|browsers|tab\b|tabs\b|chrome|crome|internet|webpage|website|navigate|browsing|take control)\b/.test(cmdL) ||
+    const isCodeAction = /\b(file|function|component|variable|class|import|export|button|tab in|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(cmdL);
+    const hasBrowserIntent = !isCodeAction && (
       /\bgo to\b/.test(cmdL) ||
-      (/\b(open|opening|launch|visit)\b/.test(cmdL) && /\b(web|site|page|url|link|tab|browser|crome|chrome|google|gmail|youtube|netflix|nextflix|reddit|twitter|facebook|instagram|twitch|github|twitch|spotify|amazon|ebay|bing|yahoo)\b/.test(cmdL)) ||
-      /https?:\/\//.test(cmdL);
+      /https?:\/\//.test(cmdL) ||
+      /\b(browser|browsers|tabs?\b|chrome|crome|internet|webpage|website|navigate|browsing|take control of)\b/.test(cmdL) ||
+      /\b(open|launch|visit|search on|look up on)\b.{1,60}\b(up|it|out|on|there|around)?\b/.test(cmdL) && /[A-Z]|\.com|\.org|\.net|\.io/.test(command)
+    );
     if (hasBrowserIntent) {
       triggerBrowserAgent(event, command, messageId);
       return;
