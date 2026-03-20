@@ -106,9 +106,8 @@ const App = () => {
   
   interface Log { id: number; type: string; msg: string; }
   const [logs, setLogs] = useState<Log[]>([
-    { id: 1, type: 'ag', msg: 'Antigravity core loaded. Watching for changes...' },
-    { id: 2, type: 'gemini', msg: 'Gemini Strategy Protocol: Enhancement roadmap generated.' },
-    { id: 3, type: 'jules', msg: 'Jules Implementation Engine: Hand-off received. Implementing Settings UI expansion...' }
+    { id: 1, type: 'ag', msg: 'Core Orchestration System initialized.' },
+    { id: 2, type: 'system', msg: 'System telemetry active and streaming.' }
   ]);
 
   const [messages, setMessages] = useState<any[]>([]);
