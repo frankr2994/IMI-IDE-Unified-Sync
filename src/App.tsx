@@ -59,7 +59,7 @@ const App = () => {
   // Brain & Coder Pickers State
   const [activeDirector, setActiveDirector] = useState('gemini');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [activeEngine, setActiveEngine] = useState('jules'); // Defaulting to Jules as requested
+  const [activeEngine, setActiveEngine] = useState('imi-core'); // Default: works without extra installs
   const [isCoderDropdownOpen, setIsCoderDropdownOpen] = useState(false);
   
   const [mcpServers, setMcpServers] = useState<any[]>([]);

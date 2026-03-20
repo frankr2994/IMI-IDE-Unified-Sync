@@ -63,7 +63,7 @@ try {
       DEEPSEEK_KEY = state.config.deepseekKey || ''; MISTRAL_KEY = state.config.mistralKey || '';
       LLAMA_KEY = state.config.llamaKey || ''; PERPLEXITY_KEY = state.config.perplexityKey || '';
       CUSTOM_API_KEY = state.config.customApiKey || ''; JULES_KEY = state.config.julesApiKey || '';
-      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'jules';
+      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'imi-core';
       THEME = state.config.theme || 'glass'; LOG_RETENTION = state.config.logRetention || 15;
       if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
       mcpServersList = state.config.mcpServersList || [];
