@@ -32,7 +32,7 @@ let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
 let ACTIVE_ENGINE = 'antigravity'; let THEME = 'glass'; let LOG_RETENTION = 15;
 let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
 // 🧠 Brain AI config
-let BRAIN_MODEL = 'gemini-2.5-flash'; let BRAIN_TEMPERATURE = 0.7; let BRAIN_MAX_TOKENS = 2048; let STRATEGY_VERSION = '1.0.1';
+let BRAIN_MODEL = 'gemini-2.5-flash'; let BRAIN_TEMPERATURE = 0.7; let BRAIN_MAX_TOKENS = 8192; let STRATEGY_VERSION = '1.0.1';
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
