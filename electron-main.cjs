@@ -1340,6 +1340,62 @@ ipcMain.handle('npm-search-mcp', async (_e, query) => {
     req.end();
   });
 });
+// GitHub repository search
+ipcMain.handle('github-search', async (_e, query, sort) => {
+  if (!query || query.trim().length < 2) return { results: [], total: 0 };
+  return new Promise((resolve) => {
+    const q = encodeURIComponent(query.trim());
+    const sortBy = sort || 'stars';
+    const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'IMI-GitHub-Hub/1.0' };
+    if (GITHUB_TOKEN) headers['Authorization'] = `token ${GITHUB_TOKEN}`;
+    const req = net.request({
+      method: 'GET', protocol: 'https:', hostname: 'api.github.com',
+      path: `/search/repositories?q=${q}&sort=${sortBy}&order=desc&per_page=24`
+    });
+    Object.entries(headers).forEach(([k, v]) => req.setHeader(k, v));
+    let raw = '';
+    req.on('response', res => {
+      res.on('data', d => raw += d.toString());
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          if (data.message) { resolve({ results: [], total: 0, error: data.message }); return; }
+          const results = (data.items || []).map(r => ({
+            id: r.id,
+            name: r.full_name,
+            shortName: r.name,
+            owner: r.owner?.login,
+            ownerAvatar: r.owner?.avatar_url,
+            description: r.description || 'No description.',
+            stars: r.stargazers_count,
+            forks: r.forks_count,
+            language: r.language,
+            topics: r.topics || [],
+            htmlUrl: r.html_url,
+            cloneUrl: r.clone_url,
+            updatedAt: r.updated_at,
+            license: r.license?.spdx_id || null,
+            openIssues: r.open_issues_count,
+          }));
+          resolve({ results, total: data.total_count || results.length });
+        } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
+      });
+    });
+    req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
+    req.end();
+  });
+});
+
+// Clone a GitHub repo to local project folder
+ipcMain.handle('github-clone', async (_e, cloneUrl, folderName) => {
+  try {
+    const dest = path.join(currentProjectRoot, folderName || path.basename(cloneUrl, '.git'));
+    if (fs.existsSync(dest)) return { success: false, error: `Folder "${folderName}" already exists.` };
+    execSync(`git clone ${cloneUrl} "${dest}"`, { cwd: currentProjectRoot, timeout: 60000 });
+    return { success: true, path: dest };
+  } catch(e) { return { success: false, error: e.message }; }
+});
+
 ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
   if (!GEMINI_KEY) return { success: false, error: "API Key missing." };
   try {
