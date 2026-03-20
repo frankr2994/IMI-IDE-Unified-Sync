@@ -166,53 +166,60 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better'];
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
-    const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Request: ";
+    const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Answer concisely. Request: ";
     const url = `generativelanguage.googleapis.com`;
-    const apiPath = `/v1beta/models/gemini-2.0-flash:streamGenerateContent?key=${GEMINI_KEY}`;
+    // Use alt=sse for proper Server-Sent Events streaming format
+    const apiPath = `/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] }));
     let fullText = '';
+    let buffer = '';
     req.on('response', (res) => {
+      if (res.statusCode !== 200) {
+        event.sender.send('command-error', { messageId, error: `API Error: HTTP ${res.statusCode}` });
+        return;
+      }
       res.on('data', (chunk) => {
-        const raw = chunk.toString();
-        if (raw.includes('"error":')) {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line in buffer
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
           try {
-            const err = JSON.parse(raw).error.message;
-            event.sender.send('command-error', { messageId, error: `API Error: ${err}` });
-          } catch(e) {
-            event.sender.send('command-error', { messageId, error: "API Error." });
-          }
-          return;
-        }
-        
-        // Fix brittle parsing: parse real JSON blocks from SSE
-        const textParts = raw.split('"text": "');
-        for (let i = 1; i < textParts.length; i++) {
-          const content = textParts[i].split('"')[0].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-          if (content) { // Removed the bug that omits repeated text
-            fullText += content;
-            event.sender.send('command-chunk', { messageId, chunk: content });
-          }
+            const parsed = JSON.parse(jsonStr);
+            const text = parsed && parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0] && parsed.candidates[0].content.parts[0].text;
+            if (text) {
+              fullText += text;
+              event.sender.send('command-chunk', { messageId, chunk: text });
+            }
+            if (parsed && parsed.error) {
+              event.sender.send('command-error', { messageId, error: `API Error: ${parsed.error.message}` });
+            }
+          } catch(e) { /* incomplete JSON chunk, skip */ }
         }
       });
       res.on('end', () => {
         if (!fullText) {
-           // We might have already sent an error in on('data')
-           if (!tokenStats[director]) { tokenStats[director] = 0; }
+          event.sender.send('command-error', { messageId, error: 'No response from Gemini. Check your API key in System settings.' });
         } else {
-           tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
-           saveGlobalState();
-           event.sender.send('command-end', { messageId, code: 0 });
-           if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
-             event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
-             setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
-           }
+          tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+          saveGlobalState();
+          event.sender.send('command-end', { messageId, code: 0 });
+          if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+            setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+          }
         }
         triggerGitSync();
       });
+    });
+    req.on('error', (err) => {
+      event.sender.send('command-error', { messageId, error: `Network Error: ${err.message}` });
     });
     req.end();
     return;
