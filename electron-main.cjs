@@ -314,7 +314,7 @@ User message: `;
       }
       res.on('data', (chunk) => {
         buffer += chunk.toString();
-        const lines = buffer.split('\\n');
+        const lines = buffer.split('\n');
         buffer = lines.pop(); // keep incomplete
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
