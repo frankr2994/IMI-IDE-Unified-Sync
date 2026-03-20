@@ -238,9 +238,11 @@ User message: `;
     if (isSimpleOpen) {
       // Extract explicit URLs first, then resolve bare site names
       const urls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
+      // Words that are browser/UI names, not website names
+      const skipWords = /^(chrome|crome|chromium|firefox|edge|safari|browser|browsers|internet|a|an|the|my|up|it|new|tab|tabs|some|and|then|next|also|please|now)$/;
       const siteNames = [...cmdL.matchAll(/(?:go to|open|visit|launch|navigate to)\s+([a-z0-9.-]+)/g)]
         .map(m => m[1].trim())
-        .filter(s => !s.match(/^(chrome|browser|a|the|my|up|it)$/))
+        .filter(s => !skipWords.test(s))
         .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
       const allUrls = [...new Set([...urls, ...siteNames])];
       if (allUrls.length > 0) {
