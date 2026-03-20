@@ -447,8 +447,25 @@ Only output the JSON array.`;
     // 🚀 [INTERACTIVE MODE] Spawn Antigravity in a new visible CMD window
     const antigravityPath = await checkCommand('antigravity');
     const bin = antigravityPath || 'antigravity';
-    // Use 'start cmd /k' to open a new window and keep it open
-    fullCmd = `start cmd /k "${bin} chat ${escapedPrompt}"`;
+    
+    // 🛡️ [WINDOWS START FIX] Use empty title quotes to avoid path being treated as title
+    // Correct Syntax: start "" "C:\Path with spaces\bin.cmd" chat "prompt"
+    fullCmd = `start "" "${bin}" chat ${escapedPrompt}`;
+    
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Opening Antigravity Terminal Bridge...` });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+    
+    // Since 'start' returns immediately, we use a timeout to keep the UI 'Active' while the user looks at the new window
+    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
+    
+    setTimeout(() => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is running in a separate CMD window. Proceed with coding there.` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+      triggerGitSync();
+    }, 3000);
+    return;
   } else {
     // Fallback to Gemini-as-Coder
     const binPath = await checkCommand('gemini');
