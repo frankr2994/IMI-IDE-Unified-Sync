@@ -157,6 +157,7 @@ const App = () => {
       setProjectRootInput(config.projectRoot || '');
       if (config.theme) setTheme(config.theme);
       if (config.logRetention) setLogRetention(config.logRetention);
+      if (config.syncFrequency) setSyncFrequency(config.syncFrequency);
     }
   };
 
@@ -206,7 +207,8 @@ const App = () => {
       activeEngine, activeDirector,
       projectRoot: projectRootInput,
       theme,
-      logRetention
+      logRetention,
+      syncFrequency
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -853,10 +855,15 @@ const App = () => {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
                           <div>
                             <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>SYNC FREQUENCY</div>
-                            <select className="chat-input" style={{ height: '40px', fontSize: '0.8rem' }}>
+                            <select 
+                              value={syncFrequency} 
+                              onChange={(e) => { setSyncFrequency(e.target.value); setIsSaving(true); setTimeout(() => saveConfig(), 100); }}
+                              className="chat-input" 
+                              style={{ height: '40px', fontSize: '0.8rem' }}
+                            >
                               <option value="60">Every 60 Seconds</option>
                               <option value="300">Every 5 Minutes</option>
-                              <option value="manual">Manual Only</option>
+                              <option value="600">Every 10 Minutes</option>
                             </select>
                           </div>
                           <div>

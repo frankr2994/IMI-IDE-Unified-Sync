@@ -33,6 +33,8 @@ let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
 let ACTIVE_ENGINE = 'jules';
 let THEME = 'glass';
 let LOG_RETENTION = 15;
+let SYNC_INTERVAL_MS = 60000;
+let syncTimer = null;
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
