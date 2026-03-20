@@ -239,6 +239,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         }
       });
       res.on('end', () => {
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
         const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
         if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== 'gemini') {
@@ -319,6 +321,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         }
       });
       res.on('end', () => {
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
         const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
         if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== director) {
@@ -377,6 +381,8 @@ Only output the JSON array.`;
             modifiedFiles.push(edit.file);
           }
           event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED (IMI CORE) ---\n${modifiedFiles.join('\n')}` });
+          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
+          saveGlobalState();
         } catch(e) {
           event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE Error] Failed to parse internal output: ${e.message}` });
         }
