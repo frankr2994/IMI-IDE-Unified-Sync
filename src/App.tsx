@@ -76,7 +76,8 @@ const App = () => {
     { id: 'ChatGPT', name: 'ChatGPT API', pkg: '@modelcontextprotocol/server-openai', desc: 'OpenAI context bridge', color: 'linear-gradient(135deg, #10a37f 0%, #0cebeb 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-openai'] },
     { id: 'Claude', name: 'Claude API', pkg: '@modelcontextprotocol/server-anthropic-chat', desc: 'Anthropic reasoning layer', color: 'linear-gradient(135deg, #da7756 0%, #f093fb 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-anthropic-chat'] },
     { id: 'Filesystem', name: 'Filesystem', pkg: '@modelcontextprotocol/server-filesystem', desc: 'Local directory monitoring', color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
-    { id: 'Memory', name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent knowledge graph', color: 'linear-gradient(135deg, #9b4dff 0%, #64748b 100%)', command: 'npx', args: ['-y', 'mcp-server-memory'] }
+    { id: 'Memory', name: 'Memory', pkg: 'mcp-server-memory', desc: 'Persistent knowledge graph', color: 'linear-gradient(135deg, #9b4dff 0%, #64748b 100%)', command: 'npx', args: ['-y', 'mcp-server-memory'] },
+    { id: 'Puppeteer Browser', name: 'Puppeteer Browser', pkg: '@modelcontextprotocol/server-puppeteer', desc: 'Chrome control — navigate, screenshot, click, fill & evaluate JS via MCP', color: 'linear-gradient(135deg, #4facfe 0%, #9b4dff 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] }
   ]);
   const [projectRootInput, setProjectRootInput] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -101,6 +102,41 @@ const App = () => {
   const [logRetention, setLogRetention] = useState(15);
   const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
   const [debugMode, setDebugMode] = useState(false);
+  // 🤖 Puppeteer Browser Control state
+  const [puppeteerStatus, setPuppeteerStatus] = useState<'idle'|'launching'|'ready'|'error'>('idle');
+  const [puppeteerUrl, setPuppeteerUrl] = useState('https://google.com');
+  const [puppeteerLog, setPuppeteerLog] = useState<string[]>([]);
+  const [puppeteerSelector, setPuppeteerSelector] = useState('');
+  const [puppeteerScript, setPuppeteerScript] = useState('document.title');
+  const [puppeteerScreenshot, setPuppeteerScreenshot] = useState<string | null>(null);
+
+  const pLog = (msg: string) => setPuppeteerLog(prev => [...prev.slice(-29), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
+  const launchBrowser = async () => {
+    setPuppeteerStatus('launching');
+    pLog('🚀 Launching Puppeteer MCP server...');
+    const result = await (ipc as any).invoke('puppeteer:launch');
+    if (result.success) { setPuppeteerStatus('ready'); pLog('✅ ' + result.message); }
+    else { setPuppeteerStatus('error'); pLog('❌ ' + result.error); }
+  };
+
+  const puppeteerAction = async (action: string, params: any) => {
+    pLog(`⚡ ${action}: ${JSON.stringify(params)}`);
+    const result = await (ipc as any).invoke('puppeteer:action', { action, params });
+    if (result.success) {
+      pLog(`✅ Done.`);
+      if (action === 'screenshot' && result.data && result.data.content) {
+        const imgContent = result.data.content?.find((c: any) => c.type === 'image');
+        if (imgContent) setPuppeteerScreenshot(`data:image/png;base64,${imgContent.data}`);
+      }
+    } else { pLog('❌ ' + result.error); }
+  };
+
+  const stopBrowser = async () => {
+    await (ipc as any).invoke('puppeteer:stop');
+    setPuppeteerStatus('idle');
+    pLog('🛑 Browser stopped.');
+  };
   const [snapshotFrequency, setSnapshotFrequency] = useState(5);
   const [brainTemperature, setBrainTemperature] = useState(0.7);
   const [brainMaxTokens, setBrainMaxTokens] = useState(2048);
@@ -865,6 +901,94 @@ const App = () => {
                     )}
                   </div>
                 </div>
+
+                {/* 🤖 PUPPETEER BROWSER CONTROL */}
+                <div style={{ marginTop: '40px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.15em', marginBottom: '6px' }}>🤖 PUPPETEER BROWSER CONTROL</div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Control Chrome via Gemini CLI · Navigate, click, fill, screenshot and evaluate JS</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, padding: '6px 14px', borderRadius: '20px', background:
+                        puppeteerStatus === 'ready' ? 'rgba(0,255,136,0.1)' :
+                        puppeteerStatus === 'launching' ? 'rgba(79,172,254,0.1)' :
+                        puppeteerStatus === 'error' ? 'rgba(255,65,108,0.1)' : 'rgba(255,255,255,0.05)',
+                        color:
+                        puppeteerStatus === 'ready' ? '#00ff88' :
+                        puppeteerStatus === 'launching' ? '#4facfe' :
+                        puppeteerStatus === 'error' ? '#ff416c' : 'var(--text-dim)',
+                        border: '1px solid currentColor'
+                      }}>
+                        {puppeteerStatus === 'idle' && '○ OFFLINE'}
+                        {puppeteerStatus === 'launching' && '⟳ LAUNCHING...'}
+                        {puppeteerStatus === 'ready' && '● BROWSER LIVE'}
+                        {puppeteerStatus === 'error' && '✗ ERROR'}
+                      </div>
+                      {puppeteerStatus === 'idle' || puppeteerStatus === 'error' ? (
+                        <button onClick={launchBrowser} className="btn-premium" style={{ height: '35px', padding: '0 18px', fontSize: '0.7rem', borderRadius: '8px' }}>🚀 LAUNCH</button>
+                      ) : puppeteerStatus === 'ready' ? (
+                        <button onClick={stopBrowser} style={{ height: '35px', padding: '0 18px', fontSize: '0.7rem', borderRadius: '8px', background: 'rgba(255,65,108,0.15)', border: '1px solid #ff416c', color: '#ff416c', cursor: 'pointer', fontWeight: 800 }}>■ STOP</button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px' }}>
+                    {/* Controls */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {/* Navigate */}
+                      <div className="glass-card" style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.1em', marginBottom: '10px' }}>NAVIGATE</div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <input value={puppeteerUrl} onChange={e => setPuppeteerUrl(e.target.value)} placeholder="https://..." className="chat-input" style={{ flex: 1, height: '38px', fontSize: '0.8rem' }} />
+                          <button onClick={() => puppeteerAction('navigate', { url: puppeteerUrl })} disabled={puppeteerStatus !== 'ready'} className="btn-chat-send" style={{ width: '80px', height: '38px', fontSize: '0.7rem', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>GO</button>
+                        </div>
+                      </div>
+                      {/* Click / Hover */}
+                      <div className="glass-card" style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.1em', marginBottom: '10px' }}>CLICK / FILL / HOVER — CSS Selector</div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <input value={puppeteerSelector} onChange={e => setPuppeteerSelector(e.target.value)} placeholder="button, input#id, .class" className="chat-input" style={{ flex: 1, minWidth: '180px', height: '38px', fontSize: '0.8rem' }} />
+                          <button onClick={() => puppeteerAction('click', { selector: puppeteerSelector })} disabled={puppeteerStatus !== 'ready' || !puppeteerSelector} className="btn-premium" style={{ height: '38px', padding: '0 14px', fontSize: '0.65rem', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>CLICK</button>
+                          <button onClick={() => puppeteerAction('hover', { selector: puppeteerSelector })} disabled={puppeteerStatus !== 'ready' || !puppeteerSelector} className="btn-premium" style={{ height: '38px', padding: '0 14px', fontSize: '0.65rem', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>HOVER</button>
+                          <button onClick={() => { const val = prompt('Fill value:'); if(val !== null) puppeteerAction('fill', { selector: puppeteerSelector, value: val }); }} disabled={puppeteerStatus !== 'ready' || !puppeteerSelector} className="btn-premium" style={{ height: '38px', padding: '0 14px', fontSize: '0.65rem', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>FILL</button>
+                        </div>
+                      </div>
+                      {/* Screenshot + Evaluate */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                        <div className="glass-card" style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.1em', marginBottom: '10px' }}>SCREENSHOT</div>
+                          <button onClick={() => puppeteerAction('screenshot', { name: 'imi-ss' })} disabled={puppeteerStatus !== 'ready'} className="btn-premium" style={{ width: '100%', height: '38px', fontSize: '0.7rem', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>📸 CAPTURE</button>
+                        </div>
+                        <div className="glass-card" style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.1em', marginBottom: '10px' }}>EVALUATE JS</div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input value={puppeteerScript} onChange={e => setPuppeteerScript(e.target.value)} placeholder="document.title" className="chat-input" style={{ flex: 1, height: '38px', fontSize: '0.75rem' }} />
+                            <button onClick={() => puppeteerAction('evaluate', { script: puppeteerScript })} disabled={puppeteerStatus !== 'ready'} className="btn-chat-send" style={{ width: '50px', height: '38px', opacity: puppeteerStatus !== 'ready' ? 0.4 : 1 }}>▶</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Log + Screenshot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div className="glass-card" style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: '10px' }}>BROWSER LOG</div>
+                        <div style={{ flex: 1, overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.65rem', lineHeight: '1.6', color: 'rgba(255,255,255,0.7)' }}>
+                          {puppeteerLog.length === 0 && <div style={{ opacity: 0.3, marginTop: '20px', textAlign: 'center' }}>No activity yet.</div>}
+                          {puppeteerLog.map((l, i) => <div key={i} style={{ color: l.includes('❌') ? '#ff416c' : l.includes('✅') ? '#00ff88' : l.includes('🚀') ? '#4facfe' : 'rgba(255,255,255,0.65)' }}>{l}</div>)}
+                        </div>
+                      </div>
+                      {puppeteerScreenshot && (
+                        <div className="glass-card" style={{ padding: '1rem' }}>
+                          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: '10px' }}>LAST SCREENSHOT</div>
+                          <img src={puppeteerScreenshot} alt="Browser screenshot" style={{ width: '100%', borderRadius: '8px', display: 'block' }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
             </motion.div>
           )}
 
