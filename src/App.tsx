@@ -423,7 +423,10 @@ const App = () => {
                         <Zap size={18} color="#4facfe" />
                         <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>STRATEGY ENGINE</span>
                       </div>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe' }}>{tokenUsage[activeDirector] || 0} TOKENS USED</div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#4facfe' }}>{(tokenUsage[activeDirector] || 0).toLocaleString()} TOKENS USED</div>
+                        <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED DAILY QUOTA</div>
+                      </div>
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeDirector.toUpperCase()} ACTIVE</div>
                  </div>
@@ -433,7 +436,10 @@ const App = () => {
                         <Cpu size={18} color="#00ff88" />
                         <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>EXECUTION NODE</span>
                       </div>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88' }}>{tokenUsage[activeEngine] || 0} TOKENS USED</div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#00ff88' }}>{(tokenUsage[activeEngine] || 0).toLocaleString()} TOKENS USED</div>
+                        <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED DAILY QUOTA</div>
+                      </div>
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeEngine.toUpperCase()} CORE</div>
                  </div>
