@@ -337,7 +337,10 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.syncFrequency !== undefined) {
     SYNC_INTERVAL_MS = parseInt(config.syncFrequency) * 1000;
     if (syncTimer) clearInterval(syncTimer);
-    syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
+    // Only start timer if GitHub token is configured
+    if (GITHUB_TOKEN && GITHUB_TOKEN.trim()) {
+      syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
+    }
   }
   if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
   saveGlobalState(); return { success: true };
@@ -439,6 +442,8 @@ const getMCPEnv = () => {
 };
 
 async function triggerGitSync() {
+  // Only auto-sync if the user has configured a GitHub token — never run silently without it
+  if (!GITHUB_TOKEN || !GITHUB_TOKEN.trim()) return;
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
   if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
@@ -1284,7 +1289,7 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; app.quit(); });
 }
 
-app.whenReady().then(() => { 
+app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (permission === 'media') {
       callback(true);
@@ -1292,8 +1297,11 @@ app.whenReady().then(() => {
       callback(false);
     }
   });
-  createWindow(); 
-  syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); 
+  createWindow();
+  // Only start auto-sync timer if GitHub token is already saved — user must opt in
+  if (GITHUB_TOKEN && GITHUB_TOKEN.trim()) {
+    syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
+  }
 });
 app.on('window-all-closed', () => { app.quit(); });
 app.on('before-quit', () => { process.exit(0); });
