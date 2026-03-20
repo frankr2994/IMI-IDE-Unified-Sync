@@ -1,0 +1,193 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop_shadow(0 0 2em #61dafbaa);
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Basic layout for Electron app */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent scrollbars on main window */
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #282c34;
+  color: #f0f0f0;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #20232a;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid #3a3f47;
+}
+
+.logo-section {
+  margin-bottom: 30px;
+  display: flex;
+  gap: 10px;
+}
+
+.logo-section .logo {
+  height: 4em;
+  padding: 0.5em;
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tabs button {
+  background-color: transparent;
+  border: none;
+  color: #f0f0f0;
+  padding: 15px 20px;
+  text-align: left;
+  font-size: 1em;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  transition: background-color 0.2s ease;
+}
+
+.tabs button:hover {
+  background-color: #3a3f47;
+}
+
+.tabs button.active {
+  background-color: #007bff;
+  font-weight: bold;
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto; /* Allow scrolling within main content */
+}
+
+.tab-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #333740;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+h1, h2 {
+  color: #61dafb;
+}
+
+p {
+  color: #ccc;
+}
+
+code {
+  background-color: #444;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* Specific styles for Command Center */
+.command-center-content {
+  text-align: left;
+}
+
+/* src/App.css (or relevant global stylesheet) */
+
+.brain-strategy-output {
+  border: 1px solid #4CAF50; /* Green border for positive AI suggestion */
+  background-color: #e8f5e9; /* Light green background */
+  padding: 20px;
+  margin-top: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+}
+
+.brain-strategy-output h3 {
+  color: #2e7d32; /* Darker green for heading */
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.5em;
+  border-bottom: 1px solid #a5d6a7;
+  padding-bottom: 10px;
+}
+
+.brain-strategy-output h4 {
+  color: #388e3c;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.brain-strategy-output p {
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.brain-strategy-output .code-block {
+  background-color: #f0f0f0;
+  color: #333;
+  padding: 15px;
+  border-radius: 6px;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  white-space: pre-wrap; /* Ensure long lines wrap */
+  word-break: break-all;
+  overflow-x: auto; /* For very long single lines */
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+}
+
+.brain-strategy-output strong {
+  color: #1b5e20; /* Even darker green for emphasis */
+}
+
+/* Optional: Basic styling for the mock button */
+.command-center-content button {
+  padding: 10px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.command-center-content button:hover {
+  background-color: #0056b3;
+}
