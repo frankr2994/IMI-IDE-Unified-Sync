@@ -58,6 +58,7 @@ const saveGlobalState = () => {
       activeEngine: ACTIVE_ENGINE, 
       theme: THEME,
       logRetention: LOG_RETENTION,
+      syncFrequency: SYNC_INTERVAL_MS / 1000,
       mcpServersList, 
       projectRoot: currentProjectRoot 
     };
@@ -84,6 +85,7 @@ try {
       ACTIVE_ENGINE = state.config.activeEngine || 'jules';
       THEME = state.config.theme || 'glass';
       LOG_RETENTION = state.config.logRetention || 15;
+      if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
       mcpServersList = state.config.mcpServersList || [];
       if (state.config.projectRoot && fs.existsSync(state.config.projectRoot)) currentProjectRoot = state.config.projectRoot;
     }
