@@ -25,7 +25,8 @@ import {
   Key,
   Palette,
   Clock,
-  History
+  History,
+  Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -65,6 +66,7 @@ const App = () => {
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
   const [mcpSearch, setMcpSearch] = useState('');
   const [availableMCPs] = useState([
     { id: 'Jules', name: 'Jules Agent', pkg: '@amitdeshmukh/google-jules-mcp', desc: 'Recycling implementation engine', color: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', command: 'npx', args: ['-y', '@amitdeshmukh/google-jules-mcp'] },
@@ -238,6 +240,34 @@ const App = () => {
     } else {
       alert('Link Failed: ' + result.error);
     }
+  };
+
+  const handleMicClick = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Voice input is not supported in this environment yet.");
+      return;
+    }
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRec();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (e: any) => {
+      let finalTranscript = '';
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+         setChatInput(prev => prev ? `${prev} ${finalTranscript}` : finalTranscript);
+      }
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    
+    recognition.start();
   };
 
   const handleSendMessage = async () => {
@@ -616,6 +646,9 @@ const App = () => {
                         </div>
 
                         <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} />
+                        <div onClick={handleMicClick} style={{ cursor: 'pointer', padding: '0 10px', display: 'flex', alignItems: 'center', opacity: isListening ? 1 : 0.6, color: isListening ? '#ff416c' : '#ffffff' }}>
+                           <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
+                        </div>
                       </div>
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
                     </form>
