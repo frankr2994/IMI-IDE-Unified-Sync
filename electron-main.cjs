@@ -273,6 +273,7 @@ User message: `;
   const child = spawn(`"${binPath}"`, ['chat', shellEscape(command)], { cwd: currentProjectRoot, shell: true, env: { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY } });
   let output = '';
   child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
+  child.stderr.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: `\n[CLI Error] ${d.toString()}` }); });
   child.on('close', (code) => { event.sender.send('command-end', { messageId, code }); triggerGitSync(); });
 });
 
