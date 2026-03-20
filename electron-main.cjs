@@ -211,28 +211,31 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
                    "Output a clear section named 'TECHNICAL SPECIFICATION' with the exact code logic, file paths, and changes required. " +
                    "DO NOT discuss or plan. Your output must be interpretable by any autonomous coding agent. End with 'BLUEPRINT_LOCKED'. ";
     
-    // Move Gemini Brain to direct API to stop the overthinking loop
-    if (director === 'gemini') {
+    // 🛡️ [SMART CONTEXT RECOGNITION]
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'code', 'write', 'modify'];
+    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    
+    // Only use the heavy Architect prefix if it's a coding task
+    const activePrefix = isCodingAction ? prefix : "You are Gemini, a helpful AI assistant. Answer the following request clearly: ";
+    
     const url = `generativelanguage.googleapis.com`;
     const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
     
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: prefix + command }] }] });
+    const body = JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] });
 
     let fullText = '';
+    let buffer = '';
     req.on('response', (res) => {
       res.on('data', (chunk) => {
-        const raw = chunk.toString();
-        // 🛡️ BRUTE-FORCE PARSER: Extract everything inside the 'text' fields
-        const textParts = raw.split('"text": "');
-        for (let i = 1; i < textParts.length; i++) {
-          const content = textParts[i].split('"')[0]
-            .replace(/\\n/g, '\n')
-            .replace(/\\"/g, '"')
-            .replace(/\\t/g, '\t');
-          
-          if (content && !fullText.includes(content)) { // Basic check
+        buffer += chunk.toString();
+        // 🛡️ Robust Regex Parser: Extract all text candidates from the streaming buffer
+        const regex = /"text":\s*"([^"]+)"/g;
+        let match;
+        while ((match = regex.exec(buffer)) !== null) {
+          const content = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\t/g, '\t');
+          if (!fullText.includes(content)) {
             fullText += content;
             event.sender.send('command-chunk', { messageId, chunk: content });
           }
