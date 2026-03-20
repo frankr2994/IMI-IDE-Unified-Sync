@@ -301,14 +301,11 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       
       event.sender.send('command-end', { messageId, code });
       
-      // 🛡️ [INTELLIGENCE FILTER] Only hand off if it's a legitimate coding/file task
+      // 🛡️ [INTELLIGENCE FILTER] Simplified: If it mentions code/file/story/add, hand off.
       const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'code', 'write', 'modify', 'setup'];
-      const casualKeywords = ['weather', 'who are you', 'hello', 'hi', 'joke', 'time', 'search', 'what is', 'how to'];
-      
       const isCodingAction = codingKeywords.some(word => command.toLowerCase().includes(word));
-      const isCasualChat = casualKeywords.some(word => command.toLowerCase().includes(word)) && !isCodingAction;
 
-      if (isCodingAction && !isCasualChat && payload.engine && payload.engine !== director) {
+      if (isCodingAction && payload.engine && payload.engine !== director) {
         event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
         setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
       }
