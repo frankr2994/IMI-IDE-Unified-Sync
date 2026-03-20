@@ -1453,6 +1453,44 @@ ipcMain.handle('ollama-delete', async (_e, modelName) => {
   catch(e) { return { success: false, error: e.message }; }
 });
 
+// HuggingFace model search — Ollama can pull any GGUF model from HF
+ipcMain.handle('hf-search-models', async (_e, query) => {
+  if (!query || query.trim().length < 1) return { results: [], total: 0 };
+  return new Promise((resolve) => {
+    const q = encodeURIComponent(query.trim());
+    const req = net.request({
+      method: 'GET', protocol: 'https:', hostname: 'huggingface.co',
+      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=24&full=false`
+    });
+    req.setHeader('Accept', 'application/json');
+    req.setHeader('User-Agent', 'IMI-DevHub/1.0');
+    let raw = '';
+    req.on('response', res => {
+      res.on('data', d => raw += d.toString());
+      res.on('end', () => {
+        try {
+          const models = JSON.parse(raw);
+          const results = (Array.isArray(models) ? models : []).map(m => ({
+            id: m.modelId || m.id,
+            name: m.modelId || m.id,
+            author: (m.modelId || m.id || '').split('/')[0],
+            downloads: m.downloads || 0,
+            likes: m.likes || 0,
+            tags: m.tags || [],
+            pipeline: m.pipeline_tag || 'text-generation',
+            updatedAt: m.lastModified || m.createdAt,
+            hfUrl: `https://huggingface.co/${m.modelId || m.id}`,
+            ollamaCmd: `hf.co/${m.modelId || m.id}`,
+          }));
+          resolve({ results, total: results.length });
+        } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
+      });
+    });
+    req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
+    req.end();
+  });
+});
+
 ipcMain.handle('ollama-running', async () => {
   try {
     const raw = execSync('ollama ps', { timeout: 4000 }).toString().trim();
