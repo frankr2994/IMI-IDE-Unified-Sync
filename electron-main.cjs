@@ -166,7 +166,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Request: ";
     const url = `generativelanguage.googleapis.com`;
@@ -178,22 +178,38 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     req.on('response', (res) => {
       res.on('data', (chunk) => {
         const raw = chunk.toString();
+        if (raw.includes('"error":')) {
+          try {
+            const err = JSON.parse(raw).error.message;
+            event.sender.send('command-error', { messageId, error: `API Error: ${err}` });
+          } catch(e) {
+            event.sender.send('command-error', { messageId, error: "API Error." });
+          }
+          return;
+        }
+        
+        // Fix brittle parsing: parse real JSON blocks from SSE
         const textParts = raw.split('"text": "');
         for (let i = 1; i < textParts.length; i++) {
           const content = textParts[i].split('"')[0].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-          if (content && !fullText.includes(content)) {
+          if (content) { // Removed the bug that omits repeated text
             fullText += content;
             event.sender.send('command-chunk', { messageId, chunk: content });
           }
         }
       });
       res.on('end', () => {
-        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
-        saveGlobalState();
-        event.sender.send('command-end', { messageId, code: 0 });
-        if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
-          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+        if (!fullText) {
+           // We might have already sent an error in on('data')
+           if (!tokenStats[director]) { tokenStats[director] = 0; }
+        } else {
+           tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+           saveGlobalState();
+           event.sender.send('command-end', { messageId, code: 0 });
+           if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
+             event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+             setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+           }
         }
         triggerGitSync();
       });
