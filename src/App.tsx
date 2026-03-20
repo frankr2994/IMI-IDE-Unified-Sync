@@ -1436,6 +1436,7 @@ const App = () => {
 
           {activeTab === 'skills' && (
             <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Header */}
               <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>⚡ SKILL ENGINE</div>
@@ -1461,61 +1462,143 @@ const App = () => {
               </div>
 
               {/* Efficiency bar */}
-              <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                   <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>Token Efficiency Progress</span>
                   <span style={{ fontSize: '0.6rem', color: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)' }}>{skillEfficiency}% / 90% goal</span>
                 </div>
-                <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? 'linear-gradient(90deg,#00ff88,#4facfe)' : 'linear-gradient(90deg,var(--primary),#4facfe)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
                 </div>
               </div>
 
-              {/* Skills list */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: '12px' }}>SKILL LIBRARY</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {skills.map(skill => (
-                    <div key={skill.id} style={{ background: skill.active ? 'rgba(155,77,255,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${skill.active ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '10px', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 900, color: skill.active ? 'white' : 'var(--text-dim)' }}>{skill.name}</span>
-                          {skill.autoCreated && <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '4px', color: '#00ff88' }}>AUTO</span>}
-                          <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{skill.type}</span>
-                        </div>
-                        <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '6px' }}>{skill.desc}</div>
-                        <div style={{ display: 'flex', gap: '15px' }}>
-                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Uses: <b style={{ color: 'white' }}>{skill.uses}</b></span>
-                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Saved: <b style={{ color: '#9b4dff' }}>{skill.tokensSaved?.toLocaleString()} tkns</b></span>
-                          <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Score: <b style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</b></span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                        <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: skill.active ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer' }}>{skill.active ? 'ON' : 'OFF'}</button>
-                        {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (
-                          <button onClick={async () => { if (confirm(`Remove skill "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Sub-tab switcher */}
+              <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.15)' }}>
+                {[
+                  { id: 'mine' as const, label: '⚡ MY SKILLS', count: skills.length },
+                  { id: 'library' as const, label: '📚 SKILL LIBRARY', count: SKILL_LIBRARY.length },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setSkillsSubTab(tab.id)} style={{ flex: 1, padding: '12px 16px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {tab.label} <span style={{ opacity: 0.5, marginLeft: '4px' }}>{tab.count}</span>
+                  </button>
+                ))}
+              </div>
 
-                {/* Add custom skill */}
-                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.15)', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '12px' }}>+ CREATE CUSTOM SKILL</div>
+              {/* MY SKILLS tab */}
+              {skillsSubTab === 'mine' && (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input value={newSkillName} onChange={e => setNewSkillName(e.target.value)} placeholder="Skill name (e.g. Open Spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
-                    <input value={newSkillPattern} onChange={e => setNewSkillPattern(e.target.value)} placeholder="Trigger pattern (e.g. open spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
-                    <input value={newSkillResponse} onChange={e => setNewSkillResponse(e.target.value)} placeholder="Cached response (leave blank for passthrough)" className="chat-input" style={{ fontSize: '0.75rem' }} />
-                    <button onClick={async () => {
-                      if (!newSkillName || !newSkillPattern) return;
-                      await (ipc as any).invoke('skills-add', { name: newSkillName, pattern: newSkillPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), type: newSkillResponse ? 'cached' : 'passthrough', cachedResponse: newSkillResponse || null, desc: 'Custom user skill' });
-                      setNewSkillName(''); setNewSkillPattern(''); setNewSkillResponse('');
-                      fetchStats();
-                    }} className="btn-premium" style={{ padding: '8px 20px', fontSize: '0.65rem' }}>ADD SKILL</button>
+                    {skills.map(skill => (
+                      <div key={skill.id} style={{ background: skill.active ? 'rgba(155,77,255,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${skill.active ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '10px', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: skill.active ? 'white' : 'var(--text-dim)' }}>{skill.name}</span>
+                            {skill.autoCreated && <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '4px', color: '#00ff88' }}>AUTO</span>}
+                            <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{skill.type}</span>
+                          </div>
+                          <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '6px' }}>{skill.desc}</div>
+                          <div style={{ display: 'flex', gap: '15px' }}>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Uses: <b style={{ color: 'white' }}>{skill.uses}</b></span>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Saved: <b style={{ color: '#9b4dff' }}>{skill.tokensSaved?.toLocaleString()} tkns</b></span>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Score: <b style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</b></span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                          <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: skill.active ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer' }}>{skill.active ? 'ON' : 'OFF'}</button>
+                          {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (
+                            <button onClick={async () => { if (confirm(`Remove skill "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add custom skill */}
+                  <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.15)', borderRadius: '10px' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '12px' }}>+ CREATE CUSTOM SKILL</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <input value={newSkillName} onChange={e => setNewSkillName(e.target.value)} placeholder="Skill name (e.g. Open Spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                      <input value={newSkillPattern} onChange={e => setNewSkillPattern(e.target.value)} placeholder="Trigger pattern (e.g. open spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                      <input value={newSkillResponse} onChange={e => setNewSkillResponse(e.target.value)} placeholder="Cached response (leave blank for passthrough)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                      <button onClick={async () => {
+                        if (!newSkillName || !newSkillPattern) return;
+                        await (ipc as any).invoke('skills-add', { name: newSkillName, pattern: newSkillPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), type: newSkillResponse ? 'cached' : 'passthrough', cachedResponse: newSkillResponse || null, desc: 'Custom user skill' });
+                        setNewSkillName(''); setNewSkillPattern(''); setNewSkillResponse('');
+                        fetchStats();
+                      }} className="btn-premium" style={{ padding: '8px 20px', fontSize: '0.65rem' }}>ADD SKILL</button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* SKILL LIBRARY tab */}
+              {skillsSubTab === 'library' && (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
+                  {/* Search bar */}
+                  <div style={{ position: 'relative', marginBottom: '16px' }}>
+                    <Search size={13} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
+                    <input
+                      value={skillLibSearch}
+                      onChange={e => setSkillLibSearch(e.target.value)}
+                      placeholder="Search skills... (e.g. spotify, git, youtube)"
+                      className="chat-input"
+                      style={{ paddingLeft: '34px', fontSize: '0.75rem', width: '100%' }}
+                    />
+                    {skillLibSearch && (
+                      <button onClick={() => setSkillLibSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '2px' }}>✕</button>
+                    )}
+                  </div>
+
+                  {/* Group by category */}
+                  {(() => {
+                    const filtered = SKILL_LIBRARY.filter(s =>
+                      !skillLibSearch.trim() ||
+                      s.name.toLowerCase().includes(skillLibSearch.toLowerCase()) ||
+                      s.desc.toLowerCase().includes(skillLibSearch.toLowerCase()) ||
+                      s.pattern.toLowerCase().includes(skillLibSearch.toLowerCase()) ||
+                      s.category.toLowerCase().includes(skillLibSearch.toLowerCase())
+                    );
+                    const categories = [...new Set(filtered.map(s => s.category))];
+                    if (filtered.length === 0) return (
+                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                        No skills match "{skillLibSearch}"
+                      </div>
+                    );
+                    return categories.map(cat => (
+                      <div key={cat} style={{ marginBottom: '20px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--glass-border)' }}>{cat}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+                          {filtered.filter(s => s.category === cat).map(skill => {
+                            const installed = installedSkillIds.has(skill.id);
+                            return (
+                              <div key={skill.id} style={{ background: installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>{skill.icon}</span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '0.68rem', fontWeight: 900, color: 'white', marginBottom: '3px' }}>{skill.name}</div>
+                                    <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>{skill.desc}</div>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                  <code style={{ fontSize: '0.55rem', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: '4px', color: '#4facfe', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{skill.pattern}"</code>
+                                  {installed ? (
+                                    <span style={{ fontSize: '0.55rem', padding: '3px 10px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '6px', color: '#00ff88', whiteSpace: 'nowrap', flexShrink: 0 }}>✓ Added</span>
+                                  ) : (
+                                    <button onClick={async () => {
+                                      await (ipc as any).invoke('skills-add', { id: skill.id, name: skill.name, pattern: skill.pattern, type: skill.response ? 'cached' : 'passthrough', cachedResponse: skill.response || null, desc: skill.desc });
+                                      fetchStats();
+                                    }} style={{ fontSize: '0.55rem', padding: '3px 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 900 }}>+ Add</button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
             </motion.div>
           )}
 
