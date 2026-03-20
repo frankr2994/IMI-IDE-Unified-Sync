@@ -356,10 +356,20 @@ User message: `;
   delete safeEnv.ELECTRON_RUN_AS_NODE;
   
   const argsString = director === 'geminicli' ? `-p ${shellEscape(command)}` : `chat ${shellEscape(command)}`;
+  // Strip ANSI/VT100 escape codes that Gemini CLI emits for its spinner/colours
+  const stripAnsi = (str) => str.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
   const child = spawn(`"${binPath}" ${argsString}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
   let output = '';
-  child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
-  child.stderr.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: `\n[CLI Error] ${d.toString()}` }); });
+  child.stdout.on('data', (d) => {
+    const clean = stripAnsi(d.toString());
+    if (!clean.trim()) return; // skip blank / spinner-only frames
+    output += clean;
+    event.sender.send('command-chunk', { messageId, chunk: clean });
+  });
+  child.stderr.on('data', (d) => {
+    const clean = stripAnsi(d.toString());
+    if (clean.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n[CLI] ${clean}` });
+  });
   child.on('close', (code) => { event.sender.send('command-end', { messageId, code }); triggerGitSync(); });
 });
 
