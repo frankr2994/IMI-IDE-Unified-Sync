@@ -67,6 +67,7 @@ const App = () => {
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
   const [availableMCPs] = useState([
     { id: 'Jules', name: 'Jules Agent', pkg: '@amitdeshmukh/google-jules-mcp', desc: 'Recycling implementation engine', color: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', command: 'npx', args: ['-y', '@amitdeshmukh/google-jules-mcp'] },
@@ -242,32 +243,52 @@ const App = () => {
     }
   };
 
-  const handleMicClick = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Voice input is not supported in this environment yet.");
+  const handleMicClick = async () => {
+    if (isListening && mediaRecorder) {
+      mediaRecorder.stop();
+      setIsListening(false);
+      setMediaRecorder(null);
       return;
     }
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRec();
-    recognition.continuous = false;
-    recognition.interimResults = true;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (e: any) => {
-      let finalTranscript = '';
-      for (let i = e.resultIndex; i < e.results.length; ++i) {
-        if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
-        }
-      }
-      if (finalTranscript) {
-         setChatInput(prev => prev ? `${prev} ${finalTranscript}` : finalTranscript);
-      }
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-    
-    recognition.start();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const audioChunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        setIsListening(false);
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = (reader.result as string).split(',')[1];
+          setChatInput(prev => (prev ? prev + ' ' : '') + '[Transcribing...]');
+          try {
+            const result = await (ipc as any).invoke('transcribe-audio', base64Audio);
+            setChatInput(prev => prev.replace('[Transcribing...]', '').trim() + (result.success ? ' ' + result.text : ''));
+            if (!result.success) alert('Transcription error: ' + result.error);
+          } catch(e) {
+            setChatInput(prev => prev.replace('[Transcribing...]', '').trim());
+            alert('Audio transcription failed.');
+          }
+        };
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsListening(true);
+    } catch (e) {
+      console.error('Mic error:', e);
+      alert('Could not access microphone. Check your permissions.');
+      setIsListening(false);
+    }
   };
 
   const handleSendMessage = async () => {

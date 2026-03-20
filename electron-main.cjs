@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, net, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, net, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -437,7 +437,17 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; app.quit(); });
 }
 
-app.whenReady().then(() => { createWindow(); syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); });
+app.whenReady().then(() => { 
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
+  createWindow(); 
+  syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); 
+});
 app.on('window-all-closed', () => { app.quit(); });
 app.on('before-quit', () => { process.exit(0); });
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
