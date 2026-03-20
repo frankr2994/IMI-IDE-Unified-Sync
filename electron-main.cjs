@@ -252,8 +252,8 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
     event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Antigravity via Pipe...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    // Using the PIPE method for background interaction
-    const finalCmd = `echo ${shellEscape(prompt)} | "${binAg}" chat -`;
+    // Using the PIPE method with --yolo for full autonomous background action
+    const finalCmd = `echo ${shellEscape(prompt)} | "${binAg}" chat --yolo -`;
     exec(finalCmd, { cwd: currentProjectRoot }, (err, stdout) => {
       if (!err) event.sender.send('command-chunk', { messageId, chunk: stdout || "\n[Antigravity] Process started in background." });
       event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
