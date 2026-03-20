@@ -582,8 +582,8 @@ const App = () => {
                         <div style={{ position: 'relative' }}>
                           <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', height: '40px', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.1em', textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CODER</div>
-                            {activeEngine === 'jules' ? <Layers size={12} /> : <Cpu size={12} />}
-                            <span style={{ flex: 1 }}>{activeEngine === 'jules' ? 'JULES' : 'IMI CORE'}</span>
+                            {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
+                            <span style={{ flex: 1 }}>{activeEngine.toUpperCase()}</span>
                             <ChevronRight size={12} style={{ transform: isCoderDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
                           </div>
                           <AnimatePresence>
