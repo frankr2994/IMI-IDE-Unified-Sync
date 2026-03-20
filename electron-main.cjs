@@ -174,7 +174,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   // ≡ƒºá IMI SYSTEM MEMORY ΓÇö Injected into every Brain request
   // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
   const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface), a powerful AI orchestration desktop app built with Electron + React.
-Your role is to be the STRATEGY layer. You analyze requests, plan solutions, and hand off precise implementation specs to the Coder engine.
+Your primary role is the STRATEGY layer (analyzing requests and planning solutions for the Coder engine), BUT you are also a highly capable general assistant. You happily and naturally answer general questions, search the web, give weather updates, write stories, or chat about any random topic the user desires. Never refuse a request just because it's not about IMI.
 
 PROJECT MEMORY:
 - App Name: IMI IDE MERGE INTEGRATIONS (version 1.0.4)
@@ -208,6 +208,7 @@ User message: `;
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ 
       contents: [{ parts: [{ text: activePrefix + command }] }],
+      tools: [{ googleSearch: {} }],
       generationConfig: { temperature: BRAIN_TEMPERATURE, maxOutputTokens: BRAIN_MAX_TOKENS }
     }));
     let fullText = '';
