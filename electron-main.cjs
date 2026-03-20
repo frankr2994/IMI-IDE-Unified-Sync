@@ -249,15 +249,29 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
+    // 🚀 [PURE STREAM HAND-OFF] The most professional and reliable background bridge
     const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Antigravity via Pipe...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Antigravity Stream...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    // Using the PIPE method with --yolo for full autonomous background action
-    const finalCmd = `echo ${shellEscape(prompt)} | "${binAg}" chat --yolo -`;
-    exec(finalCmd, { cwd: currentProjectRoot }, (err, stdout) => {
-      if (!err) event.sender.send('command-chunk', { messageId, chunk: stdout || "\n[Antigravity] Process started in background." });
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
-      event.sender.send('command-end', { messageId, code: 0 });
+    
+    // Spawn Antigravity with the '-' flag to listen to stdin
+    const child = spawn(binAg, ['chat', '--yolo', '-'], {
+      cwd: currentProjectRoot,
+      env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY },
+      shell: true
+    });
+
+    // Directly write the prompt to the process input
+    child.stdin.write(prompt + '\n');
+    child.stdin.end();
+
+    child.stdout.on('data', (d) => {
+      event.sender.send('command-chunk', { messageId, chunk: d.toString() });
+    });
+
+    child.on('close', (code) => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY STREAM FINISHED ---` });
+      event.sender.send('command-end', { messageId, code });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
     });
