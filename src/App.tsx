@@ -208,7 +208,7 @@ const App = () => {
     }
   };
 
-  const saveConfig = async () => {
+  const saveConfig = async (overrides: any = {}) => {
     setIsSaving(true);
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
@@ -221,7 +221,8 @@ const App = () => {
       brainTemperature,
       brainMaxTokens,
       brainModel,
-      strategyVersion
+      strategyVersion,
+      ...overrides
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -636,7 +637,7 @@ const App = () => {
                                   { id: 'perplexity', name: 'PERPLEXITY', icon: <Search size={12} /> },
                                   { id: 'deepseek', name: 'DEEPSEEK', icon: <Terminal size={12} /> }
                                 ].map(opt => (
-                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>
+                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain Engine set to ${opt.name}`); saveConfig({ activeDirector: opt.id }); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>
                                     {opt.icon}
                                     {opt.name}
                                   </div>
@@ -657,9 +658,9 @@ const App = () => {
                           <AnimatePresence>
                             {isCoderDropdownOpen && (
                               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '150px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden' }}>
-                                <div onClick={() => { setActiveEngine('jules'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: activeEngine === 'jules' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'jules' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>JULES</div>
-                                <div onClick={() => { setActiveEngine('antigravity'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: activeEngine === 'antigravity' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'antigravity' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>ANTIGRAVITY</div>
-                                <div onClick={() => { setActiveEngine('imi-core'); setIsCoderDropdownOpen(false); }} style={{ padding: '10px 15px', color: activeEngine === 'imi-core' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'imi-core' ? 'rgba(0, 255, 136, 0.1)' : 'transparent' }}>IMI CORE</div>
+                                <div onClick={() => { setActiveEngine('jules'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to JULES'); saveConfig({ activeEngine: 'jules' }); }} style={{ padding: '10px 15px', color: activeEngine === 'jules' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'jules' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>JULES</div>
+                                <div onClick={() => { setActiveEngine('antigravity'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to ANTIGRAVITY'); saveConfig({ activeEngine: 'antigravity' }); }} style={{ padding: '10px 15px', color: activeEngine === 'antigravity' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'antigravity' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>ANTIGRAVITY</div>
+                                <div onClick={() => { setActiveEngine('imi-core'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to IMI CORE'); saveConfig({ activeEngine: 'imi-core' }); }} style={{ padding: '10px 15px', color: activeEngine === 'imi-core' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'imi-core' ? 'rgba(0, 255, 136, 0.1)' : 'transparent' }}>IMI CORE</div>
                               </motion.div>
                             )}
                           </AnimatePresence>
