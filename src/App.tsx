@@ -563,6 +563,9 @@ const App = () => {
     ipc.on('command-chunk', onChunk);
     ipc.on('command-end', onEnd);
     ipc.on('command-error', onError);
+    ipc.on('ollama-pull-progress', (_: any, data: any) => {
+      setOllamaLog(prev => ({ ...prev, [data.model]: (prev[data.model] || '') + data.chunk }));
+    });
 
     ipc.on('sync-status', (_: any, status: string) => {
       setSyncStatus(status);
@@ -933,7 +936,12 @@ const App = () => {
 
                 {/* Sub-tabs */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0' }}>
-                  {[{ id: 'mcp', label: '📦 MCP Registry', sub: 'npm packages' }, { id: 'github', label: '🐙 GitHub Libraries', sub: 'repos & tools' }].map(t => (
+                  {[
+                    { id: 'mcp',    label: '📦 MCP Registry',      sub: 'npm packages' },
+                    { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
+                    { id: 'tools',  label: '🛠 Installed Tools',    sub: 'system check' },
+                    { id: 'ai',     label: '🤖 AI Models',         sub: 'run locally' },
+                  ].map(t => (
                     <button key={t.id} onClick={() => setMcpHubTab(t.id as any)} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
                       {t.label} <span style={{ opacity: 0.6, fontSize: '0.65rem', marginLeft: '4px' }}>{t.sub}</span>
                     </button>
