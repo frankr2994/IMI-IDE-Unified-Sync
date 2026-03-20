@@ -216,14 +216,14 @@ User message: `;
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
     // Detect browser-intent and route to autonomous Browser Agent (Gemini CLI + Puppeteer MCP)
-    const browserKeywords = /\b(open|launch|go to|navigate|browse|visit|website|webpage|web page|my site|screenshot|click on|fill in|check the site|fix.*site|fix.*web|search on|look up on)\b/i;
-    const hasBrowserIntent = browserKeywords.test(command) && /(https?:\/\/|\.com|\.org|\.net|\.io|chrome|browser|google|gmail|youtube|github|twitter|facebook|instagram|reddit|web|site|page)/i.test(command);
+    const hasBrowserIntent = /\b(browser|browsers|tab\b|tabs\b|chrome|internet|webpage|website|web page|navigate|browsing|opening.*tab|take control)\b/i.test(command) ||
+      (/\b(open|opening|launch|go to|visit|browse)\b/i.test(command) && /\b(tab|tabs|browser|chrome|internet|web|site|page|url|link|google|youtube|gmail|github)\b/i.test(command));
     if (hasBrowserIntent) {
       triggerBrowserAgent(event, command, messageId);
       return;
     }
 
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const hostname = 'generativelanguage.googleapis.com';
@@ -675,7 +675,7 @@ Rules:
 
   const stripAnsi = (s) => s.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
 
-  const child = spawn(`"${binPath}" -p ${shellEscape(browserPrompt)}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
+  const child = spawn(`"${binPath}" --yolo -p ${shellEscape(browserPrompt)}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
   child.stdout.on('data', (d) => {
     const raw = d.toString();
     if (raw.includes('[y/N]') || raw.includes('Allow this tool call?') || raw.includes('Proceed?')) {
@@ -686,9 +686,16 @@ Rules:
   });
   child.stderr.on('data', (d) => {
     const clean = stripAnsi(d.toString()).trim();
-    if (clean) console.log(`[Browser Agent]: ${clean}`);
+    if (clean) {
+      console.log(`[Browser Agent]: ${clean}`);
+      // Surface important errors to the UI
+      if (clean.includes('Error') || clean.includes('error') || clean.includes('failed') || clean.includes('not found')) {
+        event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ ${clean}\n` });
+      }
+    }
   });
   child.on('close', (code) => {
+    if (code !== 0) event.sender.send('command-chunk', { messageId, chunk: `\n[Browser Agent] Exited with code ${code}` });
     event.sender.send('command-end', { messageId, code });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
