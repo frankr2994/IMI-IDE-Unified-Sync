@@ -200,26 +200,26 @@ ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, pl
 
 // Native folder picker — opens Windows folder browser dialog
 ipcMain.handle('browse-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Select Project Folder',
-    defaultPath: currentProjectRoot,
-    properties: ['openDirectory']
-  });
-  if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+  try {
+    const opts = { title: 'Select Project Folder', defaultPath: currentProjectRoot, properties: ['openDirectory'] };
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, opts)
+      : await dialog.showOpenDialog(opts);
+    if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+  } catch(e) { console.error('[browse-folder]', e.message); }
   return null;
 });
 
 // Multi-file/folder selector — lets user pick multiple files or folders at once
 ipcMain.handle('browse-multi', async (_e, mode) => {
-  const props = mode === 'files'
-    ? ['openFile', 'multiSelections']
-    : ['openDirectory', 'multiSelections'];
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: mode === 'files' ? 'Select Files' : 'Select Folders',
-    defaultPath: currentProjectRoot,
-    properties: props
-  });
-  if (!result.canceled) return result.filePaths;
+  try {
+    const props = mode === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory', 'multiSelections'];
+    const opts = { title: mode === 'files' ? 'Select Files' : 'Select Folders', defaultPath: currentProjectRoot, properties: props };
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, opts)
+      : await dialog.showOpenDialog(opts);
+    if (!result.canceled) return result.filePaths;
+  } catch(e) { console.error('[browse-multi]', e.message); }
   return [];
 });
 
