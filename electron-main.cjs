@@ -29,8 +29,10 @@ let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'i
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
-let ACTIVE_ENGINE = 'jules'; let THEME = 'glass'; let LOG_RETENTION = 15;
+let ACTIVE_ENGINE = 'antigravity'; let THEME = 'glass'; let LOG_RETENTION = 15;
 let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
+// 🧠 Brain AI config
+let BRAIN_MODEL = 'gemini-2.5-flash'; let BRAIN_TEMPERATURE = 0.7; let BRAIN_MAX_TOKENS = 2048; let STRATEGY_VERSION = '1.0.1';
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
@@ -82,6 +84,10 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
   if (config.theme !== undefined) THEME = config.theme;
   if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
+  if (config.brainModel !== undefined) BRAIN_MODEL = config.brainModel;
+  if (config.brainTemperature !== undefined) BRAIN_TEMPERATURE = parseFloat(config.brainTemperature);
+  if (config.brainMaxTokens !== undefined) BRAIN_MAX_TOKENS = parseInt(config.brainMaxTokens);
+  if (config.strategyVersion !== undefined) STRATEGY_VERSION = config.strategyVersion;
   if (config.syncFrequency !== undefined) {
     SYNC_INTERVAL_MS = parseInt(config.syncFrequency) * 1000;
     if (syncTimer) clearInterval(syncTimer);
@@ -95,7 +101,8 @@ ipcMain.handle('get-api-config', () => ({
   geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY,
   deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
   julesApiKey: JULES_KEY, activeEngine: ACTIVE_ENGINE, projectRoot: currentProjectRoot,
-  theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000
+  theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
+  brainModel: BRAIN_MODEL, brainTemperature: BRAIN_TEMPERATURE, brainMaxTokens: BRAIN_MAX_TOKENS, strategyVersion: STRATEGY_VERSION
 }));
 
 ipcMain.handle('get-system-usage', async () => ({
@@ -194,13 +201,15 @@ User message: `;
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const hostname = 'generativelanguage.googleapis.com';
-    const modelName = 'gemini-2.5-flash';
-    // Use alt=sse for proper Server-Sent Events streaming format
-    const apiPath = `/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
-    console.log('[IMI Brain] Calling:', `https://${hostname}${apiPath.replace(GEMINI_KEY, 'REDACTED')}`);
+    // Use user-configured model (from System > Brain Configuration)
+    const apiPath = `/v1beta/models/${BRAIN_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
+    console.log('[IMI Brain] Model:', BRAIN_MODEL, '| Temp:', BRAIN_TEMPERATURE, '| MaxTokens:', BRAIN_MAX_TOKENS);
     const req = net.request({ method: 'POST', protocol: 'https:', hostname, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    req.write(JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] }));
+    req.write(JSON.stringify({ 
+      contents: [{ parts: [{ text: activePrefix + command }] }],
+      generationConfig: { temperature: BRAIN_TEMPERATURE, maxOutputTokens: BRAIN_MAX_TOKENS }
+    }));
     let fullText = '';
     let buffer = '';
     req.on('response', (res) => {
@@ -304,35 +313,23 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [SKILL-BASED HAND-OFF] Writes the task for Antigravity inside the IDE
+    // 🚀 [SKILL-BASED HAND-OFF] Silently writes task to .antigravity_task.md
+    // Antigravity watches the workspace and picks this up directly — no need to open any editor.
     const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
     const skilledPrompt = `--- IMI ORCHESTRATION TASK ---\n\n${prompt}\n\n[Status] Awaiting implementation in Antigravity...`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Injected specialized IMI Skill prompt into workspace...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Task dropped to workspace. Antigravity is now coding...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Write the prompt to the root directory where Antigravity is watching
+    // Silently write the task — NO exec/open call that would trigger VS Code
     fs.writeFileSync(taskPath, skilledPrompt);
-    
-    // Automatically open the task file in their default code editor
-    try {
-      if (os.platform() === 'win32') {
-         exec(`start "" "${taskPath}"`);
-      } else if (os.platform() === 'darwin') {
-         exec(`open "${taskPath}"`);
-      } else {
-         exec(`xdg-open "${taskPath}"`);
-      }
-    } catch (e) {
-      console.log('Could not open IDE automatically', e);
-    }
 
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: HAND-OFF COMPLETE --- \n\nAntigravity can see the .antigravity_task.md file. Switch to your IDE and ask Antigravity to "execute the task file" to begin coding.` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: HAND-OFF COMPLETE ---\n\nAntigravity has received the task and is implementing it now.` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
-    }, 3000);
+    }, 2000);
     return;
   }
 
