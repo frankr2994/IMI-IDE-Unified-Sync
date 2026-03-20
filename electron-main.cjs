@@ -248,26 +248,27 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [OPENCODE-AI BRIDGE] Uses the high-performance background agent via npx
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to OpenCode AI Agent via npx...` });
+    // 🚀 [PURE ANTIGRAVITY IDE] Opens the actual IDE window on your desktop
+    const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
+    
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Opening Antigravity IDE on Desktop...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Using 'npx -y opencode-ai run' for zero-install reliability
-    const child = spawn('npx.cmd', ['-y', 'opencode-ai', 'run', prompt], {
+    // Launch the .exe with the 'chat' command to open the window and show the prompt
+    const child = spawn(agExe, ['chat', prompt], {
       cwd: currentProjectRoot,
       env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY },
-      shell: true
+      detached: true,
+      stdio: 'ignore'
     });
+    child.unref();
 
-    child.stdout.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
-    child.stderr.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
-
-    child.on('close', (code) => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: OPENCODE AGENT FINISHED ---` });
-      event.sender.send('command-end', { messageId, code });
+    setTimeout(() => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY IDE LAUNCHED ---` });
+      event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
-    });
+    }, 3000);
     return;
   }
 
