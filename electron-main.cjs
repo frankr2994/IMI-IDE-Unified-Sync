@@ -214,14 +214,10 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     req.on('response', (res) => {
       res.on('data', (chunk) => {
         const raw = chunk.toString();
-        // 🛡️ FUZZY PARSER: Extract everything between "text": " and the closing "
-        const parts = raw.split('"text": "');
-        for (let i = 1; i < parts.length; i++) {
-          const content = parts[i].split('"')[0]
-            .replace(/\\n/g, '\n')
-            .replace(/\\"/g, '"')
-            .replace(/\\t/g, '\t');
-          
+        // 🛡️ ULTRA-SENSITIVE PARSER: Extract text from various possible Gemini JSON structures
+        const textMatches = [...raw.matchAll(/"text":\s*"([^"]+)"/g)];
+        for (const match of textMatches) {
+          const content = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\t/g, '\t');
           if (content && !fullText.endsWith(content)) {
             fullText += content;
             event.sender.send('command-chunk', { messageId, chunk: content });
