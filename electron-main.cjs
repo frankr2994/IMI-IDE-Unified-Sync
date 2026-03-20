@@ -169,17 +169,26 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Answer concisely. Request: ";
-    const url = `generativelanguage.googleapis.com`;
+    const hostname = 'generativelanguage.googleapis.com';
+    const modelName = 'gemini-2.5-flash';
     // Use alt=sse for proper Server-Sent Events streaming format
-    const apiPath = `/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
-    const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
+    const apiPath = `/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
+    console.log('[IMI Brain] Calling:', `https://${hostname}${apiPath.replace(GEMINI_KEY, 'REDACTED')}`);
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] }));
     let fullText = '';
     let buffer = '';
     req.on('response', (res) => {
+      console.log('[IMI Brain] HTTP Status:', res.statusCode);
       if (res.statusCode !== 200) {
-        event.sender.send('command-error', { messageId, error: `API Error: HTTP ${res.statusCode}` });
+        // Collect error body for better messages
+        let errBody = '';
+        res.on('data', d => errBody += d.toString());
+        res.on('end', () => {
+          try { const j = JSON.parse(errBody); event.sender.send('command-error', { messageId, error: `API Error: ${j.error.message}` }); }
+          catch(e) { event.sender.send('command-error', { messageId, error: `API Error: HTTP ${res.statusCode}` }); }
+        });
         return;
       }
       res.on('data', (chunk) => {
