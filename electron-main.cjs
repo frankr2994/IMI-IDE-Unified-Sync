@@ -216,8 +216,12 @@ User message: `;
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
     // Detect browser-intent and route to autonomous Browser Agent (Gemini CLI + Puppeteer MCP)
-    const hasBrowserIntent = /\b(browser|browsers|tab\b|tabs\b|chrome|internet|webpage|website|web page|navigate|browsing|opening.*tab|take control)\b/i.test(command) ||
-      (/\b(open|opening|launch|go to|visit|browse)\b/i.test(command) && /\b(tab|tabs|browser|chrome|internet|web|site|page|url|link|google|youtube|gmail|github)\b/i.test(command));
+    const cmdL = command.toLowerCase();
+    const hasBrowserIntent =
+      /\b(browser|browsers|tab\b|tabs\b|chrome|crome|internet|webpage|website|navigate|browsing|take control)\b/.test(cmdL) ||
+      /\bgo to\b/.test(cmdL) ||
+      (/\b(open|opening|launch|visit)\b/.test(cmdL) && /\b(web|site|page|url|link|tab|browser|crome|chrome|google|gmail|youtube|netflix|nextflix|reddit|twitter|facebook|instagram|twitch|github|twitch|spotify|amazon|ebay|bing|yahoo)\b/.test(cmdL)) ||
+      /https?:\/\//.test(cmdL);
     if (hasBrowserIntent) {
       triggerBrowserAgent(event, command, messageId);
       return;
@@ -660,15 +664,15 @@ async function triggerBrowserAgent(event, userCommand, messageId) {
 Complete this task autonomously: ${userCommand}
 
 Rules:
-- Use puppeteer_navigate to open URLs
-- IMMEDIATELY after every puppeteer_navigate, run this puppeteer_evaluate to inject a visible cursor so the user can see where you click:
-  (function(){if(document.getElementById('imi-cursor'))return;const c=document.createElement('div');c.id='imi-cursor';c.style.cssText='position:fixed;width:22px;height:22px;background:rgba(255,80,0,0.75);border-radius:50%;pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);transition:left 0.08s,top 0.08s;border:3px solid white;box-shadow:0 0 12px 4px rgba(255,80,0,0.6)';document.body.appendChild(c);document.addEventListener('mousemove',e=>{c.style.left=e.clientX+'px';c.style.top=e.clientY+'px'});})()
-- Use puppeteer_screenshot after navigating to see the page
+- When opening MULTIPLE sites, open each one in a NEW TAB using puppeteer_evaluate: window.open('URL', '_blank')
+- Only use puppeteer_navigate for the very first URL
+- After opening new tabs, use puppeteer_screenshot to confirm each tab loaded
 - Use puppeteer_click to click buttons/links
 - Use puppeteer_fill to type into forms
-- Use puppeteer_evaluate to run JS on the page
-- After each major action, take a screenshot to verify the result
-- Describe what you see and what you're doing at each step`;
+- IMPORTANT: When you are done, do NOT close the browser. Leave all tabs open for the user.
+- After every puppeteer_navigate or new tab, run this puppeteer_evaluate to inject a visible cursor:
+  (function(){if(document.getElementById('imi-cursor'))return;const c=document.createElement('div');c.id='imi-cursor';c.style.cssText='position:fixed;width:22px;height:22px;background:rgba(255,80,0,0.75);border-radius:50%;pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);transition:left 0.08s,top 0.08s;border:3px solid white;box-shadow:0 0 12px 4px rgba(255,80,0,0.6)';document.body.appendChild(c);document.addEventListener('mousemove',e=>{c.style.left=e.clientX+'px';c.style.top=e.clientY+'px'});})()
+- Describe what you are doing at each step`;
 
   const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, PUPPETEER_SLOW_MO: '80' };
   delete safeEnv.ELECTRON_RUN_AS_NODE;
