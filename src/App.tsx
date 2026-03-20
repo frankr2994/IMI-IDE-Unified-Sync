@@ -83,6 +83,40 @@ const App = () => {
   const [ghSort, setGhSort] = useState('stars');
   const [cloningRepo, setCloningRepo] = useState('');
 
+  // 🛠 Installed Tools
+  const [toolsList, setToolsList] = useState<any[]>([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const loadTools = async () => {
+    setToolsLoading(true);
+    const res = await (ipc as any).invoke('check-tools').catch(() => []);
+    setToolsList(res || []);
+    setToolsLoading(false);
+  };
+
+  // 🤖 Ollama AI Models
+  const [ollamaModels, setOllamaModels] = useState<any[]>([]);
+  const [ollamaPulling, setOllamaPulling] = useState('');
+  const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
+  const [ollamaSearch, setOllamaSearch] = useState('');
+  const OLLAMA_LIBRARY = [
+    { name: 'llama3.2',      label: 'Llama 3.2',       size: '2GB',   desc: 'Meta\'s latest small model — fast and capable',         tags: ['chat','code'] },
+    { name: 'llama3.1',      label: 'Llama 3.1 8B',    size: '4.7GB', desc: 'Meta Llama 3.1 — strong reasoning',                     tags: ['chat','code'] },
+    { name: 'mistral',       label: 'Mistral 7B',      size: '4.1GB', desc: 'Fast French model, great for code',                     tags: ['code','chat'] },
+    { name: 'codellama',     label: 'Code Llama',      size: '3.8GB', desc: 'Meta\'s code-specialized model',                        tags: ['code'] },
+    { name: 'gemma2',        label: 'Gemma 2',         size: '5.5GB', desc: 'Google\'s open model — efficient and accurate',         tags: ['chat'] },
+    { name: 'qwen2.5-coder', label: 'Qwen 2.5 Coder',  size: '4.7GB', desc: 'Top-ranked coding model from Alibaba',                  tags: ['code'] },
+    { name: 'phi3',          label: 'Phi-3 Mini',      size: '2.2GB', desc: 'Microsoft\'s tiny but powerful model',                  tags: ['chat','fast'] },
+    { name: 'deepseek-r1',   label: 'DeepSeek R1',     size: '4.7GB', desc: 'Strong reasoning model, rivals GPT-4',                  tags: ['reasoning','code'] },
+    { name: 'nomic-embed-text', label: 'Nomic Embed', size: '274MB', desc: 'Text embeddings for semantic search',                   tags: ['embeddings'] },
+    { name: 'llava',         label: 'LLaVA',           size: '4.5GB', desc: 'Vision + language — describe images',                   tags: ['vision'] },
+    { name: 'neural-chat',   label: 'Neural Chat',     size: '4.1GB', desc: 'Intel\'s conversational model',                        tags: ['chat'] },
+    { name: 'starcoder2',    label: 'StarCoder 2',     size: '1.6GB', desc: 'Code generation from HuggingFace',                     tags: ['code'] },
+  ];
+  const loadOllamaModels = async () => {
+    const res = await (ipc as any).invoke('ollama-list').catch(() => ({ models: [] }));
+    setOllamaModels(res.models || []);
+  };
+
   const searchGitHub = async (q: string, sort?: string) => {
     if (!q.trim()) return;
     setGhSearching(true); setGhError('');

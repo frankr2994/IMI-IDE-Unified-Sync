@@ -1396,6 +1396,71 @@ ipcMain.handle('github-clone', async (_e, cloneUrl, folderName) => {
   } catch(e) { return { success: false, error: e.message }; }
 });
 
+// ── Installed Tools checker ──────────────────────────────────────────────────
+const TOOLS_MANIFEST = [
+  { id: 'node',      label: 'Node.js',       cmd: 'node --version',        installUrl: 'https://nodejs.org', category: 'runtime',  icon: '🟢', desc: 'JavaScript runtime — required for IMI' },
+  { id: 'npm',       label: 'npm',           cmd: 'npm --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: '📦', desc: 'Node package manager' },
+  { id: 'npx',       label: 'npx',           cmd: 'npx --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: '⚡', desc: 'Run npm packages without installing' },
+  { id: 'git',       label: 'Git',           cmd: 'git --version',         installUrl: 'https://git-scm.com', category: 'dev',     icon: '🌿', desc: 'Version control — required for sync' },
+  { id: 'python',    label: 'Python',        cmd: 'python --version',      installUrl: 'https://python.org', category: 'runtime',  icon: '🐍', desc: 'Python runtime' },
+  { id: 'gemini',    label: 'Gemini CLI',    cmd: 'gemini --version',      installUrl: 'https://github.com/google-gemini/gemini-cli', category: 'ai', icon: '✨', desc: 'Google Gemini CLI — powers the Brain' },
+  { id: 'jules',     label: 'Jules CLI',     cmd: 'jules --version',       installUrl: 'https://jules.google.com', category: 'ai',  icon: '🤖', desc: 'Google Jules coding agent' },
+  { id: 'ollama',    label: 'Ollama',        cmd: 'ollama --version',      installUrl: 'https://ollama.com', category: 'ai',       icon: '🦙', desc: 'Run AI models locally — zero API cost' },
+  { id: 'docker',    label: 'Docker',        cmd: 'docker --version',      installUrl: 'https://docker.com', category: 'dev',      icon: '🐳', desc: 'Container runtime for MCP servers' },
+  { id: 'code',      label: 'VS Code',       cmd: 'code --version',        installUrl: 'https://code.visualstudio.com', category: 'editor', icon: '💙', desc: 'Visual Studio Code editor' },
+  { id: 'gh',        label: 'GitHub CLI',    cmd: 'gh --version',          installUrl: 'https://cli.github.com', category: 'dev',   icon: '🐙', desc: 'GitHub CLI — manage repos from terminal' },
+  { id: 'bun',       label: 'Bun',           cmd: 'bun --version',         installUrl: 'https://bun.sh', category: 'runtime',      icon: '🧅', desc: 'Fast JS runtime & package manager' },
+];
+
+ipcMain.handle('check-tools', async () => {
+  const results = await Promise.all(TOOLS_MANIFEST.map(async tool => {
+    try {
+      const version = execSync(tool.cmd, { timeout: 4000, stdio: ['pipe','pipe','pipe'] }).toString().trim().split('\n')[0].replace(/^v/, '');
+      return { ...tool, installed: true, version };
+    } catch(e) {
+      return { ...tool, installed: false, version: null };
+    }
+  }));
+  return results;
+});
+
+ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
+
+// ── Ollama AI Models ──────────────────────────────────────────────────────────
+ipcMain.handle('ollama-list', async () => {
+  try {
+    const raw = execSync('ollama list', { timeout: 5000 }).toString().trim();
+    const lines = raw.split('\n').slice(1).filter(Boolean);
+    return { success: true, models: lines.map(l => {
+      const parts = l.trim().split(/\s+/);
+      return { name: parts[0], id: parts[1] || '', size: parts[2] || '', modified: parts.slice(3).join(' ') || '' };
+    })};
+  } catch(e) { return { success: false, models: [], error: e.message }; }
+});
+
+ipcMain.handle('ollama-pull', async (event, modelName) => {
+  return new Promise((resolve) => {
+    const child = spawn('ollama', ['pull', modelName], { shell: true });
+    let out = '';
+    child.stdout.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
+    child.stderr.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
+    child.on('close', code => resolve({ success: code === 0, output: out }));
+  });
+});
+
+ipcMain.handle('ollama-delete', async (_e, modelName) => {
+  try { execSync(`ollama rm ${modelName}`, { timeout: 10000 }); return { success: true }; }
+  catch(e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle('ollama-running', async () => {
+  try {
+    const raw = execSync('ollama ps', { timeout: 4000 }).toString().trim();
+    const lines = raw.split('\n').slice(1).filter(Boolean);
+    return { success: true, models: lines.map(l => l.split(/\s+/)[0]) };
+  } catch(e) { return { success: true, models: [] }; }
+});
+
 ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
   if (!GEMINI_KEY) return { success: false, error: "API Key missing." };
   try {
