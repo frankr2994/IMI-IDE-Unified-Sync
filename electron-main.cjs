@@ -374,27 +374,32 @@ CRITICAL RULES:
         try {
           const parsed = JSON.parse(coderRaw);
           let content = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          // Strip markdown fences if model added them despite instructions
           content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-          const edits = JSON.parse(content);
+          const patches = JSON.parse(content);
           const results = [];
-          for (const edit of edits) {
-            if (!edit.file || !edit.content) continue;
-            const fp = path.join(currentProjectRoot, edit.file);
-            // Safety: never write outside project root
+          for (const patch of patches) {
+            if (!patch.file || !patch.search || patch.replace === undefined) continue;
+            const fp = path.join(currentProjectRoot, patch.file);
             if (!fp.startsWith(currentProjectRoot)) continue;
-            fs.mkdirSync(path.dirname(fp), { recursive: true });
-            fs.writeFileSync(fp, edit.content, 'utf-8');
-            results.push(edit.file);
+            if (!fs.existsSync(fp)) continue;
+            const fileContent = fs.readFileSync(fp, 'utf-8');
+            if (!fileContent.includes(patch.search)) {
+              results.push(`⚠️ ${patch.file}: search text not found, skipped`);
+              continue;
+            }
+            // Apply the surgical search/replace
+            const patched = fileContent.replace(patch.search, patch.replace);
+            fs.writeFileSync(fp, patched, 'utf-8');
+            results.push(`✅ ${patch.file}`);
           }
           const summary = results.length > 0 
-            ? `\n\nΓ£à [Antigravity] Implementation Complete!\nFiles written:\n${results.map(f => `  ΓÇó ${f}`).join('\n')}`
-            : '\n\nΓÜá∩╕Å [Antigravity] No file edits were returned by the coder.';
+            ? `\n\n[Antigravity] Changes applied:\n${results.map(r => `  ${r}`).join('\n')}`
+            : '\n\n⚠️ [Antigravity] No patches were applied.';
           event.sender.send('command-chunk', { messageId, chunk: summary });
           tokenStats['antigravity'] = (tokenStats['antigravity'] || 0) + Math.ceil(coderRaw.length / 4);
           saveGlobalState();
         } catch(e) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\nΓ¥î [Antigravity] Failed to parse coder output: ${e.message}\nRaw response saved to .antigravity_task.md for manual review.` });
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n❌ [Antigravity] Could not parse response: ${e.message}\nSpec saved to .antigravity_task.md` });
           fs.writeFileSync(path.join(currentProjectRoot, '.antigravity_task.md'), coderRaw);
         }
         event.sender.send('command-end', { messageId, code: 0 });
