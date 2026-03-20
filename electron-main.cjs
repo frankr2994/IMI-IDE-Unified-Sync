@@ -248,14 +248,14 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [PURE ANTIGRAVITY IDE] Opens the actual IDE window on your desktop
+    // 🚀 [SKILL-BASED HAND-OFF] Triggers the specialized IMI Skill inside Antigravity
     const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
+    const skilledPrompt = `--- IMI ORCHESTRATION TASK ---\n${prompt}`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Opening Antigravity IDE on Desktop...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Injected specialized IMI Skill prompt. Launching...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Launch the .exe with the 'chat' command to open the window and show the prompt
-    const child = spawn(agExe, ['chat', prompt], {
+    const child = spawn(agExe, ['chat', skilledPrompt], {
       cwd: currentProjectRoot,
       env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY },
       detached: true,
@@ -264,7 +264,7 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     child.unref();
 
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY IDE LAUNCHED ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: SKILL HAND-OFF COMPLETE ---` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
