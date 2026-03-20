@@ -444,27 +444,23 @@ Only output the JSON array.`;
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
   } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [PRO-WINDOW SPAWN] Open Antigravity in a completely independent new window
-    const bin = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
+    // 🚀 [DIRECT IDE LINK] Launch Antigravity itself, bypassing CMD entirely
+    const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Launching Antigravity in an independent window...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Direct-Linking to Antigravity IDE...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Use detached spawn to let the CMD window live on its own
-    // 🚀 [CLEAN LAUNCH] Using the supported 'chat' subcommand for Antigravity
-    const agArgs = ['/c', 'start', '', bin, 'chat', prompt];
-    
-    const child = spawn('cmd.exe', agArgs, {
+    // Launch the .exe directly with the chat subcommand
+    const child = spawn(agExe, ['chat', prompt], {
       cwd: currentProjectRoot,
       env: finalEnv,
       detached: true,
       stdio: 'ignore'
     });
-    child.unref(); // 🛡️ Tell Node to stop watching this process so it can run freely
+    child.unref();
 
     setTimeout(() => {
       event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Follow the progress in the new Antigravity window.` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
