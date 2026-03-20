@@ -280,37 +280,110 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   const prompt = `SURGICAL BUILDER MODE: Implement this plan exactly. Plan: ${brainPlan.trim()}`;
 
   if (engine.toLowerCase() === 'imi-core') {
-    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Key missing." }); return; }
-    const corePrompt = `You are IMI CORE. Plan: ${brainPlan} Output ONLY JSON: [{ "file": "path", "content": "full content" }]`;
-    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}` });
-    req.setHeader('Content-Type', 'application/json');
-    req.write(JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] }));
-    let fullText = '';
-    req.on('response', (res) => {
-      res.on('data', (chunk) => { fullText += chunk.toString(); });
+    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini key missing for IMI CORE." }); return; }
+
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Scanning');
+    event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Reading project files...` });
+
+    // Read current file contents so Gemini knows what actually exists
+    const filesToRead = ['electron-main.cjs', 'src/App.tsx', 'src/index.css', 'package.json'];
+    let fileContext = '';
+    for (const f of filesToRead) {
+      const fp = path.join(currentProjectRoot, f);
+      if (fs.existsSync(fp)) {
+        const raw = fs.readFileSync(fp, 'utf-8');
+        // Send first 150 lines per file to stay within token budget  
+        const snippet = raw.split('\n').slice(0, 150).join('\n');
+        fileContext += `\n\n=== ${f} (first 150 lines) ===\n${snippet}\n=== end ${f} ===`;
+      }
+    }
+
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+    event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Generating surgical patches...` });
+
+    const corePrompt = `You are IMI CORE, a surgical code editor. You apply MINIMAL precise changes to fix real project files.
+
+PROJECT: IMI IDE MERGE INTEGRATIONS
+Stack: Electron + React/Vite/TypeScript
+Root: ${currentProjectRoot}
+
+CURRENT FILE STATE:${fileContext}
+
+BRAIN PLAN TO IMPLEMENT:
+${brainPlan.trim()}
+
+OUTPUT: A raw JSON array of patch objects. No markdown, no explanation — ONLY the JSON.
+Format: [{ "file": "relative/path", "search": "exact existing text to find", "replace": "replacement text" }]
+
+RULES:
+- "search" must be verbatim text that exists right now in the file shown above
+- Only change lines needed for the plan — do NOT rewrite whole files
+- Multiple patches allowed, one per logical change
+- If no code change is needed (e.g. plan is just analysis), return []`;
+
+    const coreReq = net.request({
+      method: 'POST', protocol: 'https:',
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`
+    });
+    coreReq.setHeader('Content-Type', 'application/json');
+    coreReq.write(JSON.stringify({
+      contents: [{ parts: [{ text: corePrompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+    }));
+
+    let coreRaw = '';
+    coreReq.on('response', (res) => {
+      res.on('data', (d) => { coreRaw += d.toString(); });
       res.on('end', () => {
         try {
-          const json = JSON.parse(fullText);
-          let content = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          content = content.replace(/```json/g, '').replace(/```/g, '').trim();
-          const edits = JSON.parse(content);
-          for (const edit of edits) {
-            const fp = path.join(currentProjectRoot, edit.file);
-            fs.mkdirSync(path.dirname(fp), { recursive: true });
-            fs.writeFileSync(fp, edit.content);
+          const parsed = JSON.parse(coreRaw);
+          let txt = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          txt = txt.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+          
+          const patches = JSON.parse(txt);
+          if (!Array.isArray(patches) || patches.length === 0) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI CORE] No code changes needed for this request.` });
+          } else {
+            const results = [];
+            for (const patch of patches) {
+              if (!patch.file || !patch.search || patch.replace === undefined) continue;
+              const fp = path.join(currentProjectRoot, patch.file);
+              // Safety: never escape project root
+              if (!fp.startsWith(currentProjectRoot)) { results.push(`BLOCKED: ${patch.file} (outside root)`); continue; }
+              if (!fs.existsSync(fp)) { results.push(`SKIPPED: ${patch.file} (file not found)`); continue; }
+              const original = fs.readFileSync(fp, 'utf-8');
+              if (!original.includes(patch.search)) {
+                results.push(`SKIPPED: ${patch.file} (search text not found in file)`);
+                continue;
+              }
+              const patched = original.replace(patch.search, patch.replace);
+              fs.writeFileSync(fp, patched, 'utf-8');
+              results.push(`OK: ${patch.file}`);
+            }
+            const report = results.map(r => `  ${r}`).join('\n');
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI CORE] Done:\n${report}` });
           }
-          event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Implementation Complete.` });
-          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
+          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(coreRaw.length / 4);
           saveGlobalState();
-        } catch(e) {}
+        } catch (e) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI CORE] Parse error: ${e.message}\nRaw output saved to .imi_core_output.txt` });
+          fs.writeFileSync(path.join(currentProjectRoot, '.imi_core_output.txt'), coreRaw, 'utf-8');
+        }
         event.sender.send('command-end', { messageId, code: 0 });
         if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
         triggerGitSync();
       });
     });
-    req.end();
+    coreReq.on('error', (err) => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Network error: ${err.message}` });
+      event.sender.send('command-end', { messageId, code: 1 });
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    });
+    coreReq.end();
     return;
   }
+
 
   if (engine.toLowerCase() === 'antigravity') {
     // [SAFE MODE] Display Brain spec in chat + save task file.
