@@ -321,7 +321,13 @@ const App = () => {
 
     // Load skill engine data
     const skillData = await (ipc as any).invoke('skills-get-all').catch(() => null);
-    if (skillData) { setSkills(skillData.skills || []); setSkillStats(skillData.stats || {}); setSkillEfficiency(skillData.efficiency || 0); }
+    if (skillData) {
+      const loaded = skillData.skills || [];
+      setSkills(loaded);
+      setSkillStats(skillData.stats || {});
+      setSkillEfficiency(skillData.efficiency || 0);
+      setInstalledSkillIds(new Set(loaded.map((s: any) => s.id)));
+    }
   };
 
   // Load persisted chat history from ImiStore (instant, no API calls)
