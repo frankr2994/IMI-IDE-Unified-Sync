@@ -248,12 +248,12 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [OPENCODE-AI BRIDGE] Uses the real background agent for Antigravity ecosystems
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to OpenCode AI Agent...` });
+    // 🚀 [OPENCODE-AI BRIDGE] Uses the high-performance background agent via npx
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to OpenCode AI Agent via npx...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Using opencode-ai chat which is a true headless agent
-    const child = spawn('opencode-ai', ['chat', '--yolo', prompt], {
+    // Using 'npx -y opencode-ai run' for zero-install reliability
+    const child = spawn('npx.cmd', ['-y', 'opencode-ai', 'run', prompt], {
       cwd: currentProjectRoot,
       env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY },
       shell: true
