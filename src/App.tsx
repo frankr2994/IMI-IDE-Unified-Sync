@@ -979,6 +979,10 @@ const App = () => {
                         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
+                          <button onClick={async () => {
+                            const picked = await (ipc as any).invoke('browse-folder');
+                            if (picked) setProjectRootInput(picked);
+                          }} className="btn-premium" style={{ width: 'auto', padding: '0 18px', background: 'rgba(155,77,255,0.15)' }}>📁 BROWSE</button>
                           <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
                         </div>
                         <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
