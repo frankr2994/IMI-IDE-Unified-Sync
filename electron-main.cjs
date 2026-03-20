@@ -214,6 +214,18 @@ User message: `;
 
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
+
+    // Handle browser-open commands directly without involving Gemini
+    const urlMatch = command.match(/https?:\/\/[^\s]+/);
+    const isBrowserCmd = /(open|launch|go to|navigate|browse)/i.test(command) && urlMatch;
+    if (isBrowserCmd) {
+      const url = urlMatch[0];
+      shell.openExternal(url);
+      event.sender.send('command-chunk', { messageId, chunk: `🌐 Opening browser: ${url}` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    }
+
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
@@ -225,7 +237,7 @@ User message: `;
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ 
       contents: [{ parts: [{ text: activePrefix + command }] }],
-      tools: [{ googleSearch: {} }, { functionDeclarations: [{ name: 'open_browser', description: 'Opens the default browser and navigates to a URL. Use when the user asks to open a website, navigate to a page, or browse to a URL.', parameters: { type: 'OBJECT', properties: { url: { type: 'STRING', description: 'The full URL to open, e.g. https://google.com' } }, required: ['url'] } }] }],
+      tools: [{ googleSearch: {} }],
       generationConfig: { temperature: BRAIN_TEMPERATURE, maxOutputTokens: BRAIN_MAX_TOKENS }
     }));
     let fullText = '';
@@ -252,21 +264,12 @@ User message: `;
           if (!jsonStr || jsonStr === '[DONE]') continue;
           try {
             const parsed = JSON.parse(jsonStr);
-            const parts = parsed?.candidates?.[0]?.content?.parts || [];
-            for (const part of parts) {
-              if (part.text) {
-                fullText += part.text;
-                event.sender.send('command-chunk', { messageId, chunk: part.text });
-              }
-              if (part.functionCall?.name === 'open_browser' && part.functionCall?.args?.url) {
-                const url = part.functionCall.args.url;
-                shell.openExternal(url);
-                const msg = `\n\n🌐 Opening browser: ${url}`;
-                fullText += msg;
-                event.sender.send('command-chunk', { messageId, chunk: msg });
-              }
+            const text = parsed && parsed.candidates && parsed.candidates[0] && parsed.candidates[0].content && parsed.candidates[0].content.parts && parsed.candidates[0].content.parts[0] && parsed.candidates[0].content.parts[0].text;
+            if (text) {
+              fullText += text;
+              event.sender.send('command-chunk', { messageId, chunk: text });
             }
-            if (parsed?.error) {
+            if (parsed && parsed.error) {
               event.sender.send('command-error', { messageId, error: `API Error: ${parsed.error.message}` });
             }
           } catch(e) { /* incomplete JSON chunk, skip */ }
