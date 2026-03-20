@@ -326,103 +326,6 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     return;
   }
 
-    // 🔒 SAFETY: Read existing file contents FIRST so Gemini sees the real code
-    const filesToCheck = ['electron-main.cjs', 'src/App.tsx', 'src/index.css'];
-    let existingContext = '';
-    for (const f of filesToCheck) {
-      const fp = path.join(currentProjectRoot, f);
-      if (fs.existsSync(fp)) {
-        const content = fs.readFileSync(fp, 'utf-8');
-        // Only include first 200 lines to stay within token limits
-        const lines = content.split('\n').slice(0, 200).join('\n');
-        existingContext += `\n\n=== EXISTING FILE: ${f} (first 200 lines) ===\n${lines}\n=== END ${f} ===`;
-      }
-    }
-
-    const coderPrompt = `You are Antigravity, a SURGICAL coding agent. You make MINIMAL precise changes to existing code.
-
-PROJECT: IMI IDE MERGE INTEGRATIONS
-Stack: Electron (electron-main.cjs) + React/Vite (src/App.tsx) + TypeScript
-Project Root: ${currentProjectRoot}
-
-${existingContext}
-
-IMPLEMENTATION PLAN FROM BRAIN:
-${brainPlan.trim()}
-
-YOUR TASK: Output ONLY a JSON array of SURGICAL changes. Each item must have:
-- "file": relative path
-- "search": the EXACT existing code block to find and replace (must be unique in the file)  
-- "replace": the new code to substitute in
-
-Example format:
-[{ "file": "src/App.tsx", "search": "const [theme, setTheme] = useState('glass');", "replace": "const [theme, setTheme] = useState('dark');" }]
-
-CRITICAL RULES:
-- Output ONLY raw JSON, no markdown, no explanation
-- "search" must be exact text that exists in the current file
-- Change ONLY what is necessary for the plan - do not rewrite whole files
-- If adding new code, use search to find the insertion point and include it in replace`;
-
-    const req2 = net.request({ 
-      method: 'POST', protocol: 'https:', 
-      hostname: 'generativelanguage.googleapis.com', 
-      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}` 
-    });
-    req2.setHeader('Content-Type', 'application/json');
-    req2.write(JSON.stringify({ 
-      contents: [{ parts: [{ text: coderPrompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
-    }));
-
-    let coderRaw = '';
-    req2.on('response', (res2) => {
-      res2.on('data', (d) => { coderRaw += d.toString(); });
-      res2.on('end', () => {
-        try {
-          const parsed = JSON.parse(coderRaw);
-          let content = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-          const patches = JSON.parse(content);
-          const results = [];
-          for (const patch of patches) {
-            if (!patch.file || !patch.search || patch.replace === undefined) continue;
-            const fp = path.join(currentProjectRoot, patch.file);
-            if (!fp.startsWith(currentProjectRoot)) continue;
-            if (!fs.existsSync(fp)) continue;
-            const fileContent = fs.readFileSync(fp, 'utf-8');
-            if (!fileContent.includes(patch.search)) {
-              results.push(`⚠️ ${patch.file}: search text not found, skipped`);
-              continue;
-            }
-            // Apply the surgical search/replace
-            const patched = fileContent.replace(patch.search, patch.replace);
-            fs.writeFileSync(fp, patched, 'utf-8');
-            results.push(`✅ ${patch.file}`);
-          }
-          const summary = results.length > 0 
-            ? `\n\n[Antigravity] Changes applied:\n${results.map(r => `  ${r}`).join('\n')}`
-            : '\n\n⚠️ [Antigravity] No patches were applied.';
-          event.sender.send('command-chunk', { messageId, chunk: summary });
-          tokenStats['antigravity'] = (tokenStats['antigravity'] || 0) + Math.ceil(coderRaw.length / 4);
-          saveGlobalState();
-        } catch(e) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n❌ [Antigravity] Could not parse response: ${e.message}\nSpec saved to .antigravity_task.md` });
-          fs.writeFileSync(path.join(currentProjectRoot, '.antigravity_task.md'), coderRaw);
-        }
-        event.sender.send('command-end', { messageId, code: 0 });
-        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-        triggerGitSync();
-      });
-    });
-    req2.on('error', (err) => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Network error: ${err.message}` });
-      event.sender.send('command-end', { messageId, code: 1 });
-      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-    });
-    req2.end();
-    return;
-  }
 
   // JULES FALLBACK (High Reliability)
   const child = spawn(`jules new ${shellEscape(prompt)}`, [], { 
@@ -451,6 +354,6 @@ app.on('before-quit', () => { process.exit(0); });
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) { if (win.isMaximized()) win.unmaximize(); else win.maximize(); } });
 ipcMain.on('window-close', () => { app.quit(); });
-ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `ΓùÅ ${s.name}`).join('\n') }));
+ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
