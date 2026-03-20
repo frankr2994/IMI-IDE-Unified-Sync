@@ -313,23 +313,81 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [SKILL-BASED HAND-OFF] Silently writes task to .antigravity_task.md
-    // Antigravity watches the workspace and picks this up directly — no need to open any editor.
-    const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
-    const skilledPrompt = `--- IMI ORCHESTRATION TASK ---\n\n${prompt}\n\n[Status] Awaiting implementation in Antigravity...`;
-    
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Task dropped to workspace. Antigravity is now coding...` });
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    
-    // Silently write the task — NO exec/open call that would trigger VS Code
-    fs.writeFileSync(taskPath, skilledPrompt);
+    // 🚀 [FULL AUTONOMY] Stage 2: Antigravity calls Gemini to implement the plan directly
+    // No task file, no human copy-paste. Brain plan → Gemini Coder → files written to disk.
+    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini key missing for Antigravity Coder." }); return; }
 
-    setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: HAND-OFF COMPLETE ---\n\nAntigravity has received the task and is implementing it now.` });
-      event.sender.send('command-end', { messageId, code: 0 });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+    event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Engaging autonomous implementation engine...` });
+
+    const coderPrompt = `You are Antigravity, a precision surgical coding agent working on the IMI project.
+Project Root: ${currentProjectRoot}
+Stack: Electron (electron-main.cjs) + React/Vite (src/App.tsx) + TypeScript
+
+IMPLEMENTATION PLAN FROM BRAIN:
+${brainPlan.trim()}
+
+YOUR TASK: Implement the above plan exactly. Output ONLY a valid JSON array with no markdown fences, no explanation, just the raw JSON:
+[{ "file": "relative/path/from/project/root", "content": "COMPLETE file content here" }]
+
+Rules:
+- Include the COMPLETE file content for each file (not just the changed parts)  
+- Use relative paths from the project root
+- Only include files that need to change
+- Do NOT include node_modules, dist, or binary files`;
+
+    const req2 = net.request({ 
+      method: 'POST', protocol: 'https:', 
+      hostname: 'generativelanguage.googleapis.com', 
+      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}` 
+    });
+    req2.setHeader('Content-Type', 'application/json');
+    req2.write(JSON.stringify({ 
+      contents: [{ parts: [{ text: coderPrompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 65536 }
+    }));
+
+    let coderRaw = '';
+    req2.on('response', (res2) => {
+      res2.on('data', (d) => { coderRaw += d.toString(); });
+      res2.on('end', () => {
+        try {
+          const parsed = JSON.parse(coderRaw);
+          let content = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          // Strip markdown fences if model added them despite instructions
+          content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+          const edits = JSON.parse(content);
+          const results = [];
+          for (const edit of edits) {
+            if (!edit.file || !edit.content) continue;
+            const fp = path.join(currentProjectRoot, edit.file);
+            // Safety: never write outside project root
+            if (!fp.startsWith(currentProjectRoot)) continue;
+            fs.mkdirSync(path.dirname(fp), { recursive: true });
+            fs.writeFileSync(fp, edit.content, 'utf-8');
+            results.push(edit.file);
+          }
+          const summary = results.length > 0 
+            ? `\n\n✅ [Antigravity] Implementation Complete!\nFiles written:\n${results.map(f => `  • ${f}`).join('\n')}`
+            : '\n\n⚠️ [Antigravity] No file edits were returned by the coder.';
+          event.sender.send('command-chunk', { messageId, chunk: summary });
+          tokenStats['antigravity'] = (tokenStats['antigravity'] || 0) + Math.ceil(coderRaw.length / 4);
+          saveGlobalState();
+        } catch(e) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n❌ [Antigravity] Failed to parse coder output: ${e.message}\nRaw response saved to .antigravity_task.md for manual review.` });
+          fs.writeFileSync(path.join(currentProjectRoot, '.antigravity_task.md'), coderRaw);
+        }
+        event.sender.send('command-end', { messageId, code: 0 });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        triggerGitSync();
+      });
+    });
+    req2.on('error', (err) => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Network error: ${err.message}` });
+      event.sender.send('command-end', { messageId, code: 1 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-      triggerGitSync();
-    }, 2000);
+    });
+    req2.end();
     return;
   }
 
