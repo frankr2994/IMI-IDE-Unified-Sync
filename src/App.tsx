@@ -26,7 +26,8 @@ import {
   Palette,
   Clock,
   History,
-  Mic
+  Mic,
+  Wifi
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -87,6 +88,8 @@ const App = () => {
   const [llamaKey, setLlamaKey] = useState('');
   const [perplexityKey, setPerplexityKey] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
+  const [customApiUrl, setCustomApiUrl] = useState('');
+  const [customApiModel, setCustomApiModel] = useState('');
   const [julesApiKey, setJulesApiKey] = useState('');
   const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [gitInstalled, setGitInstalled] = useState(true);
@@ -157,6 +160,8 @@ const App = () => {
       setLlamaKey(config.llamaKey || '');
       setPerplexityKey(config.perplexityKey || '');
       setCustomApiKey(config.customApiKey || '');
+      setCustomApiUrl(config.customApiUrl || '');
+      setCustomApiModel(config.customApiModel || '');
       setJulesApiKey(config.julesApiKey || '');
       setGoogleMapsKey(config.googleMapsKey || '');
       setProjectRootInput(config.projectRoot || '');
@@ -212,7 +217,8 @@ const App = () => {
     setIsSaving(true);
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
-      openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey, customApiKey, julesApiKey, googleMapsKey, 
+      openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey,
+      customApiKey, customApiUrl, customApiModel, julesApiKey, googleMapsKey, 
       activeEngine, activeDirector,
       projectRoot: projectRootInput,
       theme,
@@ -653,6 +659,7 @@ const App = () => {
                             {activeDirector === 'llama' && <Database size={12} />}
                             {activeDirector === 'perplexity' && <Search size={12} />}
                             {activeDirector === 'deepseek' && <Terminal size={12} />}
+                            {activeDirector === 'custom' && <Wifi size={12} />}
                             <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {activeDirector === 'antigravity' ? 'AG AI' : activeDirector.toUpperCase()}
                             </span>
@@ -670,7 +677,8 @@ const App = () => {
                                   { id: 'mistral', name: 'MISTRAL', icon: <Activity size={12} /> },
                                   { id: 'llama', name: 'LLAMA 3', icon: <Database size={12} /> },
                                   { id: 'perplexity', name: 'PERPLEXITY', icon: <Search size={12} /> },
-                                  { id: 'deepseek', name: 'DEEPSEEK', icon: <Terminal size={12} /> }
+                                  { id: 'deepseek', name: 'DEEPSEEK', icon: <Terminal size={12} /> },
+                                  { id: 'custom', name: 'CUSTOM API', icon: <Wifi size={12} /> }
                                 ].map(opt => (
                                   <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain Engine set to ${opt.name}`); saveConfig({ activeDirector: opt.id }); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>
                                     {opt.icon}
@@ -1001,14 +1009,14 @@ const App = () => {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                         {[
                           { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
-                          { key: 'JULES', val: julesApiKey, set: setJulesApiKey, ph: 'Jules AI Token...' },
+                          { key: 'JULES (GitHub)', val: julesApiKey, set: setJulesApiKey, ph: 'GitHub Token for Jules...' },
                           { key: 'GITHUB', val: githubToken, set: setGithubToken, ph: 'GitHub PAT...' },
                           { key: 'OPENAI', val: openaiKey, set: setOpenaiKey, ph: 'OpenAI Key (ChatGPT)...' },
                           { key: 'CLAUDE', val: claudeKey, set: setClaudeKey, ph: 'Claude Key...' },
                           { key: 'DEEPSEEK', val: deepseekKey, set: setDeepseekKey, ph: 'DeepSeek Key...' },
                           { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
-                          { key: 'LLAMA', val: llamaKey, set: setLlamaKey, ph: 'Llama 3 (API)...' },
-                          { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' }
+                          { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
+                          { key: 'CUSTOM (LLAMA / LOCAL)', val: customApiKey, set: setCustomApiKey, ph: 'Bearer Token (Optional)...' }
                         ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
                           <div key={item.key} style={{ position: 'relative' }}>
                             <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>{item.key}</div>
@@ -1016,6 +1024,18 @@ const App = () => {
                             {item.val && <CheckCircle2 size={12} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '28px' }} />}
                           </div>
                         ))}
+                      </div>
+
+                      {/* CUSTOM ENDPOINT CONFIG */}
+                      <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '15px' }}>
+                         <div style={{ position: 'relative' }}>
+                           <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>CUSTOM ENDPOINT URL (Llama/Ollama/vLLM)</div>
+                           <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} placeholder="e.g. http://localhost:11434/v1" className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
+                         </div>
+                         <div style={{ position: 'relative' }}>
+                           <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>CUSTOM MODEL ID</div>
+                           <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} placeholder="e.g. llama3.1" className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
+                         </div>
                       </div>
                     </motion.div>
                   )}

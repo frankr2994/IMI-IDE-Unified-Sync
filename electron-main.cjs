@@ -28,7 +28,8 @@ const GLOBAL_STATE_PATH = path.join(os.homedir(), '.gemini', 'state.json');
 let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'imi-core': 0 };
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
-let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
+let CUSTOM_API_KEY = ''; let CUSTOM_API_URL = ''; let CUSTOM_API_MODEL = ''; 
+let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
 let ACTIVE_ENGINE = 'antigravity'; let THEME = 'glass'; let LOG_RETENTION = 15;
 let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
 // ≡ƒºá Brain AI config
@@ -44,6 +45,7 @@ const saveGlobalState = () => {
       geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, 
       claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, 
       llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, 
+      customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
       julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, 
       theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
       mcpServersList, projectRoot: currentProjectRoot 
@@ -62,7 +64,10 @@ try {
       OPENAI_KEY = state.config.openaiKey || ''; CLAUDE_KEY = state.config.claudeKey || '';
       DEEPSEEK_KEY = state.config.deepseekKey || ''; MISTRAL_KEY = state.config.mistralKey || '';
       LLAMA_KEY = state.config.llamaKey || ''; PERPLEXITY_KEY = state.config.perplexityKey || '';
-      CUSTOM_API_KEY = state.config.customApiKey || ''; JULES_KEY = state.config.julesApiKey || '';
+      CUSTOM_API_KEY = state.config.customApiKey || ''; 
+      CUSTOM_API_URL = state.config.customApiUrl || '';
+      CUSTOM_API_MODEL = state.config.customApiModel || '';
+      JULES_KEY = state.config.julesApiKey || '';
       GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'imi-core';
       THEME = state.config.theme || 'glass'; LOG_RETENTION = state.config.logRetention || 15;
       if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
@@ -81,6 +86,9 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.mistralKey !== undefined) MISTRAL_KEY = config.mistralKey;
   if (config.llamaKey !== undefined) LLAMA_KEY = config.llamaKey;
   if (config.perplexityKey !== undefined) PERPLEXITY_KEY = config.perplexityKey;
+  if (config.customApiKey !== undefined) CUSTOM_API_KEY = config.customApiKey;
+  if (config.customApiUrl !== undefined) CUSTOM_API_URL = config.customApiUrl;
+  if (config.customApiModel !== undefined) CUSTOM_API_MODEL = config.customApiModel;
   if (config.julesApiKey !== undefined) JULES_KEY = config.julesApiKey;
   if (config.theme !== undefined) THEME = config.theme;
   if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
@@ -100,6 +108,7 @@ ipcMain.handle('save-api-config', (e, config) => {
 ipcMain.handle('get-api-config', () => ({
   geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY,
   deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
+  customApiKey: CUSTOM_API_KEY, customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
   julesApiKey: JULES_KEY, activeEngine: ACTIVE_ENGINE, projectRoot: currentProjectRoot,
   theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
   brainModel: BRAIN_MODEL, brainTemperature: BRAIN_TEMPERATURE, brainMaxTokens: BRAIN_MAX_TOKENS, strategyVersion: STRATEGY_VERSION
@@ -264,6 +273,76 @@ User message: `;
     req.on('error', (err) => {
       event.sender.send('command-error', { messageId, error: `Network Error: ${err.message}` });
     });
+    req.end();
+    return;
+  } else if (director === 'custom' || director === 'llama') {
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
+    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+
+    if (!CUSTOM_API_URL) { event.sender.send('command-error', { messageId, error: "Custom Endpoint URL missing in Settings." }); return; }
+    
+    // Parse URL (e.g. http://localhost:11434/v1/chat/completions)
+    let apiUrl = CUSTOM_API_URL;
+    if (!apiUrl.endsWith('/chat/completions')) apiUrl += apiUrl.endsWith('/') ? 'chat/completions' : '/chat/completions';
+    
+    const urlObj = new URL(apiUrl);
+    const apiModel = CUSTOM_API_MODEL || 'llama3';
+
+    console.log('[IMI Custom Brain] Routing to:', apiUrl, '| Model:', apiModel);
+    
+    const req = net.request({ method: 'POST', protocol: urlObj.protocol, hostname: urlObj.hostname, port: urlObj.port, path: urlObj.pathname + urlObj.search });
+    req.setHeader('Content-Type', 'application/json');
+    if (CUSTOM_API_KEY) req.setHeader('Authorization', `Bearer ${CUSTOM_API_KEY}`);
+    
+    req.write(JSON.stringify({ 
+      model: apiModel,
+      messages: [{ role: 'system', content: activePrefix }, { role: 'user', content: command }],
+      stream: true,
+      temperature: BRAIN_TEMPERATURE
+    }));
+
+    let fullText = '';
+    let buffer = '';
+
+    req.on('response', (res) => {
+      if (res.statusCode !== 200) {
+        let errBody = '';
+        res.on('data', d => errBody += d.toString());
+        res.on('end', () => event.sender.send('command-error', { messageId, error: `Custom API HTTP ${res.statusCode}: ${errBody}` }));
+        return;
+      }
+      res.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\\n');
+        buffer = lines.pop(); // keep incomplete
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const text = parsed.choices?.[0]?.delta?.content || '';
+            if (text) {
+               fullText += text;
+               event.sender.send('command-chunk', { messageId, chunk: text });
+            }
+          } catch(e) {}
+        }
+      });
+      res.on('end', () => {
+        if (!fullText) event.sender.send('command-error', { messageId, error: 'No output from Custom API.' });
+        else {
+          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
+          event.sender.send('command-end', { messageId, code: 0 });
+          if (isCodingAction && payload.engine && payload.engine !== director) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ΓÜÖ∩╕Å IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+            setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+          }
+        }
+      });
+    });
+    req.on('error', (err) => event.sender.send('command-error', { messageId, error: `Custom Network Error: ${err.message}` }));
     req.end();
     return;
   }
