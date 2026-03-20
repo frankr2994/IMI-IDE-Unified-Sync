@@ -98,20 +98,30 @@ const App = () => {
   const [ollamaPulling, setOllamaPulling] = useState('');
   const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
   const [ollamaSearch, setOllamaSearch] = useState('');
-  const OLLAMA_LIBRARY = [
-    { name: 'llama3.2',      label: 'Llama 3.2',       size: '2GB',   desc: 'Meta\'s latest small model — fast and capable',         tags: ['chat','code'] },
-    { name: 'llama3.1',      label: 'Llama 3.1 8B',    size: '4.7GB', desc: 'Meta Llama 3.1 — strong reasoning',                     tags: ['chat','code'] },
-    { name: 'mistral',       label: 'Mistral 7B',      size: '4.1GB', desc: 'Fast French model, great for code',                     tags: ['code','chat'] },
-    { name: 'codellama',     label: 'Code Llama',      size: '3.8GB', desc: 'Meta\'s code-specialized model',                        tags: ['code'] },
-    { name: 'gemma2',        label: 'Gemma 2',         size: '5.5GB', desc: 'Google\'s open model — efficient and accurate',         tags: ['chat'] },
-    { name: 'qwen2.5-coder', label: 'Qwen 2.5 Coder',  size: '4.7GB', desc: 'Top-ranked coding model from Alibaba',                  tags: ['code'] },
-    { name: 'phi3',          label: 'Phi-3 Mini',      size: '2.2GB', desc: 'Microsoft\'s tiny but powerful model',                  tags: ['chat','fast'] },
-    { name: 'deepseek-r1',   label: 'DeepSeek R1',     size: '4.7GB', desc: 'Strong reasoning model, rivals GPT-4',                  tags: ['reasoning','code'] },
-    { name: 'nomic-embed-text', label: 'Nomic Embed', size: '274MB', desc: 'Text embeddings for semantic search',                   tags: ['embeddings'] },
-    { name: 'llava',         label: 'LLaVA',           size: '4.5GB', desc: 'Vision + language — describe images',                   tags: ['vision'] },
-    { name: 'neural-chat',   label: 'Neural Chat',     size: '4.1GB', desc: 'Intel\'s conversational model',                        tags: ['chat'] },
-    { name: 'starcoder2',    label: 'StarCoder 2',     size: '1.6GB', desc: 'Code generation from HuggingFace',                     tags: ['code'] },
+  const [hfResults, setHfResults] = useState<any[]>([]);
+  const [hfSearching, setHfSearching] = useState(false);
+  const [hfError, setHfError] = useState('');
+  const OLLAMA_FEATURED = [
+    { name: 'llama3.2',       label: 'Llama 3.2 3B',    size: '2GB',    desc: 'Meta\'s latest — fast, capable, great for chat & code', tags: ['chat','code'] },
+    { name: 'mistral',        label: 'Mistral 7B',       size: '4.1GB',  desc: 'Fast French model, excellent for code',                 tags: ['code','chat'] },
+    { name: 'deepseek-r1',    label: 'DeepSeek R1 7B',   size: '4.7GB',  desc: 'Strong reasoning — rivals GPT-4o on benchmarks',        tags: ['reasoning','code'] },
+    { name: 'qwen2.5-coder',  label: 'Qwen 2.5 Coder',  size: '4.7GB',  desc: '#1 ranked open coding model from Alibaba',              tags: ['code'] },
+    { name: 'gemma2',         label: 'Gemma 2 9B',       size: '5.5GB',  desc: 'Google\'s efficient open model',                        tags: ['chat'] },
+    { name: 'phi3',           label: 'Phi-3 Mini',       size: '2.2GB',  desc: 'Microsoft\'s tiny but punchy model',                    tags: ['chat','fast'] },
+    { name: 'llava',          label: 'LLaVA Vision',     size: '4.5GB',  desc: 'See and describe images — multimodal',                  tags: ['vision'] },
+    { name: 'nomic-embed-text', label: 'Nomic Embed',    size: '274MB',  desc: 'Text embeddings for semantic search & RAG',             tags: ['embeddings'] },
   ];
+  const searchHF = async (q: string) => {
+    if (!q.trim()) return;
+    setHfSearching(true); setHfError('');
+    try {
+      const res = await (ipc as any).invoke('hf-search-models', q);
+      setHfResults(res.results || []);
+      if (res.error) setHfError(res.error);
+    } catch(e: any) { setHfError(e.message); }
+    setHfSearching(false);
+  };
+  const formatNum = (n: number) => n >= 1000000 ? `${(n/1000000).toFixed(1)}M` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
   const loadOllamaModels = async () => {
     const res = await (ipc as any).invoke('ollama-list').catch(() => ({ models: [] }));
     setOllamaModels(res.models || []);
