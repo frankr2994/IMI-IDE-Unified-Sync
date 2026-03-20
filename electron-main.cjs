@@ -313,10 +313,18 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini key missing for Antigravity Coder." }); return; }
-
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Reading project files...` });
+    // [SAFE MODE] Display Brain spec in chat + save task file.
+    // Autonomous file-writing is disabled — Gemini rewrites entire files which is destructive.
+    // The spec is shown in chat so the human (Antigravity in the IDE) can implement it safely.
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Ready');
+    const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
+    const taskContent = `# IMI Orchestration Task\n_Generated: ${new Date().toISOString()}_\n\n${brainPlan.trim()}\n\n---\n_Status: Awaiting implementation_`;
+    fs.writeFileSync(taskPath, taskContent, 'utf-8');
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ANTIGRAVITY TASK READY ---\n\nThe Brain's spec has been saved. Switch to your IDE chat (Antigravity) and say:\n"execute the task file"\n\nAntigravity will implement it surgically without risking your source files.` });
+    event.sender.send('command-end', { messageId, code: 0 });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    return;
+  }
 
     // 🔒 SAFETY: Read existing file contents FIRST so Gemini sees the real code
     const filesToCheck = ['electron-main.cjs', 'src/App.tsx', 'src/index.css'];
