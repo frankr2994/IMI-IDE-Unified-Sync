@@ -150,6 +150,7 @@ const App = () => {
   ]);
 
   const [messages, setMessages] = useState<any[]>([]);
+  const [storeProjectKey, setStoreProjectKey] = useState<string>('default');
 
   const addLog = (type: string, msg: string) => {
     setLogs(prev => {
@@ -184,6 +185,17 @@ const App = () => {
     if (snapshot) setLastSnapshot(snapshot);
   };
 
+  // Load persisted chat history from ImiStore (instant, no API calls)
+  const loadChatHistory = async (projectKey?: string) => {
+    try {
+      const key = projectKey || storeProjectKey;
+      const saved = await (ipc as any).invoke('store-get-messages', key);
+      if (saved && saved.length > 0) {
+        setMessages(saved.map((m: any) => ({ ...m, isStreaming: false })));
+      }
+    } catch(e) {}
+  };
+
   const loadConfig = async () => {
     const config = await (ipc as any).invoke('get-api-config');
     if (config) {
@@ -210,6 +222,10 @@ const App = () => {
       if (config.strategyVersion) setStrategyVersion(config.strategyVersion);
       if (config.activeBrain) setActiveDirector(config.activeBrain);
       if (config.activeCoder) setActiveEngine(config.activeCoder);
+      // Set project key for storage scoping, then load history
+      const projKey = config.projectRoot || 'default';
+      setStoreProjectKey(projKey);
+      loadChatHistory(projKey);
     }
   };
 
@@ -376,6 +392,8 @@ const App = () => {
     const messageId = Date.now();
     const newUserMsg = { id: messageId, type: 'user', text: chatInput };
     setMessages(prev => [...prev, newUserMsg]);
+    // Persist user message immediately
+    (ipc as any).invoke('store-append-message', storeProjectKey, newUserMsg).catch(() => {});
     setChatInput('');
     setIsSyncing(true);
     
@@ -428,9 +446,17 @@ const App = () => {
     };
     
     const onEnd = (event: any, data: any) => {
-      setMessages(prev => prev.map(m => 
-        m.id === data.messageId ? { ...m, isStreaming: false } : m
-      ));
+      setMessages(prev => {
+        const updated = prev.map(m =>
+          m.id === data.messageId ? { ...m, isStreaming: false } : m
+        );
+        // Persist completed AI message to store
+        const finished = updated.find(m => m.id === data.messageId);
+        if (finished) {
+          (ipc as any).invoke('store-append-message', storeProjectKey, finished).catch(() => {});
+        }
+        return updated;
+      });
       setIsSyncing(false);
       fetchStats();
     };
