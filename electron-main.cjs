@@ -215,8 +215,36 @@ User message: `;
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
-    // ── Browser routing ────────────────────────────────────────────────────
+    // ── Desktop operations (instant, no API call needed) ───────────────────
     const cmdL = command.toLowerCase();
+    const isDesktopOp = /\b(desktop|my desktop)\b/.test(cmdL) && /\b(create|make|new|add|build)\b/.test(cmdL) && /\b(folder|directory|file)\b/.test(cmdL);
+    if (isDesktopOp) {
+      // Extract name: "call it X", "called X", "named X", or after "folder/file named"
+      const nameMatch = command.match(/(?:call(?:ed)?|nam(?:ed?)?)\s+(?:it\s+)?["']?([^"'\n,]+?)["']?\s*$/i)
+        || command.match(/(?:folder|file|directory)\s+(?:called?|named?)?\s*["']?([^"'\n,]+?)["']?/i);
+      const itemName = nameMatch ? nameMatch[1].trim() : 'New Folder';
+      const isFolder = /folder|directory/i.test(cmdL);
+      const desktopPath = path.join(os.homedir(), 'Desktop', itemName);
+      try {
+        if (isFolder) fs.mkdirSync(desktopPath, { recursive: true });
+        else fs.writeFileSync(desktopPath, '');
+        event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${isFolder ? 'folder' : 'file'} "${itemName}" on your Desktop.` });
+      } catch(e) {
+        event.sender.send('command-chunk', { messageId, chunk: `❌ Failed: ${e.message}` });
+      }
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    }
+
+    // ── Screen vision — take screenshot + send to Gemini Vision ────────────
+    const needsVision = /\b(look at|see|view|check|analyze|read)\b.{0,30}\b(screen|desktop|window|monitor)\b/i.test(command)
+      || /\b(screen|desktop|window|monitor)\b.{0,30}\b(look|see|view|check|analyze|read)\b/i.test(command);
+    if (needsVision) {
+      triggerDesktopVision(event, command, messageId);
+      return;
+    }
+
+    // ── Browser routing ────────────────────────────────────────────────────
     const isCodeAction = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(cmdL);
 
     // Tier 2: full Puppeteer agent — only when real browser automation is needed
@@ -676,6 +704,41 @@ RULES:
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
   });
+}
+
+async function triggerDesktopVision(event, userCommand, messageId) {
+  if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: 'Gemini key missing.' }); return; }
+  event.sender.send('command-chunk', { messageId, chunk: '📸 Capturing your screen...\n' });
+  try {
+    const { desktopCapturer } = require('electron');
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1920, height: 1080 } });
+    if (!sources.length) { event.sender.send('command-error', { messageId, error: 'No screen source found.' }); return; }
+    const dataUrl = sources[0].thumbnail.toDataURL();
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+    event.sender.send('command-chunk', { messageId, chunk: '🧠 Sending to Gemini Vision...\n' });
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+    req.setHeader('Content-Type', 'application/json');
+    req.write(JSON.stringify({ contents: [{ parts: [
+      { text: `You are a desktop assistant for IMI. The user said: "${userCommand}". Look at this screenshot of their desktop and respond. If they want to perform an action (create file, move something, etc.), describe exactly what you see and what should be done. Be concise.` },
+      { inlineData: { mimeType: 'image/png', data: base64 } }
+    ]}], generationConfig: { temperature: 0.3, maxOutputTokens: 1024 } }));
+    let raw = '';
+    req.on('response', (res) => {
+      res.on('data', d => raw += d.toString());
+      res.on('end', () => {
+        try {
+          const txt = JSON.parse(raw)?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.';
+          event.sender.send('command-chunk', { messageId, chunk: txt });
+        } catch(e) { event.sender.send('command-chunk', { messageId, chunk: `Parse error: ${e.message}` }); }
+        event.sender.send('command-end', { messageId, code: 0 });
+      });
+    });
+    req.on('error', e => { event.sender.send('command-error', { messageId, error: e.message }); });
+    req.end();
+  } catch(e) {
+    event.sender.send('command-error', { messageId, error: `Screen capture failed: ${e.message}` });
+  }
 }
 
 async function triggerBrowserAgent(event, userCommand, messageId) {
