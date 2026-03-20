@@ -782,6 +782,7 @@ const App = () => {
                         </div>
                       </div>
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
+                      <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
                     </form>
                 </div>
               </div>
