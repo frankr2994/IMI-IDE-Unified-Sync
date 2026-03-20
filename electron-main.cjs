@@ -215,24 +215,12 @@ User message: `;
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
-    // Handle browser-open commands directly without involving Gemini
-    const isBrowserCmd = /(open|launch|go to|navigate|browse)/i.test(command);
-    if (isBrowserCmd) {
-      // Extract all https:// URLs
-      const explicitUrls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
-      // Extract bare site names after "go to <name>" / "open <name>" that aren't already captured
-      const siteMatches = [...command.matchAll(/(?:go to|open|navigate to|browse to)\s+([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,})?)/gi)]
-        .map(m => m[1])
-        .filter(s => !s.match(/^https?:\/\//))
-        .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
-      const allUrls = [...new Set([...explicitUrls, ...siteMatches])];
-      if (allUrls.length > 0) {
-        let msg = '';
-        for (const url of allUrls) { shell.openExternal(url); msg += `🌐 Opening browser: ${url}\n`; }
-        event.sender.send('command-chunk', { messageId, chunk: msg.trim() });
-        event.sender.send('command-end', { messageId, code: 0 });
-        return;
-      }
+    // Detect browser-intent and route to autonomous Browser Agent (Gemini CLI + Puppeteer MCP)
+    const browserKeywords = /\b(open|launch|go to|navigate|browse|visit|website|webpage|web page|my site|screenshot|click on|fill in|check the site|fix.*site|fix.*web|search on|look up on)\b/i;
+    const hasBrowserIntent = browserKeywords.test(command) && /(https?:\/\/|\.com|\.org|\.net|\.io|chrome|browser|google|gmail|youtube|github|twitter|facebook|instagram|reddit|web|site|page)/i.test(command);
+    if (hasBrowserIntent) {
+      triggerBrowserAgent(event, command, messageId);
+      return;
     }
 
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
@@ -654,6 +642,51 @@ RULES:
   child.on('close', (code) => {
     try { fs.unlinkSync(julesPromptPath); } catch(e) {}
     event.sender.send('command-chunk', { messageId, chunk: `\n[Jules] Process exited with code ${code}.` });
+    event.sender.send('command-end', { messageId, code });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    triggerGitSync();
+  });
+}
+
+async function triggerBrowserAgent(event, userCommand, messageId) {
+  if (mainWindow) mainWindow.webContents.send('coder-status', 'Browsing');
+  event.sender.send('command-chunk', { messageId, chunk: `🌐 [Browser Agent] Launching Gemini with Puppeteer control...\n` });
+
+  let binPath = await checkCommand('gemini');
+  if (!binPath && process.platform === 'win32') binPath = await checkCommand('gemini.cmd');
+  if (!binPath) binPath = 'gemini';
+
+  const browserPrompt = `You are a browser automation agent with full Chrome control via Puppeteer MCP tools.
+Complete this task autonomously: ${userCommand}
+
+Rules:
+- Use puppeteer_navigate to open URLs
+- Use puppeteer_screenshot after navigating to see the page
+- Use puppeteer_click to click buttons/links
+- Use puppeteer_fill to type into forms
+- Use puppeteer_evaluate to run JS on the page
+- After each major action, take a screenshot to verify the result
+- Describe what you see and what you're doing at each step`;
+
+  const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY };
+  delete safeEnv.ELECTRON_RUN_AS_NODE;
+
+  const stripAnsi = (s) => s.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+  const child = spawn(`"${binPath}" -p ${shellEscape(browserPrompt)}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
+  child.stdout.on('data', (d) => {
+    const raw = d.toString();
+    if (raw.includes('[y/N]') || raw.includes('Allow this tool call?') || raw.includes('Proceed?')) {
+      child.stdin.write('y\n');
+    }
+    const clean = stripAnsi(raw).trim();
+    if (clean) event.sender.send('command-chunk', { messageId, chunk: clean + '\n' });
+  });
+  child.stderr.on('data', (d) => {
+    const clean = stripAnsi(d.toString()).trim();
+    if (clean) console.log(`[Browser Agent]: ${clean}`);
+  });
+  child.on('close', (code) => {
     event.sender.send('command-end', { messageId, code });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
