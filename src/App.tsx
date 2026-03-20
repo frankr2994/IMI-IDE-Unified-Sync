@@ -1060,6 +1060,105 @@ const App = () => {
                     )}
                   </div>
                 </div>
+                )}
+
+                {/* ── GitHub Libraries Tab ── */}
+                {mcpHubTab === 'github' && (
+                <div>
+                  {/* Search bar */}
+                  <form onSubmit={e => { e.preventDefault(); searchGitHub(ghQuery); }} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                      <input value={ghQuery} onChange={e => setGhQuery(e.target.value)} placeholder="Search GitHub… e.g. 'mcp server', 'ai agent', 'electron app'" className="chat-input" style={{ width: '100%', paddingLeft: '45px', height: '48px', fontSize: '0.9rem' }} />
+                    </div>
+                    <select value={ghSort} onChange={e => setGhSort(e.target.value)} style={{ height: '48px', padding: '0 14px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'white', fontSize: '0.8rem', cursor: 'pointer' }}>
+                      <option value="stars">⭐ Most Stars</option>
+                      <option value="updated">🕐 Recently Updated</option>
+                      <option value="forks">🍴 Most Forks</option>
+                      <option value="help-wanted-issues">🙋 Help Wanted</option>
+                    </select>
+                    <button type="submit" className="btn-premium" style={{ height: '48px', padding: '0 24px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                      {ghSearching ? '⏳ SEARCHING...' : '🔍 SEARCH GITHUB'}
+                    </button>
+                    {ghResults.length > 0 && <button type="button" onClick={() => { setGhResults([]); setGhQuery(''); }} style={{ height: '48px', padding: '0 14px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '12px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem' }}>CLEAR</button>}
+                  </form>
+
+                  {ghError && <p style={{ fontSize: '0.7rem', color: '#ff416c', marginBottom: '12px' }}>⚠ {ghError}{ghError.includes('rate limit') ? ' — Add a GitHub token in Settings to increase the limit.' : ''}</p>}
+
+                  {ghResults.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '14px' }}>
+                        {ghTotal.toLocaleString()} REPOSITORIES FOUND
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px' }}>
+                        {ghResults.map(repo => (
+                          <div key={repo.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', transition: 'border-color 0.2s' }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(155,77,255,0.4)') }
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--glass-border)') }>
+                            {/* Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <img src={repo.ownerAvatar} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0 }} onError={e => { (e.target as any).style.display='none'; }} />
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={repo.name}>{repo.name}</div>
+                                <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>updated {timeAgo(repo.updatedAt)}</div>
+                              </div>
+                            </div>
+                            {/* Description */}
+                            <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>{repo.description}</p>
+                            {/* Topics */}
+                            {repo.topics.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {repo.topics.slice(0, 4).map((t: string) => (
+                                  <span key={t} style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{t}</span>
+                                ))}
+                              </div>
+                            )}
+                            {/* Stats row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>
+                              <span>⭐ {formatStars(repo.stars)}</span>
+                              <span>🍴 {formatStars(repo.forks)}</span>
+                              {repo.language && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: langColor[repo.language] || '#888', flexShrink: 0 }}></span>{repo.language}</span>}
+                              {repo.license && <span style={{ opacity: 0.6 }}>{repo.license}</span>}
+                            </div>
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                              <button onClick={() => (ipc as any).send('open-external-url', repo.htmlUrl)} style={{ flex: 1, height: '32px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
+                                🐙 View on GitHub
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (cloningRepo) return;
+                                  setCloningRepo(repo.id);
+                                  addLog('system', `Cloning ${repo.shortName}...`);
+                                  const result = await (ipc as any).invoke('github-clone', repo.cloneUrl, repo.shortName);
+                                  if (result.success) {
+                                    addLog('system', `✅ Cloned to ${result.path}`);
+                                    alert(`Cloned to:\n${result.path}`);
+                                  } else {
+                                    addLog('system', `❌ Clone failed: ${result.error}`);
+                                    alert(`Clone failed: ${result.error}`);
+                                  }
+                                  setCloningRepo('');
+                                }}
+                                style={{ height: '32px', padding: '0 14px', background: cloningRepo === repo.id ? 'rgba(155,77,255,0.3)' : 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: cloningRepo ? 'wait' : 'pointer', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                {cloningRepo === repo.id ? '⏳' : '⬇ Clone'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {ghResults.length === 0 && !ghSearching && (
+                    <div style={{ padding: '4rem', textAlign: 'center', opacity: 0.3 }}>
+                      <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🐙</div>
+                      <p style={{ fontWeight: 700, marginBottom: '6px' }}>Search GitHub Repositories</p>
+                      <p style={{ fontSize: '0.75rem' }}>Find MCP servers, AI tools, libraries — anything on GitHub.</p>
+                    </div>
+                  )}
+                </div>
+                )}
 
             </motion.div>
           )}
