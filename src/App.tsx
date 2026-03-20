@@ -74,7 +74,7 @@ const App = () => {
   const [npmSearching, setNpmSearching] = useState(false);
   const [npmTotal, setNpmTotal] = useState(0);
   const [npmError, setNpmError] = useState('');
-  const [mcpHubTab, setMcpHubTab] = useState<'mcp'|'github'>('mcp');
+  const [mcpHubTab, setMcpHubTab] = useState<'mcp'|'github'|'tools'|'ai'>('mcp');
   const [ghQuery, setGhQuery] = useState('');
   const [ghResults, setGhResults] = useState<any[]>([]);
   const [ghSearching, setGhSearching] = useState(false);
@@ -1201,6 +1201,131 @@ const App = () => {
                       <p style={{ fontSize: '0.75rem' }}>Find MCP servers, AI tools, libraries — anything on GitHub.</p>
                     </div>
                   )}
+                </div>
+                )}
+
+                {/* ── Installed Tools Tab ── */}
+                {mcpHubTab === 'tools' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Live check of every tool IMI depends on.</p>
+                    <button onClick={loadTools} className="btn-premium" style={{ height: '36px', padding: '0 18px', fontSize: '0.7rem' }}>
+                      {toolsLoading ? '⏳ Checking...' : '🔄 Refresh'}
+                    </button>
+                  </div>
+                  {toolsList.length === 0 && !toolsLoading && (
+                    <div style={{ textAlign: 'center', padding: '4rem', opacity: 0.4 }}>
+                      <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🛠</div>
+                      <p style={{ fontWeight: 700 }}>Click Refresh to scan your system</p>
+                    </div>
+                  )}
+                  {['runtime','ai','dev','editor'].map(cat => {
+                    const items = toolsList.filter(t => t.category === cat);
+                    if (!items.length) return null;
+                    const catLabel: Record<string,string> = { runtime:'⚙️ Runtimes', ai:'🤖 AI Tools', dev:'🔧 Dev Tools', editor:'✏️ Editors' };
+                    return (
+                      <div key={cat} style={{ marginBottom: '24px' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '10px' }}>{catLabel[cat]}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+                          {items.map(tool => (
+                            <div key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px' }}>
+                              <span style={{ fontSize: '1.4rem' }}>{tool.icon}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{tool.label}</span>
+                                  {tool.installed
+                                    ? <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '4px', color: '#00ff88' }}>v{tool.version}</span>
+                                    : <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '4px', color: '#ff416c' }}>Not installed</span>
+                                  }
+                                </div>
+                                <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{tool.desc}</p>
+                              </div>
+                              {!tool.installed && (
+                                <button onClick={() => (ipc as any).send('open-external-url', tool.installUrl)} style={{ flexShrink: 0, height: '28px', padding: '0 12px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>Install ↗</button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                )}
+
+                {/* ── AI Models Tab ── */}
+                {mcpHubTab === 'ai' && (
+                <div>
+                  {/* Installed models */}
+                  <div style={{ marginBottom: '28px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>INSTALLED MODELS</div>
+                      <button onClick={loadOllamaModels} style={{ height: '28px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.65rem' }}>🔄 Refresh</button>
+                    </div>
+                    {ollamaModels.length === 0
+                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,65,108,0.04)', border: '1px solid rgba(255,65,108,0.15)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                          No models installed yet. Pull one from the library below. <span style={{ color: '#ff416c' }}>Ollama must be installed first.</span>
+                        </div>
+                      : <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {ollamaModels.map(m => (
+                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px' }}>
+                              <span style={{ fontSize: '1.2rem' }}>🦙</span>
+                              <div style={{ flex: 1 }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{m.name}</span>
+                                <span style={{ marginLeft: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
+                              </div>
+                              <span style={{ fontSize: '0.6rem', padding: '2px 8px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '4px', color: '#00ff88' }}>Ready</span>
+                              <button onClick={async () => { if(confirm(`Delete ${m.name}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', opacity: 0.6, fontSize: '1rem' }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                    }
+                  </div>
+
+                  {/* Model library */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>MODEL LIBRARY</div>
+                      <input value={ollamaSearch} onChange={e => setOllamaSearch(e.target.value)} placeholder="Filter models..." style={{ height: '32px', padding: '0 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', fontSize: '0.75rem', width: '180px', outline: 'none' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
+                      {OLLAMA_LIBRARY.filter(m => !ollamaSearch || m.name.includes(ollamaSearch.toLowerCase()) || m.label.toLowerCase().includes(ollamaSearch.toLowerCase()) || m.tags.some(t => t.includes(ollamaSearch.toLowerCase()))).map(model => {
+                        const isInstalled = ollamaModels.some(m => m.name.startsWith(model.name));
+                        const isPulling = ollamaPulling === model.name;
+                        return (
+                          <div key={model.name} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                              <div>
+                                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{model.label}</span>
+                                <span style={{ marginLeft: '8px', fontSize: '0.6rem', color: 'var(--text-dim)' }}>{model.size}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                {model.tags.map(tag => <span key={tag} style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '4px', color: 'var(--primary)' }}>{tag}</span>)}
+                              </div>
+                            </div>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc}</p>
+                            {isPulling && ollamaLog[model.name] && (
+                              <div style={{ fontSize: '0.6rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.4)', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px', maxHeight: '60px', overflowY: 'auto', color: '#00ff88' }}>
+                                {ollamaLog[model.name].split('\n').slice(-3).join('\n')}
+                              </div>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (isInstalled || isPulling) return;
+                                setOllamaPulling(model.name);
+                                setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
+                                await (ipc as any).invoke('ollama-pull', model.name);
+                                setOllamaPulling('');
+                                loadOllamaModels();
+                              }}
+                              style={{ width: '100%', height: '30px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.15)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : isPulling ? 'rgba(255,165,0,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
+                            >
+                              {isInstalled ? '✅ Installed' : isPulling ? '⬇ Pulling...' : '⬇ Pull Model'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
                 )}
 
