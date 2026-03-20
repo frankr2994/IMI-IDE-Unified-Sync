@@ -215,24 +215,11 @@ User message: `;
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
-    // ── Desktop operations (instant, no API call needed) ───────────────────
+    // ── Desktop operations ──────────────────────────────────────────────────
     const cmdL = command.toLowerCase();
     const isDesktopOp = /\b(desktop|my desktop)\b/.test(cmdL) && /\b(create|make|new|add|build)\b/.test(cmdL) && /\b(folder|directory|file)\b/.test(cmdL);
     if (isDesktopOp) {
-      // Extract name: "call it X", "called X", "named X", or after "folder/file named"
-      const nameMatch = command.match(/(?:call(?:ed)?|nam(?:ed?)?)\s+(?:it\s+)?["']?([^"'\n,]+?)["']?\s*$/i)
-        || command.match(/(?:folder|file|directory)\s+(?:called?|named?)?\s*["']?([^"'\n,]+?)["']?/i);
-      const itemName = nameMatch ? nameMatch[1].trim() : 'New Folder';
-      const isFolder = /folder|directory/i.test(cmdL);
-      const desktopPath = path.join(os.homedir(), 'Desktop', itemName);
-      try {
-        if (isFolder) fs.mkdirSync(desktopPath, { recursive: true });
-        else fs.writeFileSync(desktopPath, '');
-        event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${isFolder ? 'folder' : 'file'} "${itemName}" on your Desktop.` });
-      } catch(e) {
-        event.sender.send('command-chunk', { messageId, chunk: `❌ Failed: ${e.message}` });
-      }
-      event.sender.send('command-end', { messageId, code: 0 });
+      triggerDesktopTask(event, command, cmdL, messageId);
       return;
     }
 
@@ -704,6 +691,75 @@ RULES:
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
   });
+}
+
+async function triggerDesktopTask(event, command, cmdL, messageId) {
+  // Extract folder name — stop at sentence boundaries (. , then and)
+  const folderMatch = command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?\s+it)\s+["']?([^"'.,\n]+?)["']?\s*(?=[.,]|\bthen\b|\band\b|$)/i)
+    || command.match(/folder\s+(?:called?|named?)?\s*["']?([^"'.,\n]+?)["']?\s*(?=[.,]|\bthen\b|\band\b|$)/i);
+  const folderName = folderMatch ? folderMatch[1].trim() : 'New Folder';
+  const desktopPath = path.join(os.homedir(), 'Desktop', folderName);
+
+  // Step 1: create folder
+  try {
+    fs.mkdirSync(desktopPath, { recursive: true });
+    event.sender.send('command-chunk', { messageId, chunk: `✅ Created folder "${folderName}" on Desktop.\n` });
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ Folder error: ${e.message}\n` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  // Step 2: if command mentions creating a file with code, generate it with Gemini
+  const fileRequest = command.match(/(?:make|create|build|put|add)\s+(?:a\s+)?([a-z0-9]+(?:\.[a-z]+)?)\s+file\s+(?:with|containing|that has|inside)?\s*(.+?)(?:\s+and\s+open|\s*$)/i);
+  if (!fileRequest && !/\b(html|css|js|file|game|code|script)\b/.test(cmdL)) {
+    event.sender.send('command-end', { messageId, code: 0 });
+    return;
+  }
+
+  const fileExt = (fileRequest?.[1] || 'html').replace(/^\./, '');
+  const fileDesc = fileRequest?.[2] || command;
+  const fileName = `index.${fileExt}`;
+  const filePath = path.join(desktopPath, fileName);
+
+  if (!GEMINI_KEY) {
+    event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing — cannot generate file content.\n' });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  event.sender.send('command-chunk', { messageId, chunk: `🧠 Generating ${fileName}...\n` });
+
+  const codePrompt = `Generate a complete, self-contained ${fileExt.toUpperCase()} file for: ${fileDesc}.
+Output ONLY the raw file content with no markdown fences, no explanation — just the code.`;
+
+  const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+    path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+  req.setHeader('Content-Type', 'application/json');
+  req.write(JSON.stringify({ contents: [{ parts: [{ text: codePrompt }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } }));
+  let raw = '';
+  req.on('response', res => {
+    res.on('data', d => raw += d.toString());
+    res.on('end', () => {
+      try {
+        let code = JSON.parse(raw)?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        code = code.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+        fs.writeFileSync(filePath, code, 'utf-8');
+        event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${fileName} inside "${folderName}".\n` });
+        // Step 3: open the file if requested
+        if (/\bopen\b/.test(cmdL)) {
+          shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
+          event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening ${fileName}...\n` });
+        }
+      } catch(e) {
+        event.sender.send('command-chunk', { messageId, chunk: `❌ File generation error: ${e.message}\n` });
+      }
+      event.sender.send('command-end', { messageId, code: 0 });
+    });
+  });
+  req.on('error', e => { event.sender.send('command-error', { messageId, error: e.message }); });
+  req.end();
 }
 
 async function triggerDesktopVision(event, userCommand, messageId) {
