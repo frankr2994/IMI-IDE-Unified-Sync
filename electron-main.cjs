@@ -499,7 +499,16 @@ RULES:
   const julesPromptPath = path.join(os.tmpdir(), `jules_prompt_${Date.now()}.txt`);
   fs.writeFileSync(julesPromptPath, prompt, 'utf-8');
 
-  const child = spawn(`type "${julesPromptPath}" | jules new`, [], { 
+  let repoString = 'creepybunny99/IMI-IDE-Unified-Sync';
+  try {
+    const gitUrl = execSync('git config --get remote.origin.url', { cwd: currentProjectRoot }).toString().trim();
+    if (gitUrl) {
+       const match = gitUrl.match(/github\.com[:/]([^/]+\/[^.]+)(\.git)?$/i);
+       if (match) repoString = match[1];
+    }
+  } catch(e) {}
+
+  const child = spawn(`type "${julesPromptPath}" | jules new --repo ${repoString}`, [], { 
     cwd: currentProjectRoot, 
     shell: true, 
     env: { 

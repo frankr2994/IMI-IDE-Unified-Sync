@@ -1006,7 +1006,7 @@ const App = () => {
                           Get Free Key →
                         </button>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
                         {[
                           { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
                           { key: 'JULES (GitHub)', val: julesApiKey, set: setJulesApiKey, ph: 'GitHub Token for Jules...' },
@@ -1018,10 +1018,10 @@ const App = () => {
                           { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
                           { key: 'CUSTOM (LLAMA / LOCAL)', val: customApiKey, set: setCustomApiKey, ph: 'Bearer Token (Optional)...' }
                         ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
-                          <div key={item.key} style={{ position: 'relative' }}>
-                            <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>{item.key}</div>
-                            <input type="password" value={item.val} onChange={e => item.set(e.target.value)} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
-                            {item.val && <CheckCircle2 size={12} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '28px' }} />}
+                          <div key={item.key} style={{ position: 'relative', width: '100%' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>{item.key} KEY</div>
+                            <input type="password" value={item.val} onChange={e => item.set(e.target.value)} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '54px', fontSize: '1rem', paddingLeft: '20px', paddingRight: '45px', borderRadius: '12px' }} />
+                            {item.val && <CheckCircle2 size={18} color="#00ffaa" style={{ position: 'absolute', right: '16px', top: '35px' }} />}
                           </div>
                         ))}
                       </div>
