@@ -676,6 +676,7 @@ function startPuppeteerServer() {
     if (!npxPath) return reject(new Error('npx not found'));
     puppeteerProcess = spawn(npxPath, ['-y', '@modelcontextprotocol/server-puppeteer'], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
       env: { ...process.env, PUPPETEER_HEADLESS: 'false' }
     });
     puppeteerBuffer = '';
