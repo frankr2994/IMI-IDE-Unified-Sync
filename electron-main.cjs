@@ -198,6 +198,13 @@ ipcMain.handle('get-system-usage', async () => ({
 ipcMain.handle('get-token-usage', () => tokenStats);
 ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
 
+// ── ImiStore IPC handlers (no API calls, instant) ────────────────────────────
+ipcMain.handle('store-get-messages', (_e, projectKey) => imiStore.getMessages(projectKey || currentProjectRoot));
+ipcMain.handle('store-append-message', (_e, projectKey, msg) => { imiStore.appendMessage(projectKey || currentProjectRoot, msg); return true; });
+ipcMain.handle('store-clear-messages', (_e, projectKey) => { imiStore.clearMessages(projectKey || currentProjectRoot); return true; });
+ipcMain.handle('store-get', (_e, key, fallback) => imiStore.get(key, fallback));
+ipcMain.handle('store-set', (_e, key, value) => { imiStore.set(key, value); return true; });
+
 ipcMain.handle('save-context-snapshot', async (event, snapshot) => {
   const snapshotPath = path.join(currentProjectRoot, '.imi-context-snapshot.json');
   try {
