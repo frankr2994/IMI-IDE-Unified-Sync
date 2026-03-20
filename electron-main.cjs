@@ -711,15 +711,22 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
   }
 
   // Step 2: if command mentions creating a file with code, generate it with Gemini
-  const fileRequest = command.match(/(?:make|create|build|put|add)\s+(?:a\s+)?([a-z0-9]+(?:\.[a-z]+)?)\s+file\s+(?:with|containing|that has|inside)?\s*(.+?)(?:\s+and\s+open|\s*$)/i);
+  const fileRequest = command.match(/(?:make|create|build|put|add)\s+(?:a\s+)?([a-z0-9]+(?:\.[a-z]+)?)\s+file\s+(?:with|containing|that has|inside)?\s*(.+?)(?:\s+and\s+(?:open|launch|run)|\s*$)/i);
   if (!fileRequest && !/\b(html|css|js|file|game|code|script)\b/.test(cmdL)) {
     event.sender.send('command-end', { messageId, code: 0 });
     return;
   }
 
-  const fileExt = (fileRequest?.[1] || 'html').replace(/^\./, '');
+  // Resolve file extension — reject non-extension words like "new", "simple", "code"
+  const validExts = ['html', 'css', 'js', 'ts', 'jsx', 'tsx', 'py', 'json', 'txt', 'md', 'php', 'java', 'cpp', 'c', 'cs'];
+  let rawExt = (fileRequest?.[1] || '').toLowerCase().replace(/^\./, '');
+  if (!validExts.includes(rawExt)) {
+    const typeMatch = cmdL.match(/\b(html|css|javascript|js|typescript|ts|python|py|json|txt|php|jsx|tsx)\b/);
+    rawExt = typeMatch ? typeMatch[1].replace('javascript','js').replace('typescript','ts').replace('python','py') : 'html';
+  }
+  const fileExt = rawExt;
   const fileDesc = fileRequest?.[2] || command;
-  const fileName = `index.${fileExt}`;
+  const fileName = `${folderName}.${fileExt}`;
   const filePath = path.join(desktopPath, fileName);
 
   if (!GEMINI_KEY) {
@@ -748,7 +755,7 @@ Output ONLY the raw file content with no markdown fences, no explanation — jus
         fs.writeFileSync(filePath, code, 'utf-8');
         event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${fileName} inside "${folderName}".\n` });
         // Step 3: open the file if requested
-        if (/\bopen\b/.test(cmdL)) {
+        if (/\b(open|launch|run|start|play|show)\b/.test(cmdL)) {
           shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
           event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening ${fileName}...\n` });
         }
