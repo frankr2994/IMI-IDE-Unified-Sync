@@ -362,21 +362,38 @@ User message: `;
 
   const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY };
   delete safeEnv.ELECTRON_RUN_AS_NODE;
-  
   const argsString = director === 'geminicli' ? `-p ${shellEscape(command)}` : `chat ${shellEscape(command)}`;
-  // Strip ANSI/VT100 escape codes that Gemini CLI emits for its spinner/colours
-  const stripAnsi = (str) => str.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+
+  // Cleanup output: Strip ANSI codes and filter out diagnostic/stacktrace noise
+  const cleanOutput = (str) => {
+    // Strip ANSI escape codes
+    let clean = str.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+    // Filter out noisy CLI/MCP diagnostic lines
+    const lines = clean.split('\n');
+    const filtered = lines.filter(line => {
+      const l = line.trim();
+      if (!l) return false;
+      if (l.startsWith('at ') || l.includes('McpError') || l.includes('[MCP error]') || l.includes('node_modules')) return false;
+      if (l.startsWith('Registering notification') || l.includes('Server \'puppeteer\'') || l.includes('listChanged capability')) return false;
+      if (l.includes('Scheduling MCP context refresh') || l.includes('Executing MCP context refresh')) return false;
+      if (l.includes('MCP context refresh complete') || l.includes('MCP issues detected')) return false;
+      if (l.includes('Both GOOGLE_API_KEY and GEMINI_API_KEY are set')) return false;
+      return true;
+    });
+    return filtered.join('\n').trim();
+  };
+
   const child = spawn(`"${binPath}" ${argsString}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
   let output = '';
   child.stdout.on('data', (d) => {
-    const clean = stripAnsi(d.toString());
-    if (!clean.trim()) return; // skip blank / spinner-only frames
-    output += clean;
-    event.sender.send('command-chunk', { messageId, chunk: clean });
+    const clean = cleanOutput(d.toString());
+    if (!clean) return;
+    output += clean + '\n';
+    event.sender.send('command-chunk', { messageId, chunk: clean + '\n' });
   });
   child.stderr.on('data', (d) => {
-    const clean = stripAnsi(d.toString());
-    if (clean.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n[CLI] ${clean}` });
+    const clean = cleanOutput(d.toString());
+    if (clean) event.sender.send('command-chunk', { messageId, chunk: `\n[CLI] ${clean}\n` });
   });
   child.on('close', (code) => { event.sender.send('command-end', { messageId, code }); triggerGitSync(); });
 });
