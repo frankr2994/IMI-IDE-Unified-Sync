@@ -249,22 +249,24 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
 
   if (engine.toLowerCase() === 'antigravity') {
     const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Antigravity Stream...` });
+    const tempTaskPath = path.join(os.tmpdir(), `imi_task_${Date.now()}.txt`);
+    
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Staging instruction for Antigravity...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    const child = spawn(binAg, ['chat', '--yolo', '-'], {
+    fs.writeFileSync(tempTaskPath, prompt);
+
+    const child = spawn(binAg, ['chat', '--yolo', tempTaskPath], {
       cwd: currentProjectRoot,
       env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY },
       shell: true
     });
 
-    child.stdin.write(prompt + '\n');
-    setTimeout(() => { child.stdin.end(); }, 1000);
-
     child.stdout.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
 
     child.on('close', (code) => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY STREAM FINISHED ---` });
+      try { fs.unlinkSync(tempTaskPath); } catch(e) {} 
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY FINISHED ---` });
       event.sender.send('command-end', { messageId, code });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
