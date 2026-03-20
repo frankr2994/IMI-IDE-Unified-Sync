@@ -318,6 +318,7 @@ Format: [{ "file": "relative/path", "search": "exact existing text to find", "re
 
 RULES:
 - "search" must be verbatim text that exists right now in the file shown above
+- To create a NEW file from scratch, set "search" to exactly "" (empty string)
 - Only change lines needed for the plan — do NOT rewrite whole files
 - Multiple patches allowed, one per logical change
 - If no code change is needed (e.g. plan is just analysis), return []`;
@@ -352,7 +353,16 @@ RULES:
               const fp = path.join(currentProjectRoot, patch.file);
               // Safety: never escape project root
               if (!fp.startsWith(currentProjectRoot)) { results.push(`BLOCKED: ${patch.file} (outside root)`); continue; }
-              if (!fs.existsSync(fp)) { results.push(`SKIPPED: ${patch.file} (file not found)`); continue; }
+              
+              if (patch.search === "") {
+                const dir = path.dirname(fp);
+                if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+                fs.writeFileSync(fp, patch.replace, 'utf-8');
+                results.push(`CREATED: ${patch.file}`);
+                continue;
+              }
+
+              if (!fs.existsSync(fp)) { results.push(`SKIPPED: ${patch.file} (not found, use search="" to create)`); continue; }
               const original = fs.readFileSync(fp, 'utf-8');
               if (!original.includes(patch.search)) {
                 results.push(`SKIPPED: ${patch.file} (search text not found in file)`);
