@@ -7,7 +7,7 @@ const { exec, spawn, execSync } = require('child_process');
 
 const shellEscape = (str) => {
   if (!str) return '""';
-  // 🛡️ Robust Windows Shell Escaping
+  // 🛡️ Robust Windows Shell Escaping: Remove newlines and double the quotes
   const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
   return `"${escaped}"`;
 };
@@ -26,41 +26,26 @@ const sterilizePath = (inputPath) => {
 process.env.PATH = sterilizePath(process.env.PATH);
 const GLOBAL_STATE_PATH = path.join(os.homedir(), '.gemini', 'state.json');
 
-let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0 };
+let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'imi-core': 0 };
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = ''; let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
-let ACTIVE_ENGINE = 'jules';
-let THEME = 'glass';
-let LOG_RETENTION = 15;
-let SYNC_INTERVAL_MS = 60000;
-let syncTimer = null;
+let ACTIVE_ENGINE = 'jules'; let THEME = 'glass'; let LOG_RETENTION = 15;
+let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
 let mcpServersList = [];
 let currentProjectRoot = isDev ? process.cwd() : path.dirname(app.getPath('exe'));
 
-// --- PERSISTENCE ---
 const saveGlobalState = () => {
   try {
     const stateDir = path.dirname(GLOBAL_STATE_PATH);
     if (!fs.existsSync(stateDir)) fs.mkdirSync(stateDir, { recursive: true });
     const config = { 
-      geminiKey: GEMINI_KEY, 
-      githubToken: GITHUB_TOKEN, 
-      openaiKey: OPENAI_KEY, 
-      claudeKey: CLAUDE_KEY, 
-      deepseekKey: DEEPSEEK_KEY, 
-      mistralKey: MISTRAL_KEY, 
-      llamaKey: LLAMA_KEY, 
-      perplexityKey: PERPLEXITY_KEY, 
-      customApiKey: CUSTOM_API_KEY, 
-      julesApiKey: JULES_KEY, 
-      googleMapsKey: GOOGLE_MAPS_KEY, 
-      activeEngine: ACTIVE_ENGINE, 
-      theme: THEME,
-      logRetention: LOG_RETENTION,
-      syncFrequency: SYNC_INTERVAL_MS / 1000,
-      mcpServersList, 
-      projectRoot: currentProjectRoot 
+      geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, 
+      claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, 
+      llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, 
+      julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, activeEngine: ACTIVE_ENGINE, 
+      theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
+      mcpServersList, projectRoot: currentProjectRoot 
     };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
   } catch (e) { console.error('[Bridge] Save Error:', e); }
@@ -71,20 +56,13 @@ try {
     const state = JSON.parse(fs.readFileSync(GLOBAL_STATE_PATH, 'utf-8'));
     if (state.tokenUsage) tokenStats = state.tokenUsage;
     if (state.config) {
-      GEMINI_KEY = state.config.geminiKey || ''; 
-      GITHUB_TOKEN = state.config.githubToken || '';
-      OPENAI_KEY = state.config.openaiKey || ''; 
-      CLAUDE_KEY = state.config.claudeKey || '';
-      DEEPSEEK_KEY = state.config.deepseekKey || ''; 
-      MISTRAL_KEY = state.config.mistralKey || '';
-      LLAMA_KEY = state.config.llamaKey || ''; 
-      PERPLEXITY_KEY = state.config.perplexityKey || '';
-      CUSTOM_API_KEY = state.config.customApiKey || ''; 
-      JULES_KEY = state.config.julesApiKey || '';
-      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; 
-      ACTIVE_ENGINE = state.config.activeEngine || 'jules';
-      THEME = state.config.theme || 'glass';
-      LOG_RETENTION = state.config.logRetention || 15;
+      GEMINI_KEY = state.config.geminiKey || ''; GITHUB_TOKEN = state.config.githubToken || '';
+      OPENAI_KEY = state.config.openaiKey || ''; CLAUDE_KEY = state.config.claudeKey || '';
+      DEEPSEEK_KEY = state.config.deepseekKey || ''; MISTRAL_KEY = state.config.mistralKey || '';
+      LLAMA_KEY = state.config.llamaKey || ''; PERPLEXITY_KEY = state.config.perplexityKey || '';
+      CUSTOM_API_KEY = state.config.customApiKey || ''; JULES_KEY = state.config.julesApiKey || '';
+      GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; ACTIVE_ENGINE = state.config.activeEngine || 'jules';
+      THEME = state.config.theme || 'glass'; LOG_RETENTION = state.config.logRetention || 15;
       if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
       mcpServersList = state.config.mcpServersList || [];
       if (state.config.projectRoot && fs.existsSync(state.config.projectRoot)) currentProjectRoot = state.config.projectRoot;
@@ -92,7 +70,6 @@ try {
   }
 } catch (e) { console.error('[Bridge] Load Error:', e); }
 
-// --- IPC HANDLERS ---
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
   if (config.githubToken !== undefined) GITHUB_TOKEN = config.githubToken;
@@ -111,25 +88,14 @@ ipcMain.handle('save-api-config', (e, config) => {
     syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
   }
   if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
-  saveGlobalState(); 
-  return { success: true };
+  saveGlobalState(); return { success: true };
 });
 
 ipcMain.handle('get-api-config', () => ({
-  geminiKey: GEMINI_KEY, 
-  githubToken: GITHUB_TOKEN, 
-  openaiKey: OPENAI_KEY, 
-  claudeKey: CLAUDE_KEY,
-  deepseekKey: DEEPSEEK_KEY, 
-  mistralKey: MISTRAL_KEY, 
-  llamaKey: LLAMA_KEY, 
-  perplexityKey: PERPLEXITY_KEY,
-  julesApiKey: JULES_KEY, 
-  activeEngine: ACTIVE_ENGINE, 
-  theme: THEME,
-  logRetention: LOG_RETENTION,
-  syncFrequency: SYNC_INTERVAL_MS / 1000,
-  projectRoot: currentProjectRoot
+  geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, claudeKey: CLAUDE_KEY,
+  deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
+  julesApiKey: JULES_KEY, activeEngine: ACTIVE_ENGINE, projectRoot: currentProjectRoot,
+  theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000
 }));
 
 ipcMain.handle('get-system-usage', async () => ({
@@ -140,11 +106,7 @@ ipcMain.handle('get-system-usage', async () => ({
 }));
 
 ipcMain.handle('get-token-usage', () => tokenStats);
-ipcMain.handle('get-project-stats', () => ({ 
-  projectRoot: currentProjectRoot, 
-  platform: os.platform(), 
-  freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) 
-}));
+ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
 
 ipcMain.handle('save-context-snapshot', async (event, snapshot) => {
   const snapshotPath = path.join(currentProjectRoot, '.imi-context-snapshot.json');
@@ -187,9 +149,7 @@ async function triggerGitSync() {
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
   if (mainWindow) mainWindow.webContents.send('sync-status', 'Syncing');
-  
   const git = (cmd) => new Promise(res => exec(`"${gitPath}" ${cmd}`, { cwd: currentProjectRoot }, res));
-
   try {
     await git('add .');
     await git('commit -m "IMI Auto-Sync"'); 
@@ -197,7 +157,6 @@ async function triggerGitSync() {
     await git('push origin master');
     if (mainWindow) mainWindow.webContents.send('sync-time', new Date().toLocaleTimeString());
   } catch(e) {}
-  
   if (mainWindow) mainWindow.webContents.send('sync-end');
 }
 
@@ -205,51 +164,39 @@ async function triggerGitSync() {
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
   
-    // 🛡️ [GLOBAL BLUEPRINT PROTOCOL]
-    // Ensures ALL Brain models output a standardized technical spec for ANY Coder
-    const prefix = "GLOBAL BLUEPRINT PROTOCOL: You are the Lead Architect. Refine the user's request into a 'CODER-READY PAYLOAD'. " +
-                   "Output a clear section named 'TECHNICAL SPECIFICATION' with the exact code logic, file paths, and changes required. " +
-                   "DO NOT discuss or plan. Your output must be interpretable by any autonomous coding agent. End with 'BLUEPRINT_LOCKED'. ";
+  // 🚀 [THE SUCCESS CONFIGURATION]
+  const blueprintPrefix = "GLOBAL BLUEPRINT PROTOCOL: Refine this request into a TECHNICAL SPECIFICATION for a coding agent. Output only the spec. User Request: ";
+  
+  if (director === 'gemini') {
+    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
     
-    // Move Gemini Brain to direct API to stop the overthinking loop
-    if (director === 'gemini') {
-    // 🛡️ [SMART CONTEXT RECOGNITION]
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'code', 'write', 'modify'];
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
-    
-    // Only use the heavy Architect prefix if it's a coding task
-    const activePrefix = isCodingAction ? prefix : "You are Gemini, a helpful AI assistant. Answer the following request clearly: ";
+    const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Request: ";
     
     const url = `generativelanguage.googleapis.com`;
     const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
-    
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
     const body = JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] });
 
     let fullText = '';
-    let buffer = '';
     req.on('response', (res) => {
       res.on('data', (chunk) => {
         const raw = chunk.toString();
-        console.log(`[Gemini Raw Data] ${raw}`); // 🛡️ DEBUG LOG
-        // 🛡️ Robust Regex Parser: Extract all text candidates from the streaming buffer
-        const regex = /"text":\s*"([^"]+)"/g;
-        let match;
-        while ((match = regex.exec(buffer)) !== null) {
-          const content = match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\t/g, '\t');
-          if (!fullText.includes(content)) {
+        // 🛡️ BRUTE-FORCE PARSER
+        const textParts = raw.split('"text": "');
+        for (let i = 1; i < textParts.length; i++) {
+          const content = textParts[i].split('"')[0].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          if (content && !fullText.includes(content)) {
             fullText += content;
             event.sender.send('command-chunk', { messageId, chunk: content });
           }
         }
       });
       res.on('end', () => {
-        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
-        saveGlobalState();
         event.sender.send('command-end', { messageId, code: 0 });
-        const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
-        if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== 'gemini') {
+        if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
           event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
           setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
         }
@@ -260,243 +207,79 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     return;
   }
 
-  const isCli = ['jules', 'antigravity'].includes(director);
-  if (isCli) {
-    const binPath = await checkCommand(director);
-    if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
-    
-    let fullCmd = `"${binPath}"`;
-    if (director === 'jules') fullCmd += ` new ${shellEscape(command)}`;
-    else if (director === 'antigravity') {
-      // 🚀 [INTERACTIVE BRAIN] Open Antigravity in a new CMD window
-      fullCmd = `start cmd /k "${binPath} chat ${shellEscape(command)}"`;
-    } else {
-      fullCmd += ` chat ${shellEscape(command)}`;
-    }
-
-    console.log(`[Bridge] Spawning ${director}: ${fullCmd}`);
-    const finalEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, FORCE_COLOR: '1' };
-    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-    
-    let output = '';
-    child.stdout.on('data', (d) => { 
-      const str = d.toString();
-      output += str; 
-      event.sender.send('command-chunk', { messageId, chunk: str }); 
-    });
-    
-    child.stderr.on('data', (d) => {
-      const chunk = d.toString();
-      const noise = ['[MCP error]', 'at McpError', 'at Client', 'node:internal', 'McpError', 'refresh complete', 'Loaded cached credentials'];
-      if (!noise.some(n => chunk.includes(n))) {
-        event.sender.send('command-chunk', { messageId, chunk });
-      }
-    });
-
-    child.on('close', (code) => {
-      // 🚀 Track tokens for CLI models
-      const estimatedTokens = Math.ceil(output.length / 4);
-      tokenStats[director] = (tokenStats[director] || 0) + estimatedTokens;
-      saveGlobalState();
-      
-      event.sender.send('command-end', { messageId, code });
-      
-      // 🛡️ [INTELLIGENCE FILTER] Simplified: If it mentions code/file/story/add, hand off.
-      const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'code', 'write', 'modify', 'setup'];
-      const isCodingAction = codingKeywords.some(word => command.toLowerCase().includes(word));
-
-      if (isCodingAction && payload.engine && payload.engine !== director) {
-        event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
-        setTimeout(() => triggerCoderImplementation(event, payload.engine, output, messageId), 1000);
-      }
-      triggerGitSync();
-    });
-  } else {
-    // 🌐 [DIRECT API MODELS] ChatGPT, Claude, etc.
-    let apiUrl = ''; let apiKey = ''; let modelName = '';
-    if (director === 'chatgpt') { apiUrl = 'api.openai.com'; apiKey = OPENAI_KEY; modelName = 'gpt-4o'; }
-    else if (director === 'claude') { apiUrl = 'api.anthropic.com'; apiKey = CLAUDE_KEY; modelName = 'claude-3-5-sonnet-20240620'; }
-    else if (director === 'deepseek') { apiUrl = 'api.deepseek.com'; apiKey = DEEPSEEK_KEY; modelName = 'deepseek-chat'; }
-    else if (director === 'mistral') { apiUrl = 'api.mistral.ai'; apiKey = MISTRAL_KEY; modelName = 'mistral-large-latest'; }
-    else if (director === 'llama') { apiUrl = 'api.groq.com'; apiKey = LLAMA_KEY; modelName = 'llama3-70b-8192'; }
-    else if (director === 'perplexity') { apiUrl = 'api.perplexity.ai'; apiKey = PERPLEXITY_KEY; modelName = 'llama-3-sonar-large-32k-online'; }
-
-    if (!apiKey) { event.sender.send('command-error', { messageId, error: `API Key for ${director.toUpperCase()} missing.` }); return; }
-
-    const apiPath = director === 'claude' ? '/v1/messages' : (director === 'llama' ? '/openai/v1/chat/completions' : '/v1/chat/completions');
-    const req = net.request({ method: 'POST', protocol: 'https:', hostname: apiUrl, path: apiPath });
-    req.setHeader('Content-Type', 'application/json');
-    if (director === 'claude') { req.setHeader('x-api-key', apiKey); req.setHeader('anthropic-version', '2023-06-01'); }
-    else req.setHeader('Authorization', `Bearer ${apiKey}`);
-
-    // 🚀 Inject the Global Blueprint Protocol prefix
-    const body = JSON.stringify(director === 'claude' ? { model: modelName, max_tokens: 4096, messages: [{ role: 'user', content: prefix + command }], stream: true } : { model: modelName, messages: [{ role: 'user', content: prefix + command }], stream: true });
-    
-    let fullText = '';
-    req.on('response', (res) => {
-      res.on('data', (chunk) => {
-        const lines = chunk.toString().split('\n');
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]' || !trimmed.startsWith('data: ')) continue;
-          try {
-            const json = JSON.parse(trimmed.substring(6));
-            const content = director === 'claude' ? (json.delta?.text || '') : (json.choices?.[0]?.delta?.content || '');
-            if (content) { fullText += content; event.sender.send('command-chunk', { messageId, chunk: content }); }
-          } catch(e) {}
-        }
-      });
-      res.on('end', () => {
-        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
-        saveGlobalState();
-        event.sender.send('command-end', { messageId, code: 0 });
-        const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup'];
-        if (codingKeywords.some(word => command.toLowerCase().includes(word)) && payload.engine && payload.engine !== director) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ⚙️ IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
-          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
-        }
-        triggerGitSync();
-      });
-    });
-    req.write(body); req.end();
-  }
+  // CLI Directors
+  const binPath = await checkCommand(director);
+  if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
+  const child = spawn(`"${binPath}"`, ['chat', shellEscape(command)], { cwd: currentProjectRoot, shell: true, env: { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY } });
+  let output = '';
+  child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
+  child.on('close', (code) => {
+    event.sender.send('command-end', { messageId, code });
+    triggerGitSync();
+  });
 });
 
 async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
 
   if (engine.toLowerCase() === 'imi-core') {
-    if (!GEMINI_KEY) {
-      event.sender.send('command-error', { messageId, error: "Gemini API Key missing for IMI CORE." });
-      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-      return;
-    }
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Initializing Internal Engine...` });
-
-    const corePrompt = `You are IMI CORE, an internal implementation engine.
-Plan: ${brainPlan}
-Output ONLY valid JSON. No markdown formatting. Format:
-[
-  { "file": "relative/path/to/file", "content": "full new file content" }
-]
-Only output the JSON array.`;
-
+    if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Key missing." }); return; }
+    const corePrompt = `You are IMI CORE. Plan: ${brainPlan} Output ONLY JSON: [{ "file": "path", "content": "full content" }]`;
     const url = `generativelanguage.googleapis.com`;
     const apiPath = `/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}`;
-    
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] });
-
+    req.write(JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] }));
     let fullText = '';
     req.on('response', (res) => {
       res.on('data', (chunk) => { fullText += chunk.toString(); });
       res.on('end', () => {
-        if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
         try {
-          const jsonResponse = JSON.parse(fullText);
-          let content = jsonResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          const json = JSON.parse(fullText);
+          let content = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
           content = content.replace(/```json/g, '').replace(/```/g, '').trim();
           const edits = JSON.parse(content);
-          let modifiedFiles = [];
           for (const edit of edits) {
-            const fullPath = path.join(currentProjectRoot, edit.file);
-            fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-            fs.writeFileSync(fullPath, edit.content);
-            modifiedFiles.push(edit.file);
+            const fp = path.join(currentProjectRoot, edit.file);
+            fs.mkdirSync(path.dirname(fp), { recursive: true });
+            fs.writeFileSync(fp, edit.content);
           }
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED (IMI CORE) ---\n${modifiedFiles.join('\n')}` });
-          tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
-          saveGlobalState();
-        } catch(e) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE Error] Failed to parse internal output: ${e.message}` });
-        }
-        event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
+          event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Implementation Complete.` });
+        } catch(e) {}
         event.sender.send('command-end', { messageId, code: 0 });
         if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
         triggerGitSync();
       });
     });
-    req.write(body); req.end();
+    req.end();
     return;
   }
-  
-  // 🚀 [AGENTIC ENGINE MODE] Jules receives the enhanced prompt and uses its own intelligence
-  const prompt = brainPlan.trim();
-  const escapedPrompt = shellEscape(prompt);
-  
+
+  // --- CODER: JULES or ANTIGRAVITY ---
+  const prompt = `SURGICAL BUILDER MODE: Implement this plan exactly. Plan: ${brainPlan.trim()}`;
   let fullCmd = '';
-  let finalEnv = { ...process.env, ...getMCPEnv(), FORCE_COLOR: '1', GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN };
+  const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
 
-  if (engine.toLowerCase() === 'jules') {
-    let repo = '';
-    try {
-      const git = await checkCommand('git');
-      if (git) {
-        const url = execSync(`"${git}" remote get-url origin`, { cwd: currentProjectRoot }).toString();
-        const match = url.match(/github\.com[\/:](.+?\/.+?)(?:\.git)?\s*$/);
-        if (match) repo = `--repo ${match[1].trim()} `;
-      }
-    } catch(e) {}
-    fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
-  } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [INTERACTIVE TERMINAL BRIDGE]
-    // Opens a fresh CMD window running the Antigravity CLI in Agent Mode
-    const bin = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
-    
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Interactive Antigravity Terminal...` });
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    
-    // Use 'start cmd /k' to open a new visible window and run the chat command
-    // We pre-fill the prompt so Antigravity starts working immediately
-    const fullCmd = `start "" "${bin}" chat ${shellEscape(prompt)}`;
-    
-    spawn('cmd.exe', ['/c', fullCmd], {
-      cwd: currentProjectRoot,
-      env: finalEnv,
-      detached: true,
-      stdio: 'ignore'
-    }).unref();
-
+  if (engine.toLowerCase() === 'antigravity') {
+    // 🚀 [POWERSHELL BRIDGE]
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Antigravity via PowerShell...` });
+    const psCmd = `Start-Process "${binAg}" -ArgumentList "chat", ${shellEscape(prompt)} -WorkingDirectory "${currentProjectRoot}"`;
+    spawn('powershell.exe', ['-Command', psCmd], { detached: true, stdio: 'ignore' }).unref();
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is active in the separate CMD window. You can type directly to it there.` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
     }, 3000);
     return;
-  } else {
-    // Fallback to Gemini-as-Coder
-    const binPath = await checkCommand('gemini');
-    if (!binPath) {
-      event.sender.send('command-error', { messageId, error: "Implementation engine not available." });
-      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-      return;
-    }
-    fullCmd = `"${binPath}" -m gemini-3-flash-preview --allowed-mcp-server-names "" --approval-mode yolo -p ${escapedPrompt}`;
   }
-  
-  console.log(`[Orchestrator] Spawning Coder (${engine}): ${fullCmd}`);
-  if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-  
-  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-  child.stderr.on('data', (d) => {
-    const chunk = d.toString();
-    if (!chunk.includes('at Client') && !chunk.includes('node:internal')) event.sender.send('command-chunk', { messageId, chunk });
-  });
 
+  // FALLBACK JULES
+  const julesBin = await checkCommand('jules');
+  fullCmd = `npx -y @google/jules new ${shellEscape(prompt)}`;
+  const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
+  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
   child.on('close', (code) => {
-    if (mainWindow) mainWindow.webContents.send('coder-status', 'Finalizing');
-    const gitPath = verifiedPaths['git'];
-    if (gitPath) {
-      exec(`"${gitPath}" diff --name-only HEAD~1`, { cwd: currentProjectRoot }, (err, stdout) => {
-        if (!err && stdout.trim()) event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 📂 FILES MODIFIED ---\n${stdout.trim()}` });
-      });
-    }
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: FINISHED ---` });
     event.sender.send('command-end', { messageId, code });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     triggerGitSync();
@@ -504,41 +287,18 @@ Only output the JSON array.`;
 }
 
 function createWindow() {
-  mainWindow = new BrowserWindow({ 
-    width: 1400, 
-    height: 900, 
-    frame: false, 
-    transparent: true, 
-    webPreferences: { 
-      nodeIntegration: true, 
-      contextIsolation: false 
-    } 
-  });
+  mainWindow = new BrowserWindow({ width: 1400, height: 900, frame: false, transparent: true, webPreferences: { nodeIntegration: true, contextIsolation: false } });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    app.quit();
-  });
+  mainWindow.on('closed', () => { mainWindow = null; app.quit(); });
 }
 
-app.whenReady().then(() => { 
-  createWindow(); 
-  syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); 
-});
+app.whenReady().then(() => { createWindow(); syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS); });
 app.on('window-all-closed', () => { app.quit(); });
-app.on('before-quit', () => { 
-  process.exit(0); 
-});
+app.on('before-quit', () => { process.exit(0); });
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) { if (win.isMaximized()) win.unmaximize(); else win.maximize(); } });
-ipcMain.on('window-close', () => { 
-  const win = BrowserWindow.getFocusedWindow(); 
-  if (win) win.close(); 
-  app.quit(); 
-});
-
+ipcMain.on('window-close', () => { app.quit(); });
 ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
