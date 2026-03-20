@@ -420,6 +420,12 @@ Only output the JSON array.`;
       }
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
+  } else if (engine.toLowerCase() === 'antigravity') {
+    // 🚀 [INTERACTIVE MODE] Spawn Antigravity in a new visible CMD window
+    const antigravityPath = await checkCommand('antigravity');
+    const bin = antigravityPath || 'antigravity';
+    // Use 'start cmd /k' to open a new window and keep it open
+    fullCmd = `start cmd /k "${bin} chat ${escapedPrompt}"`;
   } else {
     // Fallback to Gemini-as-Coder
     const binPath = await checkCommand('gemini');
