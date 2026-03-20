@@ -74,6 +74,35 @@ const App = () => {
   const [npmSearching, setNpmSearching] = useState(false);
   const [npmTotal, setNpmTotal] = useState(0);
   const [npmError, setNpmError] = useState('');
+  const [mcpHubTab, setMcpHubTab] = useState<'mcp'|'github'>('mcp');
+  const [ghQuery, setGhQuery] = useState('');
+  const [ghResults, setGhResults] = useState<any[]>([]);
+  const [ghSearching, setGhSearching] = useState(false);
+  const [ghTotal, setGhTotal] = useState(0);
+  const [ghError, setGhError] = useState('');
+  const [ghSort, setGhSort] = useState('stars');
+  const [cloningRepo, setCloningRepo] = useState('');
+
+  const searchGitHub = async (q: string, sort?: string) => {
+    if (!q.trim()) return;
+    setGhSearching(true); setGhError('');
+    try {
+      const res = await (ipc as any).invoke('github-search', q, sort || ghSort);
+      setGhResults(res.results || []);
+      setGhTotal(res.total || 0);
+      if (res.error) setGhError(res.error);
+    } catch(e: any) { setGhError(e.message); }
+    setGhSearching(false);
+  };
+
+  const formatStars = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
+  const timeAgo = (iso: string) => {
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    if (d === 0) return 'today'; if (d === 1) return 'yesterday';
+    if (d < 30) return `${d}d ago`; if (d < 365) return `${Math.floor(d/30)}mo ago`;
+    return `${Math.floor(d/365)}yr ago`;
+  };
+  const langColor: Record<string,string> = { TypeScript:'#3178c6', JavaScript:'#f1e05a', Python:'#3572A5', Go:'#00ADD8', Rust:'#dea584', Java:'#b07219', 'C++':'#f34b7d', C:'#555555', Ruby:'#701516', Shell:'#89e051' };
 
   const searchNpm = async (q: string) => {
     if (!q.trim()) { setNpmResults([]); setNpmTotal(0); return; }
@@ -860,12 +889,21 @@ const App = () => {
           )}
 
           {activeTab === 'tools' && (
-            <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', alignItems: 'flex-end' }}>
+            <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '2rem', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'flex-end' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>Global MCP Hub</h3>
-                    <p style={{ color: 'var(--text-dim)' }}>Search the entire npm registry for any MCP server.</p>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>Global Hub</h3>
+                    <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Find and connect any tool from npm or GitHub.</p>
                   </div>
+                </div>
+
+                {/* Sub-tabs */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0' }}>
+                  {[{ id: 'mcp', label: '📦 MCP Registry', sub: 'npm packages' }, { id: 'github', label: '🐙 GitHub Libraries', sub: 'repos & tools' }].map(t => (
+                    <button key={t.id} onClick={() => setMcpHubTab(t.id as any)} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
+                      {t.label} <span style={{ opacity: 0.6, fontSize: '0.65rem', marginLeft: '4px' }}>{t.sub}</span>
+                    </button>
+                  ))}
                 </div>
 
                 {/* Live npm search bar */}
