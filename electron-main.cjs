@@ -80,6 +80,170 @@ class ImiStore {
 
 const imiStore = new ImiStore();
 
+// ══════════════════════════════════════════════════════════════
+// ⚡ SKILL ENGINE — Self-optimizing, zero-token skill system
+// Goal: handle 90% of requests without hitting any AI API
+// ══════════════════════════════════════════════════════════════
+const SKILLS_PATH = path.join(os.homedir(), '.imi', 'skills.json');
+const SKILL_TARGET_EFFICIENCY = 90; // % of requests handled by skills
+const SKILL_MIN_USES = 2;           // uses before a skill is scored
+const SKILL_REMOVE_THRESHOLD = 20;  // score below this → skill gets replaced
+const SKILL_AUTO_CREATE_AFTER = 3;  // same pattern N times → auto-create skill
+
+class SkillEngine {
+  constructor() {
+    this.skills = [];
+    this.commandHistory = []; // rolling window for pattern detection
+    this.stats = { totalRequests: 0, skillHits: 0, tokensSaved: 0 };
+    this._load();
+    this._ensureDefaults();
+    // Self-optimization loop — runs every 5 minutes
+    setInterval(() => this._optimize(), 5 * 60 * 1000);
+  }
+
+  _load() {
+    try {
+      if (fs.existsSync(SKILLS_PATH)) {
+        const data = JSON.parse(fs.readFileSync(SKILLS_PATH, 'utf-8'));
+        this.skills = data.skills || [];
+        this.stats = data.stats || this.stats;
+      }
+    } catch(e) { this.skills = []; }
+  }
+
+  _save() {
+    try {
+      const dir = path.dirname(SKILLS_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(SKILLS_PATH, JSON.stringify({ skills: this.skills, stats: this.stats }, null, 2));
+    } catch(e) {}
+  }
+
+  // 5 built-in default skills — always 0 tokens
+  _ensureDefaults() {
+    const defaults = [
+      { id: 'sk_browser',   name: 'Browser Navigation',    pattern: '\\b(open|go to|navigate|launch|visit)\\b.{0,60}\\b(chrome|browser|http|www|netflix|youtube|gmail|spotify|twitch|reddit|twitter|instagram|facebook|\\.com|\\.org|\\.io|\\.net)\\b', type: 'direct', handler: 'browser',  desc: 'Opens websites instantly via shell — no API call' },
+      { id: 'sk_desktop',   name: 'Desktop File/Folder',   pattern: '\\b(create|make|new|add)\\b.{0,40}\\b(folder|file|directory)\\b.{0,60}\\b(desktop|my desktop)\\b|\\b(desktop|my desktop)\\b.{0,60}\\b(create|make|new|add)\\b.{0,40}\\b(folder|file|directory)\\b', type: 'direct', handler: 'desktop', desc: 'Creates files/folders on desktop — no API call' },
+      { id: 'sk_stats',     name: 'Project Stats Query',   pattern: '\\b(show|get|what is|how many|display)\\b.{0,30}\\b(stats|status|files|tokens|memory|usage|quota)\\b', type: 'direct', handler: 'stats',   desc: 'Returns live stats without an AI call' },
+      { id: 'sk_imi_info',  name: 'What is IMI',           pattern: '\\b(what is|explain|describe|tell me about)\\b.{0,20}\\b(imi|this app|this program|this tool)\\b', type: 'cached', handler: null, cachedResponse: 'IMI (Integrated Merge Interface) is your AI orchestration desktop app. It splits every task between a Brain (plans) and a Coder (executes) to minimize token usage. It controls your browser, desktop, and codebase simultaneously.', desc: 'Cached IMI description — 0 tokens' },
+      { id: 'sk_help',      name: 'Help / Capabilities',   pattern: '^\\s*(help|what can you do|capabilities|commands|skills|features)\\s*[?!]?\\s*$', type: 'cached', handler: null, cachedResponse: 'IMI can: open websites, create desktop files/folders, write & edit code, take screenshots, control your browser, sync to GitHub, switch AI models, track token usage, and run self-optimizing skills. Just tell me what you need!', desc: 'Cached help response — 0 tokens' },
+    ];
+    for (const d of defaults) {
+      if (!this.skills.find(s => s.id === d.id)) {
+        this.skills.push({ ...d, uses: 0, tokensSaved: 0, score: 100, active: true, created: Date.now(), autoCreated: false });
+      }
+    }
+    this._save();
+  }
+
+  // Try to match a command to a skill — returns skill or null
+  match(command) {
+    const cmd = command.toLowerCase().trim();
+    for (const skill of this.skills) {
+      if (!skill.active) continue;
+      try {
+        if (new RegExp(skill.pattern, 'i').test(cmd)) return skill;
+      } catch(e) {}
+    }
+    return null;
+  }
+
+  // Record a skill was used + how many tokens it saved
+  recordHit(skillId, tokensSaved = 500) {
+    const skill = this.skills.find(s => s.id === skillId);
+    if (skill) {
+      skill.uses++;
+      skill.tokensSaved += tokensSaved;
+      skill.score = Math.min(100, Math.round((skill.tokensSaved / Math.max(1, skill.uses * 500)) * 100));
+      skill.lastUsed = Date.now();
+    }
+    this.stats.skillHits++;
+    this.stats.tokensSaved += tokensSaved;
+    this._save();
+  }
+
+  // Record an API call was made (no skill handled it)
+  recordMiss(command, tokensUsed = 500) {
+    this.stats.totalRequests++;
+    this.commandHistory.push({ command: command.toLowerCase().trim(), ts: Date.now(), tokens: tokensUsed });
+    if (this.commandHistory.length > 50) this.commandHistory.shift();
+    this._checkAutoCreate();
+    this._save();
+  }
+
+  // Detect repeated patterns and auto-create cached skills
+  _checkAutoCreate() {
+    const recent = this.commandHistory.slice(-20);
+    const wordFreq = {};
+    for (const entry of recent) {
+      const words = entry.command.replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(w => w.length > 3);
+      for (const w of words) { wordFreq[w] = (wordFreq[w] || 0) + 1; }
+    }
+    const hotWords = Object.entries(wordFreq).filter(([, count]) => count >= SKILL_AUTO_CREATE_AFTER).map(([w]) => w);
+    if (hotWords.length < 2) return;
+    const patternId = `sk_auto_${Date.now()}`;
+    const alreadyExists = this.skills.some(s => s.autoCreated && hotWords.every(w => s.pattern.includes(w)));
+    if (alreadyExists) return;
+    const newSkill = {
+      id: patternId,
+      name: `Auto: ${hotWords.slice(0, 3).join(' ')}`,
+      pattern: hotWords.slice(0, 3).map(w => `(?=.*\\b${w}\\b)`).join(''),
+      type: 'passthrough', // still calls API but with a compressed prompt
+      handler: null,
+      cachedResponse: null,
+      desc: `Auto-generated from ${SKILL_AUTO_CREATE_AFTER}+ similar requests`,
+      uses: 0, tokensSaved: 0, score: 50, active: true,
+      created: Date.now(), autoCreated: true
+    };
+    this.skills.push(newSkill);
+    console.log(`[SkillEngine] Auto-created skill: ${newSkill.name}`);
+    this._save();
+  }
+
+  // Self-optimization: score, remove weak skills, report
+  _optimize() {
+    let removed = 0;
+    this.skills = this.skills.filter(skill => {
+      if (skill.autoCreated && skill.uses >= SKILL_MIN_USES && skill.score < SKILL_REMOVE_THRESHOLD) {
+        console.log(`[SkillEngine] Removing weak skill: ${skill.name} (score: ${skill.score})`);
+        removed++;
+        return false;
+      }
+      return true;
+    });
+    const efficiency = this.getEfficiency();
+    console.log(`[SkillEngine] Optimization pass — efficiency: ${efficiency}% | removed: ${removed} weak skills`);
+    if (removed > 0) this._save();
+    return { efficiency, removed };
+  }
+
+  getEfficiency() {
+    if (this.stats.totalRequests === 0) return 0;
+    return Math.round((this.stats.skillHits / (this.stats.totalRequests + this.stats.skillHits)) * 100);
+  }
+
+  getAll() { return this.skills; }
+
+  addSkill(skill) {
+    const id = `sk_custom_${Date.now()}`;
+    this.skills.push({ ...skill, id, uses: 0, tokensSaved: 0, score: 100, active: true, created: Date.now(), autoCreated: false });
+    this._save();
+    return id;
+  }
+
+  removeSkill(id) {
+    this.skills = this.skills.filter(s => s.id !== id);
+    this._save();
+  }
+
+  toggleSkill(id) {
+    const s = this.skills.find(s => s.id === id);
+    if (s) { s.active = !s.active; this._save(); }
+  }
+}
+
+const skillEngine = new SkillEngine();
+
 const sterilizePath = (inputPath) => {
   if (!inputPath) return '';
   return inputPath.split(path.delimiter).filter(p => {
@@ -222,6 +386,13 @@ ipcMain.handle('browse-multi', async (_e, mode) => {
   } catch(e) { console.error('[browse-multi]', e.message); }
   return [];
 });
+
+// ── Skill Engine IPC handlers ────────────────────────────────────────────────
+ipcMain.handle('skills-get-all',    ()          => ({ skills: skillEngine.getAll(), stats: skillEngine.stats, efficiency: skillEngine.getEfficiency() }));
+ipcMain.handle('skills-add',        (_e, skill) => skillEngine.addSkill(skill));
+ipcMain.handle('skills-remove',     (_e, id)    => { skillEngine.removeSkill(id); return true; });
+ipcMain.handle('skills-toggle',     (_e, id)    => { skillEngine.toggleSkill(id); return true; });
+ipcMain.handle('skills-optimize',   ()          => skillEngine._optimize());
 
 // ── ImiStore IPC handlers (no API calls, instant) ────────────────────────────
 ipcMain.handle('store-get-messages', (_e, projectKey) => imiStore.getMessages(projectKey || currentProjectRoot));
