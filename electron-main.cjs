@@ -484,7 +484,57 @@ RULES:
     const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
     const taskContent = `# IMI Orchestration Task\n_Generated: ${new Date().toISOString()}_\n\n${brainPlan.trim()}\n\n---\n_Status: Awaiting implementation_`;
     fs.writeFileSync(taskPath, taskContent, 'utf-8');
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ANTIGRAVITY TASK READY ---\n\nThe Brain's spec has been saved. Switch to your IDE chat (Antigravity) and say:\n"execute the task file"\n\nAntigravity will implement it surgically without risking your source files.` });
+    
+    // Inject the Auto-Discovery script to automatically click 'Send' in Antigravity
+    const autoPilotScript = `
+      (function() {
+          console.log("🌉 Connecting to Bridge to bypass CORS...");
+          const bridgeId = "874C4DBBEE53686E7B3E7D40F12362CC";
+          const bridgeWs = new WebSocket(\`ws://127.0.0.1:9000/devtools/page/\${bridgeId}\`);
+      
+          bridgeWs.onopen = () => bridgeWs.send(JSON.stringify({ id: 1, method: "Target.getTargets" }));
+          bridgeWs.onmessage = (event) => {
+              const data = JSON.parse(event.data);
+              if (data.id === 1 && data.result?.targetInfos) {
+                  const targets = data.result.targetInfos.filter(t => t.type === 'page' || t.type === 'iframe');
+                  console.log(\`🔍 Found \${targets.length} active windows. Scanning for Lexical Editor...\`);
+                  bridgeWs.close();
+      
+                  targets.forEach(target => {
+                      const ws = new WebSocket(\`ws://127.0.0.1:9000/devtools/page/\${target.targetId}\`);
+                      ws.onopen = () => {
+                          ws.send(JSON.stringify({
+                              id: 2, method: "Runtime.evaluate",
+                              params: {
+                                  expression: \`(function() {
+                                      const editor = document.querySelector('[data-lexical-editor="true"]');
+                                      const sendBtn = document.querySelector('button[data-tooltip-id="input-send-button-send-tooltip"]');
+                                      if (editor) {
+                                          editor.focus();
+                                          document.execCommand('insertText', false, 'execute the task file based on the spec');
+                                          if (sendBtn) {
+                                              sendBtn.disabled = false;
+                                              sendBtn.classList.remove('opacity-50');
+                                              setTimeout(() => sendBtn.click(), 50); 
+                                              return true;
+                                          }
+                                      } return false;
+                                  })()\`,
+                                  userGesture: true
+                              }
+                          }));
+                      };
+                      ws.onmessage = () => ws.close();
+                      ws.onerror = () => {};
+                  });
+              }
+          };
+          bridgeWs.onerror = () => console.error("❌ Bridge failed on 9000.");
+      })();
+    `;
+    if (mainWindow) mainWindow.webContents.executeJavaScript(autoPilotScript);
+
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 🚀 AUTO-ROUTING TO ANTIGRAVITY ---\n\nThe Brain's spec has been saved. The CDP Injection tunnel is actively bypassing security and forcing your IDE to begin implementation...` });
     event.sender.send('command-end', { messageId, code: 0 });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     return;
