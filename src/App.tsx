@@ -687,6 +687,7 @@ const App = () => {
                           <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', height: '40px', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', textShadow: '0 0 10px var(--primary-glow)' }}>BRAIN</div>
                             {activeDirector === 'gemini' && <Zap size={12} />}
+                            {activeDirector === 'geminicli' && <Terminal size={12} />}
                             {activeDirector === 'jules' && <Layers size={12} />}
                             {activeDirector === 'antigravity' && <Cpu size={12} />}
                             {activeDirector === 'chatgpt' && <MessageSquare size={12} />}
@@ -705,7 +706,8 @@ const App = () => {
                             {isDropdownOpen && (
                               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '180px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '300px' }}>
                                 {[
-                                  { id: 'gemini', name: 'GEMINI', icon: <Zap size={12} /> },
+                                  { id: 'gemini', name: 'GEMINI (FAST API)', icon: <Zap size={12} /> },
+                                  { id: 'geminicli', name: 'GEMINI CLI (MCP)', icon: <Terminal size={12} /> },
                                   { id: 'jules', name: 'JULES', icon: <Layers size={12} /> },
                                   { id: 'antigravity', name: 'AG AI', icon: <Cpu size={12} /> },
                                   { id: 'chatgpt', name: 'CHATGPT', icon: <MessageSquare size={12} /> },
