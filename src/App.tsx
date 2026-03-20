@@ -665,7 +665,7 @@ const App = () => {
           )}
 
           {activeTab === 'command center' && (
-            <motion.div key="cc" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '25px', height: '600px' }}>
+            <motion.div key="cc" className="full-height-panel" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr clamp(280px, 25vw, 400px)', gap: 'clamp(12px, 1.5vw, 25px)', height: 'calc(100vh - clamp(3rem, 5vw, 6rem))' }}>
               <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -951,7 +951,7 @@ const App = () => {
           )}
 
           {activeTab === 'skills' && (
-            <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>⚡ SKILL ENGINE</div>
@@ -1036,7 +1036,7 @@ const App = () => {
           )}
 
           {activeTab === 'settings' && (
-            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '2rem 2rem 1rem 2rem' }}>
                   <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>System Configuration</h3>
                   <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Manage your workspace, credentials, and AI fleet.</p>
