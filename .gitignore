@@ -26,6 +26,17 @@ out
 .env.test.local
 .env.production.local
 
-# IMI Snapshot
+# IMI Snapshot & Sensitive State — NEVER commit these
 .imi-context-snapshot.json
 build_error.txt
+
+# 🔒 SECURITY: Block all files containing API keys / secrets
+.gemini/state.json
+state.json
+*.secrets.json
+.antigravity_task.md
+
+# Temp/test scripts
+test_api.*
+test-*.cjs
+test-*.js

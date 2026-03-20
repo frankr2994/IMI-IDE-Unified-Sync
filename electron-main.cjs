@@ -170,7 +170,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Request: ";
     const url = `generativelanguage.googleapis.com`;
-    const apiPath = `/v1beta/models/gemini-1.5-flash:streamGenerateContent?key=${GEMINI_KEY}`;
+    const apiPath = `/v1beta/models/gemini-2.0-flash:streamGenerateContent?key=${GEMINI_KEY}`;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: url, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ contents: [{ parts: [{ text: activePrefix + command }] }] }));
@@ -233,7 +233,7 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (engine.toLowerCase() === 'imi-core') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Key missing." }); return; }
     const corePrompt = `You are IMI CORE. Plan: ${brainPlan} Output ONLY JSON: [{ "file": "path", "content": "full content" }]`;
-    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_KEY}` });
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}` });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({ contents: [{ parts: [{ text: corePrompt }] }] }));
     let fullText = '';
