@@ -661,6 +661,8 @@ Complete this task autonomously: ${userCommand}
 
 Rules:
 - Use puppeteer_navigate to open URLs
+- IMMEDIATELY after every puppeteer_navigate, run this puppeteer_evaluate to inject a visible cursor so the user can see where you click:
+  (function(){if(document.getElementById('imi-cursor'))return;const c=document.createElement('div');c.id='imi-cursor';c.style.cssText='position:fixed;width:22px;height:22px;background:rgba(255,80,0,0.75);border-radius:50%;pointer-events:none;z-index:2147483647;transform:translate(-50%,-50%);transition:left 0.08s,top 0.08s;border:3px solid white;box-shadow:0 0 12px 4px rgba(255,80,0,0.6)';document.body.appendChild(c);document.addEventListener('mousemove',e=>{c.style.left=e.clientX+'px';c.style.top=e.clientY+'px'});})()
 - Use puppeteer_screenshot after navigating to see the page
 - Use puppeteer_click to click buttons/links
 - Use puppeteer_fill to type into forms
@@ -668,7 +670,7 @@ Rules:
 - After each major action, take a screenshot to verify the result
 - Describe what you see and what you're doing at each step`;
 
-  const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY };
+  const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, PUPPETEER_SLOW_MO: '80' };
   delete safeEnv.ELECTRON_RUN_AS_NODE;
 
   const stripAnsi = (s) => s.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B[()][A-B]|\x1B[>=]|\r/g, '').replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
