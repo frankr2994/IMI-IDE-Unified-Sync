@@ -727,42 +727,149 @@ RULES:
   }
 
 
-  // JULES FALLBACK (High Reliability)
+  // ── JULES CODER ──────────────────────────────────────────────────────────────
+  // Jules is cloud/async: submits task → GitHub PR → we poll + pull it back locally
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-  event.sender.send('command-chunk', { messageId, chunk: `\n[Jules] Launching Jules asynchronous session...` });
-  
-  // Create a temporary file to hold the prompt to securely bypass Windows CMD 8192-char limit
-  const julesPromptPath = path.join(os.tmpdir(), `jules_prompt_${Date.now()}.txt`);
-  fs.writeFileSync(julesPromptPath, prompt, 'utf-8');
 
-  let repoString = 'creepybunny99/IMI-IDE-Unified-Sync';
+  // Resolve repo (owner/repo) from git remote
+  let repoString = '';
   try {
     const gitUrl = execSync('git config --get remote.origin.url', { cwd: currentProjectRoot }).toString().trim();
-    if (gitUrl) {
-       const match = gitUrl.match(/github\.com[:/]([^/]+\/[^.]+)(\.git)?$/i);
-       if (match) repoString = match[1];
-    }
+    const match = gitUrl.match(/github\.com[:/]([^/]+\/[^.]+?)(\.git)?$/i);
+    if (match) repoString = match[1];
   } catch(e) {}
 
-  const child = spawn(`type "${julesPromptPath}" | jules new --repo ${repoString}`, [], { 
-    cwd: currentProjectRoot, 
-    shell: true, 
-    env: { 
-      ...process.env, 
-      JULES_API_KEY: JULES_KEY, 
-      GOOGLE_API_KEY: JULES_KEY, // Jules frequently requires GOOGLE_API_KEY mapping
-      GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN 
-    } 
-  });
-  
-  child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
-  child.stderr.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: `\n[Sys] ${d.toString()}` }));
-  child.on('close', (code) => {
-    try { fs.unlinkSync(julesPromptPath); } catch(e) {}
-    event.sender.send('command-chunk', { messageId, chunk: `\n[Jules] Process exited with code ${code}.` });
-    event.sender.send('command-end', { messageId, code });
+  if (!repoString) {
+    event.sender.send('command-chunk', { messageId, chunk: `\n❌ [Jules] Cannot find a GitHub remote for this project.\nMake sure the project is pushed to GitHub and try again.` });
+    event.sender.send('command-end', { messageId, code: 1 });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
-    triggerGitSync();
+    return;
+  }
+
+  if (!GITHUB_TOKEN) {
+    event.sender.send('command-chunk', { messageId, chunk: `\n❌ [Jules] GitHub token is missing. Add it in Settings → API Keys.` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    return;
+  }
+
+  // Check Jules CLI is installed
+  let julesBin = null;
+  for (const name of ['jules', 'jules.cmd', 'jules.exe']) {
+    try { julesBin = execSync(`where ${name}`, { timeout: 3000 }).toString().trim().split('\n')[0]; break; } catch(e) {}
+  }
+  if (!julesBin) {
+    event.sender.send('command-chunk', { messageId, chunk: `\n❌ [Jules] Jules CLI not found in PATH.\nInstall it with: npm install -g @google/jules\nOr check https://jules.google.com for setup instructions.` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+    return;
+  }
+
+  event.sender.send('command-chunk', { messageId, chunk: `\n🚀 [Jules] Submitting task to GitHub repo: ${repoString}...\n` });
+
+  // Write prompt to temp file (avoids CMD 8192-char limit)
+  const julesPromptPath = path.join(os.tmpdir(), `jules_prompt_${Date.now()}.txt`);
+  fs.writeFileSync(julesPromptPath, brainPlan.trim(), 'utf-8');
+
+  // Snapshot open PRs BEFORE submission so we can detect the NEW one Jules creates
+  const [repoOwner, repoName] = repoString.split('/');
+  let prsBefore = [];
+  try {
+    const prRes = await new Promise((resolve, reject) => {
+      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com',
+        path: `/repos/${repoOwner}/${repoName}/pulls?state=open&per_page=20` });
+      req.setHeader('Authorization', `token ${GITHUB_TOKEN}`);
+      req.setHeader('User-Agent', 'IMI-Jules-Bridge/1.0');
+      req.setHeader('Accept', 'application/vnd.github.v3+json');
+      let raw = '';
+      req.on('response', r => { r.on('data', d => raw += d); r.on('end', () => resolve(raw)); });
+      req.on('error', reject);
+      req.end();
+    });
+    prsBefore = JSON.parse(prRes).map(p => p.number);
+  } catch(e) {}
+
+  const julesEnv = {
+    ...process.env,
+    JULES_API_KEY: JULES_KEY,
+    GOOGLE_API_KEY: JULES_KEY,
+    GITHUB_TOKEN: GITHUB_TOKEN,
+    GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN
+  };
+
+  const child = spawn(julesBin, ['new', '--repo', repoString, '--task', brainPlan.trim().slice(0, 2000)], {
+    cwd: currentProjectRoot, shell: false, env: julesEnv
+  });
+
+  child.stdout.on('data', d => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
+  child.stderr.on('data', d => {
+    const line = d.toString();
+    if (line.trim()) event.sender.send('command-chunk', { messageId, chunk: `[Jules] ${line}` });
+  });
+
+  child.on('close', async (code) => {
+    try { fs.unlinkSync(julesPromptPath); } catch(e) {}
+
+    if (code !== 0) {
+      event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ [Jules] Exited with code ${code}. Jules may still be processing in the cloud.` });
+    }
+
+    event.sender.send('command-chunk', { messageId, chunk: `\n⏳ [Jules] Task submitted. Polling GitHub for Jules' PR (up to 10 min)...\n` });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Waiting for Jules PR');
+
+    // Poll GitHub every 30s for up to 10 minutes for a new PR from Jules
+    const maxAttempts = 20;
+    let attempt = 0;
+    let newPR = null;
+
+    const poll = async () => {
+      attempt++;
+      try {
+        const prRes = await new Promise((resolve, reject) => {
+          const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com',
+            path: `/repos/${repoOwner}/${repoName}/pulls?state=open&per_page=20&sort=created&direction=desc` });
+          req.setHeader('Authorization', `token ${GITHUB_TOKEN}`);
+          req.setHeader('User-Agent', 'IMI-Jules-Bridge/1.0');
+          req.setHeader('Accept', 'application/vnd.github.v3+json');
+          let raw = '';
+          req.on('response', r => { r.on('data', d => raw += d); r.on('end', () => resolve(raw)); });
+          req.on('error', reject);
+          req.end();
+        });
+        const prs = JSON.parse(prRes);
+        newPR = prs.find(p => !prsBefore.includes(p.number));
+      } catch(e) {}
+
+      if (newPR) {
+        // Found Jules' PR — pull the branch locally
+        event.sender.send('command-chunk', { messageId, chunk: `\n✅ [Jules] PR found: "${newPR.title}" (#${newPR.number})\n🌿 Branch: ${newPR.head.ref}\n⬇️  Pulling changes to your desktop...\n` });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Pulling Jules Changes');
+        try {
+          execSync(`git fetch origin ${newPR.head.ref}`, { cwd: currentProjectRoot, timeout: 30000 });
+          execSync(`git checkout ${newPR.head.ref}`, { cwd: currentProjectRoot, timeout: 10000 });
+          event.sender.send('command-chunk', { messageId, chunk: `✅ [Jules] Branch "${newPR.head.ref}" checked out locally.\nYour files are now updated!\n🔗 PR: ${newPR.html_url}\n` });
+        } catch(gitErr) {
+          event.sender.send('command-chunk', { messageId, chunk: `⚠️ [Jules] Could not auto-checkout branch: ${gitErr.message}\nManually run: git fetch && git checkout ${newPR.head.ref}\n🔗 PR: ${newPR.html_url}\n` });
+        }
+        event.sender.send('command-end', { messageId, code: 0 });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        triggerGitSync();
+        return;
+      }
+
+      if (attempt >= maxAttempts) {
+        event.sender.send('command-chunk', { messageId, chunk: `\n⏰ [Jules] Timed out waiting for PR after 10 minutes.\nCheck GitHub manually: https://github.com/${repoString}/pulls\n` });
+        event.sender.send('command-end', { messageId, code: 0 });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        return;
+      }
+
+      event.sender.send('command-chunk', { messageId, chunk: `⏳ [Jules] Still working... (${attempt}/${maxAttempts}) checking again in 30s\n` });
+      setTimeout(poll, 30000);
+    };
+
+    // First check after 30s (Jules needs time to start)
+    setTimeout(poll, 30000);
   });
 }
 
