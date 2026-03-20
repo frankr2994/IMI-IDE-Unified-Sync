@@ -103,6 +103,14 @@ const App = () => {
   const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
   const [debugMode, setDebugMode] = useState(false);
   // 🤖 Puppeteer Browser Control state
+  // ⚡ Skill Engine state
+  const [skills, setSkills] = useState<any[]>([]);
+  const [skillStats, setSkillStats] = useState<any>({ totalRequests: 0, skillHits: 0, tokensSaved: 0 });
+  const [skillEfficiency, setSkillEfficiency] = useState(0);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillPattern, setNewSkillPattern] = useState('');
+  const [newSkillResponse, setNewSkillResponse] = useState('');
+
   const [puppeteerStatus, setPuppeteerStatus] = useState<'idle'|'launching'|'ready'|'error'>('idle');
   const [puppeteerUrl, setPuppeteerUrl] = useState('https://google.com');
   const [puppeteerLog, setPuppeteerLog] = useState<string[]>([]);

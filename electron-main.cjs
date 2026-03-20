@@ -456,6 +456,49 @@ async function triggerGitSync() {
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
 
+  // ── ⚡ SKILL ENGINE — check skills FIRST before any API call ──────────────
+  const matchedSkill = skillEngine.match(command);
+  if (matchedSkill) {
+    if (matchedSkill.type === 'cached' && matchedSkill.cachedResponse) {
+      // Instant cached response — 0 tokens
+      event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n\n${matchedSkill.cachedResponse}` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      skillEngine.recordHit(matchedSkill.id, 600);
+      return;
+    }
+    if (matchedSkill.type === 'direct') {
+      // Route to existing direct handlers — they record the hit themselves
+      if (matchedSkill.handler === 'browser') {
+        const cmdL = command.toLowerCase();
+        const urlMatch = command.match(/https?:\/\/[^\s]+/i);
+        const siteMatch = cmdL.match(/(?:go to|open|visit|navigate to|launch)\s+([a-z0-9.-]+)/i);
+        const raw = urlMatch ? urlMatch[0] : siteMatch ? siteMatch[1] : null;
+        if (raw) {
+          const url = raw.startsWith('http') ? raw : `https://${raw.includes('.') ? raw : raw + '.com'}`;
+          shell.openExternal(url);
+          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
+          event.sender.send('command-end', { messageId, code: 0 });
+          skillEngine.recordHit(matchedSkill.id, 400);
+          return;
+        }
+      }
+      if (matchedSkill.handler === 'stats') {
+        const reply = `⚡ [Skill: ${matchedSkill.name}]\n📊 Project: ${currentProjectRoot}\n🧠 Brain: ${ACTIVE_BRAIN} | Coder: ${ACTIVE_CODER}\n⚡ Skill efficiency: ${skillEngine.getEfficiency()}% | Tokens saved: ${skillEngine.stats.tokensSaved.toLocaleString()}\n💾 Free RAM: ${(os.freemem()/1024/1024/1024).toFixed(2)}GB`;
+        event.sender.send('command-chunk', { messageId, chunk: reply });
+        event.sender.send('command-end', { messageId, code: 0 });
+        skillEngine.recordHit(matchedSkill.id, 400);
+        return;
+      }
+      // desktop handler falls through to existing triggerDesktopTask below
+    }
+    // passthrough: skill matched but still needs API — track as partial hit
+    skillEngine.recordHit(matchedSkill.id, 100);
+  } else {
+    // No skill matched — record miss for pattern analysis + auto-skill creation
+    skillEngine.recordMiss(command, 600);
+  }
+  // ── End skill check — continue to AI ──────────────────────────────────────
+
   // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
   // ≡ƒºá IMI SYSTEM MEMORY ΓÇö Injected into every Brain request
   // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
