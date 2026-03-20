@@ -395,34 +395,30 @@ const App = () => {
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="db" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '40px' }}>
-                   <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <div style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', color: '#4facfe' }}>ACTIVE BRAIN (PLANNING)</div>
-                        <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>STRATEGY NODE</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {['gemini', 'chatgpt', 'claude'].map(m => (
-                          <button key={m} onClick={() => { setActiveDirector(m); saveConfig(); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: activeDirector === m ? '#4facfe' : 'rgba(255,255,255,0.02)', color: '#fff', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', opacity: activeDirector === m ? 1 : 0.4 }}>
-                            {m.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                   </div>
-                   <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <div style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', color: '#00ff88' }}>ACTIVE CODER (IMPLEMENTATION)</div>
-                        <div style={{ fontSize: '0.6rem', opacity: 0.5 }}>EXECUTION NODE</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        {['jules', 'antigravity'].map(m => (
-                          <button key={m} onClick={() => { setActiveEngine(m); saveConfig(); }} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: activeEngine === m ? '#00ff88' : 'rgba(255,255,255,0.02)', color: activeEngine === m ? '#000' : '#fff', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', opacity: activeEngine === m ? 1 : 0.4 }}>
-                            {m.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                   </div>
-                </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '25px', marginBottom: '40px' }}>
+                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Zap size={18} color="#4facfe" />
+                      <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>STRATEGY ENGINE</span>
+                    </div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeDirector.toUpperCase()} ACTIVE</div>
+                 </div>
+                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Cpu size={18} color="#00ff88" />
+                      <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>EXECUTION NODE</span>
+                    </div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeEngine.toUpperCase()} CORE</div>
+                 </div>
+                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <RefreshCw size={18} color="var(--primary)" />
+                      <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>CLOUD BRIDGE</span>
+                    </div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>SYNCHRONIZED</div>
+                 </div>
+              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 350px', gap: '25px', marginBottom: '40px' }}>
                   <div className="glass-card" style={{ padding: '2rem', position: 'relative', overflow: 'hidden', minHeight: '350px' }}>
