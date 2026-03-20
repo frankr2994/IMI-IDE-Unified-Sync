@@ -54,7 +54,7 @@ const App = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
   const [usage, setUsage] = useState({ cpu: '0', ram: '0', threads: 0, load: '0' });
-  const [tokenUsage, setTokenUsage] = useState({ gemini: 0 });
+  const [tokenUsage, setTokenUsage] = useState<any>({});
   
   // Brain & Coder Pickers State
   const [activeDirector, setActiveDirector] = useState('gemini');
