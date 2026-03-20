@@ -1303,6 +1303,43 @@ ipcMain.on('window-close', () => { app.quit(); });
 ipcMain.handle('mcp:global-list', () => ({ success: true, data: mcpServersList.map(s => `● ${s.name}`).join('\n') }));
 ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalState(); return { success: true }; });
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
+
+// Live npm registry search for MCP packages
+ipcMain.handle('npm-search-mcp', async (_e, query) => {
+  if (!query || query.trim().length < 2) return { results: [], total: 0 };
+  return new Promise((resolve) => {
+    const searchTerm = encodeURIComponent(`mcp ${query.trim()}`);
+    const req = net.request({
+      method: 'GET', protocol: 'https:', hostname: 'registry.npmjs.org',
+      path: `/-/v1/search?text=${searchTerm}&size=20&quality=0.6&popularity=0.3&maintenance=0.1`
+    });
+    req.setHeader('Accept', 'application/json');
+    req.setHeader('User-Agent', 'IMI-MCP-Hub/1.0');
+    let raw = '';
+    req.on('response', res => {
+      res.on('data', d => raw += d.toString());
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          const results = (data.objects || []).map(obj => ({
+            name: obj.package.name,
+            description: obj.package.description || 'No description available.',
+            version: obj.package.version,
+            publisher: obj.package.publisher?.username || 'unknown',
+            downloads: Math.round((obj.score?.detail?.popularity || 0) * 1000),
+            score: Math.round((obj.score?.final || 0) * 100),
+            npmUrl: obj.package.links?.npm || `https://www.npmjs.com/package/${obj.package.name}`,
+            repoUrl: obj.package.links?.repository || null,
+            keywords: obj.package.keywords || [],
+          }));
+          resolve({ results, total: data.total || results.length });
+        } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
+      });
+    });
+    req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
+    req.end();
+  });
+});
 ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
   if (!GEMINI_KEY) return { success: false, error: "API Key missing." };
   try {

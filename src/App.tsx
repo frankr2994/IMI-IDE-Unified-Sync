@@ -70,6 +70,23 @@ const App = () => {
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
+  const [npmResults, setNpmResults] = useState<any[]>([]);
+  const [npmSearching, setNpmSearching] = useState(false);
+  const [npmTotal, setNpmTotal] = useState(0);
+  const [npmError, setNpmError] = useState('');
+
+  const searchNpm = async (q: string) => {
+    if (!q.trim()) { setNpmResults([]); setNpmTotal(0); return; }
+    setNpmSearching(true); setNpmError('');
+    try {
+      const res = await (ipc as any).invoke('npm-search-mcp', q);
+      setNpmResults(res.results || []);
+      setNpmTotal(res.total || 0);
+      if (res.error) setNpmError(res.error);
+    } catch(e: any) { setNpmError(e.message); }
+    setNpmSearching(false);
+  };
+
   const [availableMCPs] = useState([
     { id: 'Jules', name: 'Jules Agent', pkg: '@amitdeshmukh/google-jules-mcp', desc: 'Recycling implementation engine', color: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', command: 'npx', args: ['-y', '@amitdeshmukh/google-jules-mcp'] },
     { id: 'GitHub', name: 'GitHub Sync', pkg: '@modelcontextprotocol/server-github', desc: 'Bidirectional cloud repository access', color: 'linear-gradient(135deg, #24292e 0%, #171a1d 100%)', command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
