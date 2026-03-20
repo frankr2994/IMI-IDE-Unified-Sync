@@ -916,7 +916,7 @@ const App = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                               {pkg.npmUrl && (
-                                <button onClick={() => shell && (ipc as any).send('open-external-url', pkg.npmUrl)} style={{ height: '32px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem' }}>NPM ↗</button>
+                                <button onClick={() => (ipc as any).send('open-external-url', pkg.npmUrl)} style={{ height: '32px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem' }}>NPM ↗</button>
                               )}
                               <button
                                 onClick={async () => {
