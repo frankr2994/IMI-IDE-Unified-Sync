@@ -248,23 +248,31 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [SKILL-BASED HAND-OFF] Triggers the specialized IMI Skill inside Antigravity
-    const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
-    const skilledPrompt = `--- IMI ORCHESTRATION TASK ---\n${prompt}`;
+    // 🚀 [SKILL-BASED HAND-OFF] Writes the task for Antigravity inside the IDE
+    const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
+    const skilledPrompt = \`--- IMI ORCHESTRATION TASK ---\\n\\n\${prompt}\\n\\n[Status] Awaiting implementation in Antigravity...\`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Injected specialized IMI Skill prompt. Launching...` });
+    event.sender.send('command-chunk', { messageId, chunk: \`\\n[System] Injected specialized IMI Skill prompt into workspace...\` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    const child = spawn(agExe, ['chat', skilledPrompt], {
-      cwd: currentProjectRoot,
-      env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY },
-      detached: true,
-      stdio: 'ignore'
-    });
-    child.unref();
+    // Write the prompt to the root directory where Antigravity is watching
+    fs.writeFileSync(taskPath, skilledPrompt);
+    
+    // Automatically open the task file in their default code editor
+    try {
+      if (os.platform() === 'win32') {
+         exec(\`start "" "\${taskPath}"\`);
+      } else if (os.platform() === 'darwin') {
+         exec(\`open "\${taskPath}"\`);
+      } else {
+         exec(\`xdg-open "\${taskPath}"\`);
+      }
+    } catch (e) {
+      console.log('Could not open IDE automatically', e);
+    }
 
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: SKILL HAND-OFF COMPLETE ---` });
+      event.sender.send('command-chunk', { messageId, chunk: \`\\n\\n--- ✅ IMI ORCHESTRATOR: HAND-OFF COMPLETE --- \\n\\nAntigravity can see the .antigravity_task.md file. Switch to your IDE and ask Antigravity to "execute the task file" to begin coding.\` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
