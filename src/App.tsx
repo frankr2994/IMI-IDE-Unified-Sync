@@ -93,6 +93,7 @@ const App = () => {
   const [snapshotMode, setSnapshotMode] = useState(true);
   const [theme, setTheme] = useState('glass');
   const [logRetention, setLogRetention] = useState(15);
+  const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
   const [snapshotFrequency, setSnapshotFrequency] = useState(5);
   
   interface Log { id: number; type: string; msg: string; }
