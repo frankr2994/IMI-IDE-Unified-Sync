@@ -207,6 +207,36 @@ const App = () => {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillPattern, setNewSkillPattern] = useState('');
   const [newSkillResponse, setNewSkillResponse] = useState('');
+  const [skillLibSearch, setSkillLibSearch] = useState('');
+  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'>('mine');
+  const [installedSkillIds, setInstalledSkillIds] = useState<Set<string>>(new Set());
+
+  const SKILL_LIBRARY = [
+    // 🌐 Browser / Web
+    { id: 'lib_spotify',    name: 'Open Spotify',       pattern: 'open spotify',           response: '',                                          category: '🌐 Web', desc: 'Opens Spotify in browser', icon: '🎵', type: 'browser' },
+    { id: 'lib_youtube',    name: 'Open YouTube',       pattern: 'open youtube',            response: '',                                          category: '🌐 Web', desc: 'Opens YouTube in browser', icon: '▶️', type: 'browser' },
+    { id: 'lib_gmail',      name: 'Open Gmail',         pattern: 'open gmail',              response: '',                                          category: '🌐 Web', desc: 'Opens Gmail in browser', icon: '📧', type: 'browser' },
+    { id: 'lib_chatgpt',    name: 'Open ChatGPT',       pattern: 'open chatgpt',            response: '',                                          category: '🌐 Web', desc: 'Opens ChatGPT in browser', icon: '🤖', type: 'browser' },
+    { id: 'lib_claude',     name: 'Open Claude',        pattern: 'open claude',             response: '',                                          category: '🌐 Web', desc: 'Opens Claude.ai in browser', icon: '🧠', type: 'browser' },
+    { id: 'lib_gemini',     name: 'Open Gemini',        pattern: 'open gemini',             response: '',                                          category: '🌐 Web', desc: 'Opens Gemini in browser', icon: '✨', type: 'browser' },
+    { id: 'lib_github',     name: 'Open GitHub',        pattern: 'open github',             response: '',                                          category: '🌐 Web', desc: 'Opens GitHub in browser', icon: '🐙', type: 'browser' },
+    { id: 'lib_npm',        name: 'Open npm',           pattern: 'open npm',                response: '',                                          category: '🌐 Web', desc: 'Opens npmjs.com in browser', icon: '📦', type: 'browser' },
+    { id: 'lib_netflix',    name: 'Open Netflix',       pattern: 'open netflix',            response: '',                                          category: '🌐 Web', desc: 'Opens Netflix in browser', icon: '🎬', type: 'browser' },
+    { id: 'lib_twitter',    name: 'Open Twitter/X',     pattern: 'open twitter',            response: '',                                          category: '🌐 Web', desc: 'Opens Twitter/X in browser', icon: '🐦', type: 'browser' },
+    // 💻 Dev Tools
+    { id: 'lib_vscode',     name: 'Open VS Code',       pattern: 'open vscode',             response: '',                                          category: '💻 Dev', desc: 'Launches Visual Studio Code', icon: '💙', type: 'passthrough' },
+    { id: 'lib_gitstatus',  name: 'Git Status',         pattern: 'git status',              response: '',                                          category: '💻 Dev', desc: 'Runs git status in project', icon: '🌿', type: 'passthrough' },
+    { id: 'lib_npminstall', name: 'npm install',        pattern: 'npm install',             response: '',                                          category: '💻 Dev', desc: 'Runs npm install', icon: '⚡', type: 'passthrough' },
+    { id: 'lib_npmrun',     name: 'npm run dev',        pattern: 'npm run dev',             response: '',                                          category: '💻 Dev', desc: 'Starts dev server', icon: '🚀', type: 'passthrough' },
+    // ℹ️ Quick Info
+    { id: 'lib_whatisimi',  name: 'What is IMI?',       pattern: 'what is imi',             response: 'IMI (Integrated Merge Interface) is your AI orchestration hub — it routes tasks between the Brain (Gemini) and Coder agents to minimize token usage while maximizing output quality.', category: 'ℹ️ Info', desc: 'Explains IMI without API call', icon: '🧩', type: 'cached' },
+    { id: 'lib_helpme',     name: 'Help / Commands',    pattern: 'what can you do',         response: 'I can: open websites, create files, write code, search GitHub/npm, pull AI models, manage skills, sync with GitHub, and orchestrate AI tasks. Just ask!', category: 'ℹ️ Info', desc: 'Lists capabilities without API call', icon: '❓', type: 'cached' },
+    { id: 'lib_version',    name: 'IMI Version',        pattern: 'imi version',             response: 'IMI v1.0.4 — Integrated Merge Interface. Brain: Gemini 2.5 Pro. Skills Engine: active.', category: 'ℹ️ Info', desc: 'Returns version without API call', icon: '🏷️', type: 'cached' },
+    // 🗂️ Productivity
+    { id: 'lib_today',      name: 'What\'s the date?',  pattern: 'what.*(date|day|today)',  response: '',                                          category: '🗂️ Tasks', desc: 'Returns current date directly', icon: '📅', type: 'passthrough' },
+    { id: 'lib_timer',      name: 'Set a reminder',     pattern: 'remind me',               response: '',                                          category: '🗂️ Tasks', desc: 'Handles reminder requests', icon: '⏰', type: 'passthrough' },
+    { id: 'lib_weather',    name: 'Check weather',      pattern: 'weather',                 response: '',                                          category: '🗂️ Tasks', desc: 'Opens weather lookup', icon: '🌤️', type: 'passthrough' },
+  ];
 
   const [puppeteerStatus, setPuppeteerStatus] = useState<'idle'|'launching'|'ready'|'error'>('idle');
   const [puppeteerUrl, setPuppeteerUrl] = useState('https://google.com');
