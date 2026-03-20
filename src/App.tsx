@@ -118,7 +118,14 @@ const App = () => {
       const res = await (ipc as any).invoke('hf-search-models', q);
       setHfResults(res.results || []);
       if (res.error) setHfError(res.error);
-    } catch(e: any) { setHfError(e.message); }
+    } catch(e: any) {
+      const msg = e.message || '';
+      if (msg.includes('No handler registered')) {
+        setHfError('⚠️ Restart the app (Ctrl+C → npm run electron:dev) to activate new features.');
+      } else {
+        setHfError(msg);
+      }
+    }
     setHfSearching(false);
   };
   const formatNum = (n: number) => n >= 1000000 ? `${(n/1000000).toFixed(1)}M` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
