@@ -255,12 +255,47 @@ const App = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       const audioChunks: BlobPart[] = [];
+      
+      let isSpeaking = false;
+      let silenceStart = Date.now();
+      let hasFinished = false;
+
+      // VAD (Voice Activity Detection) Pipeline
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.minDecibels = -70;
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const checkInterval = setInterval(() => {
+        if (hasFinished) return;
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+        
+        if (average > 15) { // User is currently speaking
+           isSpeaking = true;
+           silenceStart = Date.now();
+        } else if (isSpeaking) {
+           // User was speaking, now there is silence
+           if (Date.now() - silenceStart > 1800) { // 1.8 seconds of silence
+             hasFinished = true;
+             clearInterval(checkInterval);
+             try { audioContext.close(); } catch(e){}
+             if (recorder.state === 'recording') recorder.stop();
+           }
+        }
+      }, 100);
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunks.push(e.data);
       };
 
       recorder.onstop = async () => {
+        hasFinished = true;
+        clearInterval(checkInterval);
+        try { audioContext.close(); } catch(e){}
         stream.getTracks().forEach(track => track.stop());
         setIsListening(false);
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
