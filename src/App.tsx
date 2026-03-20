@@ -191,6 +191,10 @@ const App = () => {
 
     const snapshot = await (ipc as any).invoke('load-context-snapshot');
     if (snapshot) setLastSnapshot(snapshot);
+
+    // Load skill engine data
+    const skillData = await (ipc as any).invoke('skills-get-all').catch(() => null);
+    if (skillData) { setSkills(skillData.skills || []); setSkillStats(skillData.stats || {}); setSkillEfficiency(skillData.efficiency || 0); }
   };
 
   // Load persisted chat history from ImiStore (instant, no API calls)
@@ -546,6 +550,7 @@ const App = () => {
           <button onClick={() => setActiveTab('dashboard')} className={`sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`}><Activity size={18}/> Dashboard</button>
           <button onClick={() => setActiveTab('command center')} className={`sidebar-btn ${activeTab === 'command center' ? 'active' : ''}`}><TerminalIcon size={18}/> Command Center</button>
           <button onClick={() => setActiveTab('tools')} className={`sidebar-btn ${activeTab === 'tools' ? 'active' : ''}`}><Layers size={18}/> Global MCP</button>
+          <button onClick={() => setActiveTab('skills')} className={`sidebar-btn ${activeTab === 'skills' ? 'active' : ''}`}><Zap size={18}/> Skills</button>
           <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`}><Settings size={18}/> System</button>
         </div>
 
