@@ -7,7 +7,6 @@ const { exec, spawn, execSync } = require('child_process');
 
 const shellEscape = (str) => {
   if (!str) return '""';
-  // 🛡️ Robust Windows Shell Escaping
   const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
   return `"${escaped}"`;
 };
@@ -249,25 +248,20 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [PURE STREAM HAND-OFF] The most professional and reliable background bridge
     const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
     event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to Antigravity Stream...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Spawn Antigravity with the '-' flag to listen to stdin
     const child = spawn(binAg, ['chat', '--yolo', '-'], {
       cwd: currentProjectRoot,
       env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY },
       shell: true
     });
 
-    // Directly write the prompt to the process input
     child.stdin.write(prompt + '\n');
-    child.stdin.end();
+    setTimeout(() => { child.stdin.end(); }, 1000);
 
-    child.stdout.on('data', (d) => {
-      event.sender.send('command-chunk', { messageId, chunk: d.toString() });
-    });
+    child.stdout.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
 
     child.on('close', (code) => {
       event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY STREAM FINISHED ---` });
