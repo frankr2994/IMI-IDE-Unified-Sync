@@ -211,6 +211,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
                    "Output a clear section named 'TECHNICAL SPECIFICATION' with the exact code logic, file paths, and changes required. " +
                    "DO NOT discuss or plan. Your output must be interpretable by any autonomous coding agent. End with 'BLUEPRINT_LOCKED'. ";
     
+    // Move Gemini Brain to direct API to stop the overthinking loop
+    if (director === 'gemini') {
     // 🛡️ [SMART CONTEXT RECOGNITION]
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'code', 'write', 'modify'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
