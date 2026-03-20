@@ -890,6 +890,19 @@ const App = () => {
                           <input value={settingsSearch} onChange={e => setSettingsSearch(e.target.value)} placeholder="Search Keys..." className="chat-input" style={{ width: '180px', paddingLeft: '30px', height: '32px', fontSize: '0.7rem' }} />
                         </div>
                       </div>
+                      <div style={{ marginBottom: '20px', background: 'rgba(155,77,255,0.07)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '12px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)' }}>Need a Gemini API Key?</div>
+                          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '3px' }}>Free tier available — powers IMI CORE + Brain with no extra software</div>
+                        </div>
+                        <button
+                          onClick={() => (ipc as any).send('open-external-url', 'https://aistudio.google.com/apikey')}
+                          className="btn-premium"
+                          style={{ width: 'auto', padding: '8px 18px', fontSize: '0.65rem', whiteSpace: 'nowrap' }}
+                        >
+                          Get Free Key →
+                        </button>
+                      </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                         {[
                           { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
