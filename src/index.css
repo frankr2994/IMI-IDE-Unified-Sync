@@ -1,3 +1,8 @@
+html {
+  /* Explicit base — makes all rem values predictable and readable */
+  font-size: 16px;
+}
+
 :root {
   --primary: #9b4dff;
   --primary-glow: rgba(155, 77, 255, 0.6);
@@ -9,6 +14,15 @@
   --text-dim: #b0b3c1;
   --font-main: 'Inter', 'Outfit', sans-serif;
   --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* ── Readable type scale — used throughout the app ── */
+  --text-2xs:  0.7rem;   /* 11.2px — absolute minimum, use sparingly    */
+  --text-xs:   0.75rem;  /* 12px   — small labels, badges                */
+  --text-sm:   0.825rem; /* 13.2px — secondary text, descriptions        */
+  --text-base: 0.9rem;   /* 14.4px — body / card text                    */
+  --text-md:   1rem;     /* 16px   — default readable size               */
+  --text-lg:   1.1rem;   /* 17.6px — section headers                     */
+  --text-xl:   1.3rem;   /* 20.8px — tab titles                          */
 }
 
 * {
@@ -251,7 +265,7 @@ body {
 }
 
 .ai-response-header {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 900;
   color: var(--primary);
   text-transform: uppercase;
@@ -382,7 +396,7 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.1);
   text-transform: uppercase;
   font-weight: 800;
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 0.1em;
 }
 
@@ -542,4 +556,61 @@ body.theme-neon {
 
 .pulse-anim {
   animation: pulse-anim 1.5s infinite ease-in-out;
+}
+
+/* ── Global readability scale ──────────────────────────────────────────────
+   IMI uses many inline font-size values (0.55rem–0.7rem) that are too small
+   on standard 1080p monitors. These rules set sensible minimums so every
+   piece of text is comfortable without rewriting every component.
+   Combined with the 1.1× Electron zoom this gives a clean, readable UI.
+────────────────────────────────────────────────────────────────────────── */
+
+/* Every span/div/button/label defaults to at least 11px */
+span, div, p, label, td, th {
+  font-size: max(var(--computed-size, 1em), 0.7rem);
+}
+
+/* Cards: bump body text to readable size */
+.glass-card {
+  font-size: var(--text-base);
+  line-height: 1.55;
+}
+
+/* Sidebar nav buttons */
+.sidebar-btn {
+  font-size: var(--text-base) !important;
+}
+
+/* Stat numbers on the dashboard */
+.stat-value {
+  font-size: var(--text-xl);
+  font-weight: 900;
+}
+
+/* Section / category headers */
+.section-label {
+  font-size: var(--text-xs);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Badge-style tags */
+.badge {
+  font-size: var(--text-xs);
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+/* Monospace code snippets inside cards */
+code, .font-mono {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+/* Input placeholders — should never be tiny */
+input::placeholder, textarea::placeholder {
+  font-size: inherit;
+  opacity: 0.5;
 }

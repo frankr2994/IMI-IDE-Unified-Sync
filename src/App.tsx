@@ -65,6 +65,7 @@ const App = () => {
   const [isCoderDropdownOpen, setIsCoderDropdownOpen] = useState(false);
   
   const [mcpServers, setMcpServers] = useState<any[]>([]);
+  const [linkedServicesExpanded, setLinkedServicesExpanded] = useState(false);
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -97,7 +98,28 @@ const App = () => {
   const [ollamaModels, setOllamaModels] = useState<any[]>([]);
   const [ollamaPulling, setOllamaPulling] = useState('');
   const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
+  const [ollamaPullProgress, setOllamaPullProgress] = useState<Record<string, { percent: number; downloaded: string; total: string; timeLeft: string; status: string }>>({});
   const [ollamaSearch, setOllamaSearch] = useState('');
+
+  // Parse raw ollama pull output into structured progress
+  const parseOllamaProgress = (raw: string) => {
+    // Match: "pulling abc123...  45% ▕████▏  1.8 GB/4.1 GB  45 seconds remaining"
+    const progressMatch = raw.match(/(\d+)%.*?([\d.]+\s*\w+)\/([\d.]+\s*\w+)(?:.*?([\d]+\s+\w+(?:\s+\w+)?\s*remaining))?/);
+    if (progressMatch) {
+      return {
+        percent: parseInt(progressMatch[1]),
+        downloaded: progressMatch[2]?.trim() || '',
+        total: progressMatch[3]?.trim() || '',
+        timeLeft: progressMatch[4]?.trim() || '',
+        status: 'pulling',
+      };
+    }
+    if (/verifying/i.test(raw))  return { percent: 99, downloaded: '', total: '', timeLeft: '', status: 'Verifying…' };
+    if (/writing/i.test(raw))    return { percent: 99, downloaded: '', total: '', timeLeft: '', status: 'Writing manifest…' };
+    if (/success/i.test(raw))    return { percent: 100, downloaded: '', total: '', timeLeft: '', status: 'Complete!' };
+    if (/pulling manifest/i.test(raw)) return { percent: 0, downloaded: '', total: '', timeLeft: '', status: 'Fetching manifest…' };
+    return null;
+  };
   const [hfResults, setHfResults] = useState<any[]>([]);
   const [hfSearching, setHfSearching] = useState(false);
   const [hfError, setHfError] = useState('');
@@ -192,6 +214,7 @@ const App = () => {
   const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [gitInstalled, setGitInstalled] = useState(true);
   const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
+  const [addServiceExpanded, setAddServiceExpanded] = useState(false);
   const [settingsSearch, setSettingsSearch] = useState('');
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
   const [snapshotMode, setSnapshotMode] = useState(true);
@@ -396,19 +419,19 @@ const App = () => {
   const loadConfig = async () => {
     const config = await (ipc as any).invoke('get-api-config');
     if (config) {
-      setGeminiKey(config.geminiKey || '');
-      setGithubToken(config.githubToken || '');
-      setOpenaiKey(config.openaiKey || '');
-      setClaudeKey(config.claudeKey || '');
-      setDeepseekKey(config.deepseekKey || '');
-      setMistralKey(config.mistralKey || '');
-      setLlamaKey(config.llamaKey || '');
-      setPerplexityKey(config.perplexityKey || '');
-      setCustomApiKey(config.customApiKey || '');
-      setCustomApiUrl(config.customApiUrl || '');
-      setCustomApiModel(config.customApiModel || '');
-      setJulesApiKey(config.julesApiKey || '');
-      setGoogleMapsKey(config.googleMapsKey || '');
+      setGeminiKey((config.geminiKey || '').trim());
+      setGithubToken((config.githubToken || '').trim());
+      setOpenaiKey((config.openaiKey || '').trim());
+      setClaudeKey((config.claudeKey || '').trim());
+      setDeepseekKey((config.deepseekKey || '').trim());
+      setMistralKey((config.mistralKey || '').trim());
+      setLlamaKey((config.llamaKey || '').trim());
+      setPerplexityKey((config.perplexityKey || '').trim());
+      setCustomApiKey((config.customApiKey || '').trim());
+      setCustomApiUrl((config.customApiUrl || '').trim());
+      setCustomApiModel((config.customApiModel || '').trim());
+      setJulesApiKey((config.julesApiKey || '').trim());
+      setGoogleMapsKey((config.googleMapsKey || '').trim());
       setProjectRootInput(config.projectRoot || '');
       if (config.theme) setTheme(config.theme);
       if (config.logRetention) setLogRetention(config.logRetention);
@@ -442,13 +465,14 @@ const App = () => {
   const updateMcpList = async () => {
     const mcpData = await (ipc as any).invoke('mcp:global-list');
     if (mcpData.success && mcpData.data) {
-      const lines = mcpData.data.split('\n').filter((l: string) => 
-        (l.includes('●') || l.includes('○') || l.includes('✗') || l.includes(':'))
-      );
-      setMcpServers(lines.map((l: string) => ({ 
-        name: l.trim(), 
-        status: l.includes('●') ? 'online' : 'offline' 
+      const lines = mcpData.data.split('\n').filter((l: string) => l.trim().length > 0);
+      setMcpServers(lines.map((l: string) => ({
+        // Strip bullet prefix (● / ○ / ✗) so delete calls match stored names exactly
+        name: l.trim().replace(/^[●○✗]\s*/, ''),
+        status: l.includes('●') ? 'online' : 'offline'
       })));
+    } else if (mcpData.success && !mcpData.data) {
+      setMcpServers([]);
     }
   };
 
@@ -626,6 +650,7 @@ const App = () => {
   useEffect(() => {
     loadConfig();
     fetchStats();
+    setTimeout(loadTools, 2000); // defer tool scan — avoids blocking main process during startup paint
     // 🚀 [BALANCED PERF]
     const statsInterval = setInterval(fetchStats, 60000); // Heavy disk scan: 1 min
     const telemetryInterval = setInterval(async () => {
@@ -669,7 +694,17 @@ const App = () => {
     ipc.on('command-end', onEnd);
     ipc.on('command-error', onError);
     ipc.on('ollama-pull-progress', (_: any, data: any) => {
+      // Keep raw log for debugging
       setOllamaLog(prev => ({ ...prev, [data.model]: (prev[data.model] || '') + data.chunk }));
+      // Parse into structured progress for the UI
+      const lines = ((data.chunk as string) || '').split('\n');
+      for (const line of lines.reverse()) {
+        const parsed = parseOllamaProgress(line);
+        if (parsed) {
+          setOllamaPullProgress(prev => ({ ...prev, [data.model]: parsed }));
+          break;
+        }
+      }
     });
 
     ipc.on('sync-status', (_: any, status: string) => {
@@ -742,17 +777,24 @@ const App = () => {
           <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`}><Settings size={18}/> System</button>
         </div>
 
-        <div style={{ marginTop: 'auto' }}>
-          <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 800, marginBottom: '10px' }}>
-              <span>SYSTEM QUOTA</span>
-              <span style={{ color: 'var(--primary)' }}>{quota}%</span>
-            </div>
-            <div className="quota-bar"><div className="quota-fill" style={{ width: `${quota}%` }}></div></div>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '12px', lineHeight: '1.4' }}>
-              Optimized by Jules Recycling Protocol. 
-            </p>
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
+          {/* Active project root */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <Database size={12} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>PROJECT ROOT</span>
           </div>
+          <div
+            title={stats.projectRoot || 'Not set'}
+            onClick={() => setActiveTab('settings')}
+            style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', wordBreak: 'break-all', lineHeight: 1.4, cursor: 'pointer', padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'white'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)'}
+          >
+            {stats.projectRoot
+              ? '📁 ' + stats.projectRoot.split(/[\\/]/).slice(-2).join('/')
+              : '📁 Click to set folder'}
+          </div>
+          <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', marginTop: '8px', textAlign: 'center' }}>IMI v1.0.4</div>
         </div>
       </div>
 
@@ -934,25 +976,36 @@ const App = () => {
                           </div>
                           <AnimatePresence>
                             {isDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '180px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '300px' }}>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '320px' }}>
+                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)' }}>BRAIN MODEL</div>
                                 {[
-                                  { id: 'gemini', name: 'GEMINI (FAST API)', icon: <Zap size={12} /> },
-                                  { id: 'geminicli', name: 'GEMINI CLI (MCP)', icon: <Terminal size={12} /> },
-                                  { id: 'jules', name: 'JULES', icon: <Layers size={12} /> },
-                                  { id: 'antigravity', name: 'AG AI', icon: <Cpu size={12} /> },
-                                  { id: 'chatgpt', name: 'CHATGPT', icon: <MessageSquare size={12} /> },
-                                  { id: 'claude', name: 'CLAUDE', icon: <ShieldCheck size={12} /> },
-                                  { id: 'mistral', name: 'MISTRAL', icon: <Activity size={12} /> },
-                                  { id: 'llama', name: 'LLAMA 3', icon: <Database size={12} /> },
-                                  { id: 'perplexity', name: 'PERPLEXITY', icon: <Search size={12} /> },
-                                  { id: 'deepseek', name: 'DEEPSEEK', icon: <Terminal size={12} /> },
-                                  { id: 'custom', name: 'CUSTOM API', icon: <Wifi size={12} /> }
-                                ].map(opt => (
-                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain Engine set to ${opt.name}`); saveConfig({ activeBrain: opt.id }); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 15px', color: '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155, 77, 255, 0.1)' : 'transparent' }}>
+                                  // Always shown — Gemini API just needs the key in settings
+                                  { id: 'gemini',     name: 'Gemini API',  icon: <Zap size={12}/>,           always: true },
+                                  // Only show if API key is saved and non-empty
+                                  { id: 'chatgpt',    name: 'ChatGPT',     icon: <MessageSquare size={12}/>, always: false, key: openaiKey?.trim() },
+                                  { id: 'claude',     name: 'Claude',      icon: <ShieldCheck size={12}/>,   always: false, key: claudeKey?.trim() },
+                                  { id: 'mistral',    name: 'Mistral',     icon: <Activity size={12}/>,      always: false, key: mistralKey?.trim() },
+                                  { id: 'llama',      name: 'Llama 3',     icon: <Database size={12}/>,      always: false, key: llamaKey?.trim() },
+                                  { id: 'perplexity', name: 'Perplexity',  icon: <Search size={12}/>,        always: false, key: perplexityKey?.trim() },
+                                  { id: 'deepseek',   name: 'DeepSeek',    icon: <Terminal size={12}/>,      always: false, key: deepseekKey?.trim() },
+                                  { id: 'jules',      name: 'Jules',       icon: <Layers size={12}/>,        always: false, key: (julesApiKey || githubToken)?.trim() },
+                                  { id: 'custom',     name: 'Custom API',  icon: <Wifi size={12}/>,          always: false, key: (customApiKey?.trim() && customApiUrl?.trim()) ? 'set' : '' },
+                                ].filter(opt => opt.always || (opt.key && opt.key.length > 0))
+                                 .map(opt => (
+                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain set to ${opt.name}`); saveConfig({ activeBrain: opt.id }); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeDirector === opt.id ? 'var(--primary)' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155,77,255,0.12)' : 'transparent', fontWeight: activeDirector === opt.id ? 900 : 400 }}
+                                    onMouseEnter={e => { if (activeDirector !== opt.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                    onMouseLeave={e => { if (activeDirector !== opt.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                  >
                                     {opt.icon}
                                     {opt.name}
+                                    {activeDirector === opt.id && <span style={{ marginLeft: 'auto', fontSize: '0.5rem', color: 'var(--primary)' }}>●</span>}
                                   </div>
                                 ))}
+                                <div style={{ padding: '8px 14px', fontSize: '0.58rem', color: 'var(--text-dim)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                  onClick={() => { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); }}>
+                                  + Add model keys in Settings →
+                                </div>
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -968,10 +1021,40 @@ const App = () => {
                           </div>
                           <AnimatePresence>
                             {isCoderDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '150px', background: 'rgba(20, 20, 30, 0.95)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden' }}>
-                                <div onClick={() => { setActiveEngine('jules'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to JULES'); saveConfig({ activeCoder: 'jules' }); }} style={{ padding: '10px 15px', color: activeEngine === 'jules' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'jules' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>JULES</div>
-                                <div onClick={() => { setActiveEngine('antigravity'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to ANTIGRAVITY'); saveConfig({ activeCoder: 'antigravity' }); }} style={{ padding: '10px 15px', color: activeEngine === 'antigravity' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'antigravity' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>ANTIGRAVITY</div>
-                                <div onClick={() => { setActiveEngine('imi-core'); setIsCoderDropdownOpen(false); addLog('system', 'Execution Node set to IMI CORE'); saveConfig({ activeCoder: 'imi-core' }); }} style={{ padding: '10px 15px', color: activeEngine === 'imi-core' ? '#00ff88' : '#fff', fontSize: '0.65rem', cursor: 'pointer', background: activeEngine === 'imi-core' ? 'rgba(0, 255, 136, 0.1)' : 'transparent' }}>IMI CORE</div>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden' }}>
+                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)' }}>CODER ENGINE</div>
+                                {([
+                                  // Always available
+                                  { id: 'imi-core', name: 'IMI Core',    desc: 'Built-in · no setup',   icon: <Zap size={12}/>,    always: true,  key: '' },
+                                  // Only show if configured
+                                  { id: 'jules',    name: 'Jules',       desc: 'GitHub PR-based agent', icon: <Layers size={12}/>, always: false, key: julesApiKey || githubToken },
+                                  { id: 'antigravity', name: 'AG AI',   desc: 'Antigravity engine',    icon: <Cpu size={12}/>,    always: false, key: customApiKey },
+                                  // Ollama local models — show if any are installed
+                                  ...ollamaModels.slice(0, 3).map(m => ({
+                                    id: `ollama:${m.name}`, name: m.name, desc: 'Local · Ollama', icon: <Database size={12}/>, always: true, key: ''
+                                  })),
+                                ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string }[])
+                                .filter(opt => opt.always || (opt.key && opt.key.trim()))
+                                 .map(opt => (
+                                  <div key={opt.id} onClick={() => { setActiveEngine(opt.id); setIsCoderDropdownOpen(false); addLog('system', `Coder set to ${opt.name}`); saveConfig({ activeCoder: opt.id }); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeEngine === opt.id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeEngine === opt.id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeEngine === opt.id ? 900 : 400 }}
+                                    onMouseEnter={e => { if (activeEngine !== opt.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                    onMouseLeave={e => { if (activeEngine !== opt.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                  >
+                                    {opt.icon}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div>{opt.name}</div>
+                                      {opt.desc && <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: '1px' }}>{opt.desc}</div>}
+                                    </div>
+                                    {activeEngine === opt.id && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
+                                  </div>
+                                ))}
+                                {ollamaModels.length === 0 && (
+                                  <div style={{ padding: '8px 14px', fontSize: '0.58rem', color: 'var(--text-dim)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                    onClick={() => { setIsCoderDropdownOpen(false); setActiveTab('devhub'); setMcpHubTab('ai'); }}>
+                                    + Pull local models in Dev Hub →
+                                  </div>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -1124,89 +1207,60 @@ const App = () => {
                   </div>
                 )}
 
-                {/* Preset MCPs — shown when no live search active */}
-                {npmResults.length === 0 && (
-                <div style={{ marginBottom: '40px' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>FEATURED REGISTRY</div>
-                  <div className="tool-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-                    {availableMCPs.map(lib => {
-                      const isLinked = mcpServers.some(s => s.name.toLowerCase().includes(lib.id.toLowerCase()));
-                      return (
-                        <div key={lib.id} className="glass-card" style={{ padding: '1.25rem', border: isLinked ? `1px solid var(--primary)` : '1px solid var(--glass-border)', background: isLinked ? `rgba(155, 77, 255, 0.05)` : 'rgba(255,255,255,0.02)', position: 'relative', overflow: 'hidden' }}>
-                          <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: lib.color }}></div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: lib.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Database size={18} />
-                            </div>
-                            <button
-                              onClick={async () => {
-                                const cfg = { name: lib.id, command: lib.command, args: lib.args, env: {} as any };
-                                if (lib.id === 'Jules' && julesApiKey) cfg.env = { JULES_API_KEY: julesApiKey, GOOGLE_API_KEY: julesApiKey };
-                                else if (lib.id === 'GitHub' && githubToken) cfg.env = { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken };
-                                else if (lib.id === 'ChatGPT' && openaiKey) cfg.env = { OPENAI_API_KEY: openaiKey };
-                                else if (lib.id === 'Claude' && claudeKey) cfg.env = { ANTHROPIC_API_KEY: claudeKey };
-                                addLog('system', `Linking ${lib.id}...`);
-                                const result = await (ipc as any).invoke('mcp:global-add', cfg);
-                                if (result.success) { addLog('system', `${lib.id} linked.`); updateMcpList(); }
-                              }}
-                              className={isLinked ? 'btn-chat-send' : 'btn-premium'}
-                              style={{ width: 'auto', height: '32px', padding: '0 14px', borderRadius: '8px', fontSize: '0.7rem' }}
-                            >
-                              {isLinked ? <CheckCircle2 size={14} /> : 'LINK'}
-                            </button>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <h4 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{lib.name}</h4>
-                            <span
-                              onClick={() => (ipc as any).send('open-external-url', `https://www.npmjs.com/package/${lib.pkg}`)}
-                              title={`Open ${lib.pkg} on npm`}
-                              style={{ fontSize: '0.6rem', color: '#4facfe', cursor: 'pointer', opacity: 0.7, textDecoration: 'underline' }}
-                            >npm ↗</span>
-                          </div>
-                          <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '4px' }}>{lib.desc}</p>
-                          <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>{lib.pkg}</p>
-                        </div>
-                      );
-                    })}
+                {/* Empty search state — prompt to search, no pre-populated cards */}
+                {npmResults.length === 0 && !npmSearching && (
+                  <div style={{ padding: '48px 20px', textAlign: 'center', opacity: 0.5 }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '14px' }}>📦</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white', marginBottom: '8px' }}>Search the npm registry</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                      Type anything above — e.g. <code style={{ color: '#4facfe' }}>puppeteer</code>, <code style={{ color: '#4facfe' }}>postgres</code>, <code style={{ color: '#4facfe' }}>slack</code>, <code style={{ color: '#4facfe' }}>filesystem</code><br/>
+                      Packages you add will appear in Linked Services below.
+                    </div>
                   </div>
-                </div>
+                )}
+                {npmSearching && (
+                  <div style={{ padding: '40px', textAlign: 'center', opacity: 0.5, fontSize: '0.8rem' }}>⏳ Searching npm…</div>
                 )}
 
                 <div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', marginBottom: '20px' }}>LINKED SERVICES ({mcpServers.length})</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {mcpServers.map((s, i) => {
-                      const pkgName = s.name.split(':')[0].trim();
-                      const npmUrl = `https://www.npmjs.com/package/${pkgName}`;
-                      return (
-                        <div key={i} className="glass-card" style={{ padding: '0.9rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div className={`status-indicator ${s.status === 'online' ? 'status-online' : ''}`}></div>
-                            <div>
-                              <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{pkgName}</span>
-                              <span
-                                onClick={() => (ipc as any).send('open-external-url', npmUrl)}
-                                title="Open on npm"
-                                style={{ marginLeft: '8px', fontSize: '0.6rem', color: '#4facfe', cursor: 'pointer', opacity: 0.7, textDecoration: 'underline' }}
-                              >npm ↗</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={async () => { await (ipc as any).invoke('mcp:global-remove', pkgName); updateMcpList(); }}
-                            style={{ background: 'transparent', border: 'none', color: '#ff4b2b', cursor: 'pointer', opacity: 0.6 }}
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {mcpServers.length === 0 && (
-                      <div style={{ padding: '3rem', textAlign: 'center', opacity: 0.3 }}>
-                        <Database size={48} style={{ marginBottom: '15px' }} />
-                        <p>No external registries linked yet.</p>
-                      </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em' }}>LINKED SERVICES ({mcpServers.length})</span>
+                    {mcpServers.length > 4 && (
+                      <button onClick={() => setLinkedServicesExpanded(p => !p)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>
+                        {linkedServicesExpanded ? '▲ less' : `▼ +${mcpServers.length - 4} more`}
+                      </button>
                     )}
                   </div>
+
+                  {mcpServers.length === 0 ? (
+                    <div style={{ padding: '1.2rem', textAlign: 'center', opacity: 0.3, fontSize: '0.75rem' }}>No services linked yet.</div>
+                  ) : (
+                    /* Compact pill-chip list */
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {(linkedServicesExpanded ? mcpServers : mcpServers.slice(0, 4)).map((s, i) => {
+                        const pkgName = s.name.trim();
+                        const npmUrl = `https://www.npmjs.com/package/${pkgName}`;
+                        // Shorten long scoped names: @modelcontextprotocol/server-github → server-github
+                        const shortName = pkgName.includes('/') ? pkgName.split('/').pop()! : pkgName;
+                        return (
+                          <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 6px 4px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', maxWidth: '220px' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.status === 'online' ? '#00ffaa' : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                            <span title={pkgName} style={{ fontSize: '0.72rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', color: '#ccc' }}
+                              onClick={() => (ipc as any).send('open-external-url', npmUrl)}>
+                              {shortName}
+                            </span>
+                            <button
+                              title={`Remove ${pkgName}`}
+                              onPointerDown={async (e) => { e.preventDefault(); e.stopPropagation(); await (ipc as any).invoke('mcp:global-remove', pkgName); updateMcpList(); }}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(255,65,108,0.2)', border: '1px solid rgba(255,65,108,0.35)', color: '#ff416c', cursor: 'pointer', flexShrink: 0, fontSize: '9px', fontWeight: 900, lineHeight: 1 }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,65,108,0.5)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1.2)'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,65,108,0.2)'; (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                            >✕</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 </>}
@@ -1417,23 +1471,49 @@ const App = () => {
                                 <span>❤️ {formatNum(model.likes)}</span>
                                 {model.pipeline && <span style={{ padding: '1px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{model.pipeline}</span>}
                               </div>
-                              {isPulling && ollamaLog[model.ollamaCmd] && (
-                                <div style={{ fontSize: '0.58rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '6px', marginBottom: '8px', maxHeight: '50px', overflowY: 'auto', color: '#00ff88' }}>
-                                  {ollamaLog[model.ollamaCmd].split('\n').slice(-3).join('\n')}
-                                </div>
-                              )}
+                              {isPulling && (() => {
+                                const p = ollamaPullProgress[model.ollamaCmd];
+                                const pct = p?.percent ?? 0;
+                                return (
+                                  <div style={{ marginBottom: '8px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                      <span style={{ fontSize: '0.65rem', color: '#00ff88', fontWeight: 700 }}>{p?.status === 'Complete!' ? '✅ Done!' : p?.status || 'Connecting…'}</span>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'white' }}>{pct}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease' }} />
+                                    </div>
+                                    {p?.downloaded && p?.total && (
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{p.downloaded} / {p.total}</span>
+                                        {p.timeLeft && <span style={{ fontSize: '0.6rem', color: '#ffa500' }}>⏱ {p.timeLeft}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                               <div style={{ display: 'flex', gap: '6px' }}>
                                 <button onClick={() => (ipc as any).send('open-external-url', model.hfUrl)} style={{ flex: 1, height: '28px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem' }}>HF ↗</button>
-                                <button onClick={async () => {
-                                  if (isInstalled || isPulling) return;
-                                  setOllamaPulling(model.ollamaCmd);
-                                  setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: '' }));
-                                  await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
-                                  setOllamaPulling('');
-                                  loadOllamaModels();
-                                }} style={{ flex: 2, height: '28px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '7px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
-                                  {isInstalled ? '✅ Installed' : isPulling ? '⬇ Pulling...' : '⬇ Pull'}
-                                </button>
+                                {isPulling ? (
+                                  <button onClick={async () => {
+                                    await (ipc as any).invoke('ollama-pull-cancel', model.ollamaCmd);
+                                    setOllamaPulling('');
+                                    setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: 'Cancelled.' }));
+                                  }} style={{ flex: 2, height: '28px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '7px', color: '#ff416c', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
+                                    ✕ Cancel
+                                  </button>
+                                ) : (
+                                  <button onClick={async () => {
+                                    if (isInstalled) return;
+                                    setOllamaPulling(model.ollamaCmd);
+                                    setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: '' }));
+                                    await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
+                                    setOllamaPulling('');
+                                    loadOllamaModels();
+                                  }} style={{ flex: 2, height: '28px', background: isInstalled ? 'rgba(0,255,136,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '7px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
+                                    {isInstalled ? '✅ Installed' : '⬇ Pull'}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );
@@ -1459,21 +1539,49 @@ const App = () => {
                               </div>
                             </div>
                             <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc} <span style={{ opacity: 0.5 }}>· {model.size}</span></p>
-                            {isPulling && ollamaLog[model.name] && (
-                              <div style={{ fontSize: '0.58rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '6px', marginBottom: '8px', maxHeight: '50px', overflowY: 'auto', color: '#00ff88' }}>
-                                {ollamaLog[model.name].split('\n').slice(-3).join('\n')}
-                              </div>
+                            {isPulling && (() => {
+                              const p = ollamaPullProgress[model.name];
+                              const pct = p?.percent ?? 0;
+                              return (
+                                <div style={{ marginBottom: '10px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                    <span style={{ fontSize: '0.65rem', color: '#00ff88', fontWeight: 700 }}>{p?.status === 'Complete!' ? '✅ Done!' : p?.status || 'Connecting…'}</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'white' }}>{pct}%</span>
+                                  </div>
+                                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: pct > 0 ? '0 0 8px rgba(155,77,255,0.5)' : 'none' }} />
+                                  </div>
+                                  {p?.downloaded && p?.total ? (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+                                      <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{p.downloaded} / {p.total}</span>
+                                      {p.timeLeft && <span style={{ fontSize: '0.62rem', color: '#ffa500', fontWeight: 700 }}>⏱ {p.timeLeft}</span>}
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '4px' }}>Waiting for progress…</div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            {isPulling ? (
+                              <button onClick={async () => {
+                                await (ipc as any).invoke('ollama-pull-cancel', model.name);
+                                setOllamaPulling('');
+                                setOllamaLog(prev => ({ ...prev, [model.name]: 'Cancelled.' }));
+                              }} style={{ width: '100%', height: '30px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '8px', color: '#ff416c', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
+                                ✕ Cancel Download
+                              </button>
+                            ) : (
+                              <button onClick={async () => {
+                                if (isInstalled) return;
+                                setOllamaPulling(model.name);
+                                setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
+                                await (ipc as any).invoke('ollama-pull', model.name);
+                                setOllamaPulling('');
+                                loadOllamaModels();
+                              }} style={{ width: '100%', height: '30px', background: isInstalled ? 'rgba(0,255,136,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
+                                {isInstalled ? '✅ Installed' : '⬇ Pull Model'}
+                              </button>
                             )}
-                            <button onClick={async () => {
-                              if (isInstalled || isPulling) return;
-                              setOllamaPulling(model.name);
-                              setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
-                              await (ipc as any).invoke('ollama-pull', model.name);
-                              setOllamaPulling('');
-                              loadOllamaModels();
-                            }} style={{ width: '100%', height: '30px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
-                              {isInstalled ? '✅ Installed' : isPulling ? '⬇ Pulling...' : '⬇ Pull Model'}
-                            </button>
                           </div>
                         );
                       })}
@@ -1808,58 +1916,156 @@ const App = () => {
 
                   {/* CATEGORY: APIs & KEYS */}
                   {settingsActiveSubTab === 'apis' && (
-                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>SECURE CREDENTIALS</div>
-                        <div style={{ position: 'relative' }}>
-                          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-                          <input value={settingsSearch} onChange={e => setSettingsSearch(e.target.value)} placeholder="Search Keys..." className="chat-input" style={{ width: '180px', paddingLeft: '30px', height: '32px', fontSize: '0.7rem' }} />
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: '20px', background: 'rgba(155,77,255,0.07)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '12px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+
+                      {/* Hero banner */}
+                      <div style={{ background: 'linear-gradient(135deg, rgba(155,77,255,0.12), rgba(79,172,254,0.08))', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '16px', padding: '18px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)' }}>Need a Gemini API Key?</div>
-                          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '3px' }}>Free tier available — powers IMI CORE + Brain with no extra software</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 900, color: 'white', marginBottom: '4px' }}>🔑 API Keys & Credentials</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>Keys are stored locally on your machine — never sent to any server.<br/>Add only the services you want to use. IMI works out of the box with just Gemini.</div>
                         </div>
-                        <button
-                          onClick={() => (ipc as any).send('open-external-url', 'https://aistudio.google.com/apikey')}
-                          className="btn-premium"
-                          style={{ width: 'auto', padding: '8px 18px', fontSize: '0.65rem', whiteSpace: 'nowrap' }}
-                        >
-                          Get Free Key →
+                        <button onClick={() => (ipc as any).send('open-external-url', 'https://aistudio.google.com/apikey')} className="btn-premium" style={{ width: 'auto', padding: '10px 20px', fontSize: '0.72rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '20px' }}>
+                          Get Free Gemini Key →
                         </button>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                        {[
-                          { key: 'GEMINI', val: geminiKey, set: setGeminiKey, ph: 'Gemini API Key...' },
-                          { key: 'JULES (GitHub)', val: julesApiKey, set: setJulesApiKey, ph: 'GitHub Token for Jules...' },
-                          { key: 'GITHUB', val: githubToken, set: setGithubToken, ph: 'GitHub PAT...' },
-                          { key: 'OPENAI', val: openaiKey, set: setOpenaiKey, ph: 'OpenAI Key (ChatGPT)...' },
-                          { key: 'CLAUDE', val: claudeKey, set: setClaudeKey, ph: 'Claude Key...' },
-                          { key: 'DEEPSEEK', val: deepseekKey, set: setDeepseekKey, ph: 'DeepSeek Key...' },
-                          { key: 'MISTRAL', val: mistralKey, set: setMistralKey, ph: 'Mistral Key...' },
-                          { key: 'PERPLEXITY', val: perplexityKey, set: setPerplexityKey, ph: 'Perplexity Key...' },
-                          { key: 'CUSTOM (LLAMA / LOCAL)', val: customApiKey, set: setCustomApiKey, ph: 'Bearer Token (Optional)...' }
-                        ].filter(item => item.key.toLowerCase().includes(settingsSearch.toLowerCase())).map(item => (
-                          <div key={item.key} style={{ position: 'relative', width: '100%' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.6, marginBottom: '8px', letterSpacing: '0.1em' }}>{item.key} KEY</div>
-                            <input type="password" value={item.val} onChange={e => item.set(e.target.value)} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '54px', fontSize: '1rem', paddingLeft: '20px', paddingRight: '45px', borderRadius: '12px' }} />
-                            {item.val && <CheckCircle2 size={18} color="#00ffaa" style={{ position: 'absolute', right: '16px', top: '35px' }} />}
+
+                      {/* AI MODELS group */}
+                      {(() => {
+                        const allAiServices = [
+                          { emoji: '✨', name: 'Gemini', desc: 'Google · Free tier · Powers IMI Core', val: geminiKey, set: setGeminiKey, ph: 'AIza…', link: 'https://aistudio.google.com/apikey', badge: 'RECOMMENDED', core: true,  saveKey: 'geminiKey' },
+                          { emoji: '🤖', name: 'ChatGPT', desc: 'OpenAI GPT-4o & o1 series', val: openaiKey, set: setOpenaiKey, ph: 'sk-…', link: 'https://platform.openai.com/api-keys', core: false, saveKey: 'openaiKey' },
+                          { emoji: '🧠', name: 'Claude', desc: 'Anthropic · Claude 3.5 Sonnet', val: claudeKey, set: setClaudeKey, ph: 'sk-ant-…', link: 'https://console.anthropic.com/settings/keys', core: false, saveKey: 'claudeKey' },
+                          { emoji: '🔥', name: 'DeepSeek', desc: 'DeepSeek R1 · Cost-effective', val: deepseekKey, set: setDeepseekKey, ph: 'sk-…', link: 'https://platform.deepseek.com/api_keys', core: false, saveKey: 'deepseekKey' },
+                          { emoji: '🌊', name: 'Mistral', desc: 'Mistral Large & Mixtral', val: mistralKey, set: setMistralKey, ph: 'API key…', link: 'https://console.mistral.ai/api-keys/', core: false, saveKey: 'mistralKey' },
+                          { emoji: '🔍', name: 'Perplexity', desc: 'Web-search augmented AI', val: perplexityKey, set: setPerplexityKey, ph: 'pplx-…', link: 'https://www.perplexity.ai/settings/api', core: false, saveKey: 'perplexityKey' },
+                        ];
+                        const activeServices = allAiServices.filter(s => s.core || s.val);
+                        const inactiveServices = allAiServices.filter(s => !s.core && !s.val);
+                        const renderCard = (item: typeof allAiServices[0]) => (
+                          <div key={item.name} style={{ background: item.val ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${item.val ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '14px', padding: '16px', transition: 'border-color 0.2s' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
+                                <div>
+                                  <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {item.name}
+                                    {(item as any).badge && <span style={{ fontSize: '0.52rem', background: 'rgba(155,77,255,0.25)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 900, letterSpacing: '0.08em' }}>{(item as any).badge}</span>}
+                                  </div>
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '1px' }}>{item.desc}</div>
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {item.val
+                                    ? <>
+                                        <span style={{ fontSize: '0.6rem', background: 'rgba(0,255,136,0.15)', color: '#00ff88', padding: '3px 8px', borderRadius: '6px', fontWeight: 900 }}>✓ Connected</span>
+                                        {!item.core && <button onPointerDown={e => { e.preventDefault(); item.set(''); saveConfig({ [(item as any).saveKey]: '' }); }} style={{ fontSize: '0.6rem', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', color: '#ff416c', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }} title="Remove key">×</button>}
+                                      </>
+                                    : <button onClick={() => (ipc as any).send('open-external-url', item.link)} style={{ fontSize: '0.6rem', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-dim)', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Get Key →</button>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                              <input type="password" value={item.val} onChange={e => item.set(e.target.value)} onBlur={() => saveConfig()} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.85rem', paddingLeft: '14px', paddingRight: item.val ? '38px' : '14px', borderRadius: '10px', boxSizing: 'border-box' }} />
+                              {item.val && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                            </div>
                           </div>
-                        ))}
+                        );
+                        return (
+                          <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>🤖</span> AI MODELS
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                              {activeServices.map(renderCard)}
+                            </div>
+                            {inactiveServices.length > 0 && (
+                              <div style={{ marginTop: '12px' }}>
+                                <button
+                                  onClick={() => setAddServiceExpanded(p => !p)}
+                                  style={{ width: '100%', padding: '10px 16px', background: 'rgba(155,77,255,0.06)', border: '1px dashed rgba(155,77,255,0.3)', borderRadius: '10px', color: 'rgba(155,77,255,0.9)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}
+                                >
+                                  {addServiceExpanded ? '▲ Hide' : '+ Add a service'} {!addServiceExpanded && `· ${inactiveServices.length} available`}
+                                </button>
+                                {addServiceExpanded && (
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '12px' }}>
+                                    {inactiveServices.map(renderCard)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* DEV TOOLS group */}
+                      <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>🔧</span> DEV TOOLS
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                          {[
+                            { emoji: '🐙', name: 'GitHub', desc: 'Personal Access Token · enables sync & Jules', val: githubToken, set: setGithubToken, ph: 'ghp_…', link: 'https://github.com/settings/tokens', saveKey: 'githubToken' },
+                            { emoji: '🤝', name: 'Jules AI', desc: 'GitHub-based AI coding agent', val: julesApiKey, set: setJulesApiKey, ph: 'Jules key or GitHub token…', link: 'https://jules.google.com', saveKey: 'julesApiKey' },
+                          ].map(item => (
+                            <div key={item.name} style={{ background: item.val ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${item.val ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '14px', padding: '16px', transition: 'border-color 0.2s' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
+                                  <div>
+                                    <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'white' }}>{item.name}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '1px' }}>{item.desc}</div>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                  {item.val
+                                    ? <>
+                                        <span style={{ fontSize: '0.6rem', background: 'rgba(0,255,136,0.15)', color: '#00ff88', padding: '3px 8px', borderRadius: '6px', fontWeight: 900 }}>✓ Connected</span>
+                                        <button onPointerDown={e => { e.preventDefault(); item.set(''); saveConfig({ [(item as any).saveKey]: '' }); }} style={{ fontSize: '0.6rem', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', color: '#ff416c', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }} title="Remove key">×</button>
+                                      </>
+                                    : <button onClick={() => (ipc as any).send('open-external-url', item.link)} style={{ fontSize: '0.6rem', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-dim)', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Get Token →</button>
+                                  }
+                                </div>
+                              </div>
+                              <div style={{ position: 'relative' }}>
+                                <input type="password" value={item.val} onChange={e => item.set(e.target.value)} onBlur={() => saveConfig()} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.85rem', paddingLeft: '14px', paddingRight: item.val ? '38px' : '14px', borderRadius: '10px', boxSizing: 'border-box' }} />
+                                {item.val && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      {/* CUSTOM ENDPOINT CONFIG */}
-                      <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '15px' }}>
-                         <div style={{ position: 'relative' }}>
-                           <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>CUSTOM ENDPOINT URL (Llama/Ollama/vLLM)</div>
-                           <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} placeholder="e.g. http://localhost:11434/v1" className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
-                         </div>
-                         <div style={{ position: 'relative' }}>
-                           <div style={{ fontSize: '0.55rem', fontWeight: 900, opacity: 0.4, marginBottom: '5px' }}>CUSTOM MODEL ID</div>
-                           <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} placeholder="e.g. llama3.1" className="chat-input" style={{ width: '100%', height: '40px', fontSize: '0.8rem' }} />
-                         </div>
+                      {/* CUSTOM / LOCAL group */}
+                      <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>⚙️</span> CUSTOM / LOCAL MODEL
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '18px' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '16px', lineHeight: 1.5 }}>
+                            Connect any OpenAI-compatible endpoint — Ollama, vLLM, LM Studio, or a self-hosted model.
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>ENDPOINT URL</div>
+                              <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} onBlur={() => saveConfig()} placeholder="http://localhost:11434/v1" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>MODEL ID</div>
+                              <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} onBlur={() => saveConfig()} placeholder="llama3.1" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>BEARER TOKEN <span style={{ opacity: 0.5, fontWeight: 400 }}>(optional)</span></div>
+                            <div style={{ position: 'relative' }}>
+                              <input type="password" value={customApiKey} onChange={e => setCustomApiKey(e.target.value)} onBlur={() => saveConfig()} placeholder="Bearer token if required…" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', paddingRight: customApiKey ? '38px' : '14px', boxSizing: 'border-box' }} />
+                              {customApiKey && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
+                            </div>
+                          </div>
+                        </div>
                       </div>
+
                     </motion.div>
                   )}
 

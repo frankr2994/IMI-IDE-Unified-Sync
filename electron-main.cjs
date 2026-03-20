@@ -1286,6 +1286,10 @@ function createWindow() {
   mainWindow = new BrowserWindow({ width: 1400, height: 900, frame: false, transparent: true, webPreferences: { nodeIntegration: true, contextIsolation: false } });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  // Scale the entire UI up — makes all rem/px values more comfortable on 1080p screens
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setZoomFactor(1.1);
+  });
   mainWindow.on('closed', () => { mainWindow = null; app.quit(); });
 }
 
@@ -1421,13 +1425,15 @@ const TOOLS_MANIFEST = [
 ];
 
 ipcMain.handle('check-tools', async () => {
+  const execAsync = (cmd) => new Promise(resolve => {
+    exec(cmd, { timeout: 4000 }, (err, stdout) => {
+      if (err) resolve(null);
+      else resolve(stdout.trim().split('\n')[0].replace(/^v/, ''));
+    });
+  });
   const results = await Promise.all(TOOLS_MANIFEST.map(async tool => {
-    try {
-      const version = execSync(tool.cmd, { timeout: 4000, stdio: ['pipe','pipe','pipe'] }).toString().trim().split('\n')[0].replace(/^v/, '');
-      return { ...tool, installed: true, version };
-    } catch(e) {
-      return { ...tool, installed: false, version: null };
-    }
+    const version = await execAsync(tool.cmd);
+    return { ...tool, installed: !!version, version: version || null };
   }));
   return results;
 });
@@ -1437,8 +1443,8 @@ ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
 ipcMain.handle('ollama-list', async () => {
   try {
-    const raw = execSync('ollama list', { timeout: 5000 }).toString().trim();
-    const lines = raw.split('\n').slice(1).filter(Boolean);
+    const raw = await new Promise((resolve, reject) => exec('ollama list', { timeout: 5000 }, (err, stdout) => err ? reject(err) : resolve(stdout.trim())));
+    const lines = String(raw).split('\n').slice(1).filter(Boolean);
     return { success: true, models: lines.map(l => {
       const parts = l.trim().split(/\s+/);
       return { name: parts[0], id: parts[1] || '', size: parts[2] || '', modified: parts.slice(3).join(' ') || '' };
@@ -1446,14 +1452,30 @@ ipcMain.handle('ollama-list', async () => {
   } catch(e) { return { success: false, models: [], error: e.message }; }
 });
 
+const ollamaPullProcesses = new Map(); // modelName → child process
+
 ipcMain.handle('ollama-pull', async (event, modelName) => {
   return new Promise((resolve) => {
     const child = spawn('ollama', ['pull', modelName], { shell: true });
+    ollamaPullProcesses.set(modelName, child);
     let out = '';
     child.stdout.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
     child.stderr.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
-    child.on('close', code => resolve({ success: code === 0, output: out }));
+    child.on('close', code => {
+      ollamaPullProcesses.delete(modelName);
+      resolve({ success: code === 0, cancelled: code !== 0, output: out });
+    });
   });
+});
+
+ipcMain.handle('ollama-pull-cancel', (_e, modelName) => {
+  const child = ollamaPullProcesses.get(modelName);
+  if (child) {
+    child.kill('SIGTERM');
+    ollamaPullProcesses.delete(modelName);
+    return { success: true };
+  }
+  return { success: false, error: 'No active pull found' };
 });
 
 ipcMain.handle('ollama-delete', async (_e, modelName) => {
