@@ -347,8 +347,9 @@ User message: `;
     return;
   }
 
-  const binPath = await checkCommand(director);
-  if (!binPath) { event.sender.send('command-error', { messageId, error: `${director} not found.` }); return; }
+  const commandName = director === 'geminicli' ? 'gemini' : director;
+  const binPath = await checkCommand(commandName);
+  if (!binPath) { event.sender.send('command-error', { messageId, error: `${commandName} not found.` }); return; }
   const child = spawn(`"${binPath}"`, ['chat', shellEscape(command)], { cwd: currentProjectRoot, shell: true, env: { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY } });
   let output = '';
   child.stdout.on('data', (d) => { output += d.toString(); event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
