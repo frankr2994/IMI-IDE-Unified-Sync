@@ -444,14 +444,17 @@ Only output the JSON array.`;
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
   } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [DIRECT IDE LINK] Launch Antigravity itself, bypassing CMD entirely
+    // 🚀 [PERSISTENT HAND-OFF] Write instructions to a file to survive auth delay
+    const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
+    fs.writeFileSync(taskPath, `--- IMI ORCHESTRATION TASK ---\n${prompt}\n\n[Status] Awaiting implementation in Antigravity...`);
+
     const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Direct-Linking to Antigravity IDE...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Instruction staged in .antigravity_task.md. Launching IDE...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Launch the .exe directly with the chat subcommand
-    const child = spawn(agExe, ['chat', prompt], {
+    // Launch Antigravity and point it to the task file
+    const child = spawn(agExe, ['chat', taskPath], {
       cwd: currentProjectRoot,
       env: finalEnv,
       detached: true,
@@ -461,6 +464,7 @@ Only output the JSON array.`;
 
     setTimeout(() => {
       event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is authenticating. Once open, it will load the staged task file.` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
