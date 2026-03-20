@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, net, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, net, shell, session, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -197,6 +197,31 @@ ipcMain.handle('get-system-usage', async () => ({
 
 ipcMain.handle('get-token-usage', () => tokenStats);
 ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
+
+// Native folder picker — opens Windows folder browser dialog
+ipcMain.handle('browse-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Project Folder',
+    defaultPath: currentProjectRoot,
+    properties: ['openDirectory']
+  });
+  if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+  return null;
+});
+
+// Multi-file/folder selector — lets user pick multiple files or folders at once
+ipcMain.handle('browse-multi', async (_e, mode) => {
+  const props = mode === 'files'
+    ? ['openFile', 'multiSelections']
+    : ['openDirectory', 'multiSelections'];
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: mode === 'files' ? 'Select Files' : 'Select Folders',
+    defaultPath: currentProjectRoot,
+    properties: props
+  });
+  if (!result.canceled) return result.filePaths;
+  return [];
+});
 
 // ── ImiStore IPC handlers (no API calls, instant) ────────────────────────────
 ipcMain.handle('store-get-messages', (_e, projectKey) => imiStore.getMessages(projectKey || currentProjectRoot));
