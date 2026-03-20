@@ -595,7 +595,7 @@ const App = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button onClick={() => setActiveTab('dashboard')} className={`sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`}><Activity size={18}/> Dashboard</button>
           <button onClick={() => setActiveTab('command center')} className={`sidebar-btn ${activeTab === 'command center' ? 'active' : ''}`}><TerminalIcon size={18}/> Command Center</button>
-          <button onClick={() => setActiveTab('tools')} className={`sidebar-btn ${activeTab === 'tools' ? 'active' : ''}`}><Layers size={18}/> Global MCP</button>
+          <button onClick={() => setActiveTab('tools')} className={`sidebar-btn ${activeTab === 'tools' ? 'active' : ''}`}><Layers size={18}/> Dev Hub</button>
           <button onClick={() => setActiveTab('skills')} className={`sidebar-btn ${activeTab === 'skills' ? 'active' : ''}`}><Zap size={18}/> Skills</button>
           <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`}><Settings size={18}/> System</button>
         </div>
@@ -892,7 +892,7 @@ const App = () => {
             <motion.div key="tools" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '2rem', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'flex-end' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>Global Hub</h3>
+                    <h3 style={{ fontSize: '1.6rem', fontWeight: 900 }}>Dev Hub</h3>
                     <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Find and connect any tool from npm or GitHub.</p>
                   </div>
                 </div>
