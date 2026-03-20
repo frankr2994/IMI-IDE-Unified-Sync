@@ -94,6 +94,7 @@ const App = () => {
   const [theme, setTheme] = useState('glass');
   const [logRetention, setLogRetention] = useState(15);
   const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
+  const [debugMode, setDebugMode] = useState(false);
   const [snapshotFrequency, setSnapshotFrequency] = useState(5);
   
   interface Log { id: number; type: string; msg: string; }
@@ -103,9 +104,7 @@ const App = () => {
     { id: 3, type: 'jules', msg: 'Jules Implementation Engine: Hand-off received. Implementing Settings UI expansion...' }
   ]);
 
-  const [messages, setMessages] = useState<any[]>([
-    { id: 0, type: 'system', text: 'Unified Sync Hub initialized. All commands are broadcasted to Gemini CLI.' }
-  ]);
+  const [messages, setMessages] = useState<any[]>([]);
 
   const addLog = (type: string, msg: string) => {
     setLogs(prev => {

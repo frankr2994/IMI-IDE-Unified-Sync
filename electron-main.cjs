@@ -231,7 +231,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     let buffer = '';
     req.on('response', (res) => {
       res.on('data', (chunk) => {
-        buffer += chunk.toString();
+        const raw = chunk.toString();
+        console.log(`[Gemini Raw Data] ${raw}`); // 🛡️ DEBUG LOG
         // 🛡️ Robust Regex Parser: Extract all text candidates from the streaming buffer
         const regex = /"text":\s*"([^"]+)"/g;
         let match;
