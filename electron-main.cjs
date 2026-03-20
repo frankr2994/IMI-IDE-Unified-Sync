@@ -444,12 +444,10 @@ Only output the JSON array.`;
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
   } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [INTERACTIVE MODE] Spawn Antigravity in a new visible CMD window
-    const antigravityPath = await checkCommand('antigravity');
-    const bin = antigravityPath || 'antigravity';
+    // 🚀 [HARD-CODED RELIABILITY] Use the verified absolute path for Antigravity on your desktop
+    const bin = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
     
     // 🛡️ [WINDOWS START FIX] Use empty title quotes to avoid path being treated as title
-    // Correct Syntax: start "" "C:\Path with spaces\bin.cmd" chat "prompt"
     fullCmd = `start "" "${bin}" chat ${escapedPrompt}`;
     
     event.sender.send('command-chunk', { messageId, chunk: `\n[System] Opening Antigravity Terminal Bridge...` });
