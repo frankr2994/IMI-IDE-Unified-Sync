@@ -451,7 +451,10 @@ Only output the JSON array.`;
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
     // Use detached spawn to let the CMD window live on its own
-    const child = spawn('cmd.exe', ['/c', 'start', '', bin, 'chat', prompt], {
+    // 🚀 [DIRECT INJECTION] Added --yolo and project path to force Antigravity to build immediately
+    const agArgs = ['/c', 'start', '', bin, 'chat', '--yolo', '--include-directories', currentProjectRoot, prompt];
+    
+    const child = spawn('cmd.exe', agArgs, {
       cwd: currentProjectRoot,
       env: finalEnv,
       detached: true,
