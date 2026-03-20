@@ -444,21 +444,24 @@ Only output the JSON array.`;
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
   } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [HARD-CODED RELIABILITY] Use the verified absolute path for Antigravity on your desktop
+    // 🚀 [PRO-WINDOW SPAWN] Open Antigravity in a completely independent new window
     const bin = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
     
-    // 🛡️ [WINDOWS START FIX] Use empty title quotes to avoid path being treated as title
-    fullCmd = `start "" "${bin}" chat ${escapedPrompt}`;
-    
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Opening Antigravity Terminal Bridge...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Launching Antigravity in an independent window...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Since 'start' returns immediately, we use a timeout to keep the UI 'Active' while the user looks at the new window
-    const child = spawn(fullCmd, [], { cwd: currentProjectRoot, shell: true, env: finalEnv });
-    
+    // Use detached spawn to let the CMD window live on its own
+    const child = spawn('cmd.exe', ['/c', 'start', '', bin, 'chat', prompt], {
+      cwd: currentProjectRoot,
+      env: finalEnv,
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref(); // 🛡️ Tell Node to stop watching this process so it can run freely
+
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is running in a separate CMD window. Proceed with coding there.` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Follow the progress in the new Antigravity window.` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
