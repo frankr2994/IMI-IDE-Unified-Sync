@@ -96,6 +96,10 @@ const App = () => {
   const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
   const [debugMode, setDebugMode] = useState(false);
   const [snapshotFrequency, setSnapshotFrequency] = useState(5);
+  const [brainTemperature, setBrainTemperature] = useState(0.7);
+  const [brainMaxTokens, setBrainMaxTokens] = useState(2048);
+  const [brainModel, setBrainModel] = useState('gemini-2.5-flash');
+  const [strategyVersion, setStrategyVersion] = useState('1.0.1');
   
   interface Log { id: number; type: string; msg: string; }
   const [logs, setLogs] = useState<Log[]>([
@@ -157,6 +161,10 @@ const App = () => {
       if (config.theme) setTheme(config.theme);
       if (config.logRetention) setLogRetention(config.logRetention);
       if (config.syncFrequency) setSyncFrequency(config.syncFrequency);
+      if (config.brainTemperature !== undefined) setBrainTemperature(config.brainTemperature);
+      if (config.brainMaxTokens !== undefined) setBrainMaxTokens(config.brainMaxTokens);
+      if (config.brainModel) setBrainModel(config.brainModel);
+      if (config.strategyVersion) setStrategyVersion(config.strategyVersion);
     }
   };
 
@@ -207,7 +215,11 @@ const App = () => {
       projectRoot: projectRootInput,
       theme,
       logRetention,
-      syncFrequency
+      syncFrequency,
+      brainTemperature,
+      brainMaxTokens,
+      brainModel,
+      strategyVersion
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -817,6 +829,51 @@ const App = () => {
                               <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{logRetention} LOGS</div>
                             </div>
                             <input type="range" min="5" max="50" value={logRetention} onChange={e => setLogRetention(parseInt(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                          </div>
+                        </div>
+                      </div>
+                      {/* AI BRAIN CONFIGURATION */}
+                      <div style={{ background: 'rgba(155,77,255,0.05)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(155,77,255,0.2)', marginTop: '20px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>🧠 BRAIN CONFIGURATION</div>
+                          <div style={{ fontSize: '0.6rem', background: 'rgba(155,77,255,0.15)', color: 'var(--primary)', padding: '3px 10px', borderRadius: '6px', fontWeight: 800 }}>STRATEGY v{strategyVersion}</div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5 }}>TEMPERATURE</div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{brainTemperature.toFixed(1)}</div>
+                            </div>
+                            <input type="range" min="0" max="2" step="0.1" value={brainTemperature}
+                              onChange={e => setBrainTemperature(parseFloat(e.target.value))}
+                              onMouseUp={() => saveConfig()}
+                              style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', opacity: 0.4, marginTop: '4px' }}>
+                              <span>Precise</span><span>Creative</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5 }}>MAX TOKENS</div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{brainMaxTokens.toLocaleString()}</div>
+                            </div>
+                            <input type="range" min="256" max="8192" step="256" value={brainMaxTokens}
+                              onChange={e => setBrainMaxTokens(parseInt(e.target.value))}
+                              onMouseUp={() => saveConfig()}
+                              style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', opacity: 0.4, marginTop: '4px' }}>
+                              <span>Short</span><span>Deep</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, marginBottom: '8px' }}>BRAIN MODEL</div>
+                            <select value={brainModel} onChange={e => { setBrainModel(e.target.value); saveConfig(); }}
+                              className="chat-input" style={{ height: '40px', fontSize: '0.7rem', color: 'white', padding: '0 10px', width: '100%' }}>
+                              <option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option>
+                              <option value="gemini-2.5-pro">Gemini 2.5 Pro 🧠</option>
+                              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
+                            </select>
                           </div>
                         </div>
                       </div>
