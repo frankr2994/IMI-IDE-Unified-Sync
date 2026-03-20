@@ -49,6 +49,7 @@ const App = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Idle');
   const [coderStatus, setCoderStatus] = useState('Idle');
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [stats, setStats] = useState<any>({ fileCount: '0', sizeMB: '0', freeMem: '0', platform: '...', dirCount: '0', projectRoot: '' });
