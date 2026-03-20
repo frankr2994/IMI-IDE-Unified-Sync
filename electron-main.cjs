@@ -48,6 +48,8 @@ const saveGlobalState = () => {
       mcpServersList, projectRoot: currentProjectRoot 
     };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
+    // 🚀 LIVE BROADCAST: Tell the dashboard tokens updated
+    if (mainWindow) mainWindow.webContents.send('token-stats-update', tokenStats);
   } catch (e) { console.error('[Bridge] Save Error:', e); }
 };
 
@@ -261,12 +263,16 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
 
   if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [POWERSHELL BRIDGE]
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Antigravity via PowerShell...` });
-    const psCmd = `Start-Process "${binAg}" -ArgumentList "chat", ${shellEscape(prompt)} -WorkingDirectory "${currentProjectRoot}"`;
-    spawn('powershell.exe', ['-Command', psCmd], { detached: true, stdio: 'ignore' }).unref();
+    // 🚀 [INTERACTIVE POWERSHELL] Opens a CMD window that stays open for user interaction
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Interactive Antigravity Terminal...` });
+    if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+    
+    // Use cmd /k to keep the window alive
+    const cmdToRun = `"${binAg}" chat ${shellEscape(prompt)}`;
+    spawn('cmd.exe', ['/c', 'start', 'cmd', '/k', cmdToRun], { detached: true, stdio: 'ignore' }).unref();
+    
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY TERMINAL READY ---` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
