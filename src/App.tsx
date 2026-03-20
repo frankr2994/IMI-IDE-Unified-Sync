@@ -389,9 +389,6 @@ const App = () => {
               <div className="status-indicator status-online"></div>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#00ff88' }}>SAFE MODE: ACTIVE</span>
             </div>
-            <button onClick={handleExport} disabled={isExporting} className="btn-premium" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {isExporting ? <RefreshCw size={18} className="spin" /> : <Download size={18} />} Export Hub
-            </button>
           </div>
         </header>
 
@@ -859,7 +856,7 @@ const App = () => {
                               value={syncFrequency} 
                               onChange={(e) => { setSyncFrequency(e.target.value); setIsSaving(true); setTimeout(() => saveConfig(), 100); }}
                               className="chat-input" 
-                              style={{ height: '40px', fontSize: '0.8rem' }}
+                              style={{ height: '45px', fontSize: '0.85rem', color: 'white', padding: '0 15px' }}
                             >
                               <option value="60">Every 60 Seconds</option>
                               <option value="300">Every 5 Minutes</option>
@@ -868,7 +865,7 @@ const App = () => {
                           </div>
                           <div>
                             <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>CONFLICT STRATEGY</div>
-                            <select className="chat-input" style={{ height: '40px', fontSize: '0.8rem' }}>
+                            <select className="chat-input" style={{ height: '45px', fontSize: '0.85rem', color: 'white', padding: '0 15px' }}>
                               <option value="rebase">Auto-Rebase (Clean)</option>
                               <option value="stash">Stash & Pull (Safe)</option>
                             </select>
