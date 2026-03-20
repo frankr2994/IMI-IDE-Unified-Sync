@@ -263,6 +263,11 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     });
 
     child.on('close', (code) => {
+      // 🚀 Track tokens for CLI models
+      const estimatedTokens = Math.ceil(output.length / 4);
+      tokenStats[director] = (tokenStats[director] || 0) + estimatedTokens;
+      saveGlobalState();
+      
       event.sender.send('command-end', { messageId, code });
       
       // 🛡️ [INTELLIGENCE FILTER] Only hand off if it's a legitimate coding/file task
