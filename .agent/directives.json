@@ -3,5 +3,5 @@
   "urgency": "high",
   "message": "Token consumption spiked by 30141 in this session. Recommend 'Pruning Context' or moving this task to Jules Cloud.",
   "action": "REFRESH_SKILLS",
-  "timestamp": 1773976278.0847204
+  "timestamp": 1773976415.2872164
 }
