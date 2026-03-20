@@ -388,12 +388,12 @@ User message: `;
   child.stdout.on('data', (d) => {
     const clean = cleanOutput(d.toString());
     if (!clean) return;
-    output += clean + '\n';
-    event.sender.send('command-chunk', { messageId, chunk: clean + '\n' });
+    output += clean + ' ';
+    event.sender.send('command-chunk', { messageId, chunk: clean + ' ' });
   });
   child.stderr.on('data', (d) => {
     const clean = cleanOutput(d.toString());
-    if (clean) event.sender.send('command-chunk', { messageId, chunk: `\n[CLI] ${clean}\n` });
+    if (clean) console.log(`[Gemini CLI Log]: ${clean}`); // Keep out of UI chat window
   });
   child.on('close', (code) => { event.sender.send('command-end', { messageId, code }); triggerGitSync(); });
 });
