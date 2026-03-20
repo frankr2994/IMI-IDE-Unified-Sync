@@ -215,18 +215,40 @@ User message: `;
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
-    // Detect browser-intent and route to autonomous Browser Agent (Gemini CLI + Puppeteer MCP)
+    // ── Browser routing ────────────────────────────────────────────────────
     const cmdL = command.toLowerCase();
     const isCodeAction = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(cmdL);
-    const hasBrowserIntent = !isCodeAction && (
+
+    // Tier 2: full Puppeteer agent — only when real browser automation is needed
+    const needsAutomation = !isCodeAction && /\b(screenshot|click|fill|type into|search for|fix.*site|fix.*web|take control|scroll|hover|form|log ?in|sign ?in)\b/.test(cmdL);
+
+    // Tier 1: simple open — instant via shell, zero tokens, zero Puppeteer startup
+    const isSimpleOpen = !isCodeAction && !needsAutomation && (
       /\bgo to\b/.test(cmdL) ||
       /https?:\/\//.test(cmdL) ||
-      /\b(browser|tab\b|tabs\b|chrome|internet|webpage|website|navigate|browsing|take control)\b/.test(cmdL) ||
+      /\b(browser|tab\b|tabs\b|chrome|internet|webpage|website|navigate|browsing)\b/.test(cmdL) ||
       /\b(open|launch|visit)\b/.test(cmdL)
     );
-    if (hasBrowserIntent) {
+
+    if (needsAutomation) {
       triggerBrowserAgent(event, command, messageId);
       return;
+    }
+
+    if (isSimpleOpen) {
+      // Extract explicit URLs first, then resolve bare site names
+      const urls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
+      const siteNames = [...cmdL.matchAll(/(?:go to|open|visit|launch|navigate to)\s+([a-z0-9.-]+)/g)]
+        .map(m => m[1].trim())
+        .filter(s => !s.match(/^(chrome|browser|a|the|my|up|it)$/))
+        .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
+      const allUrls = [...new Set([...urls, ...siteNames])];
+      if (allUrls.length > 0) {
+        allUrls.forEach(u => shell.openExternal(u));
+        event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `🌐 Opening: ${u}`).join('\n') });
+        event.sender.send('command-end', { messageId, code: 0 });
+        return;
+      }
     }
 
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
