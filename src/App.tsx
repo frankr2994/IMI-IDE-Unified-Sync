@@ -1291,44 +1291,92 @@ const App = () => {
                     }
                   </div>
 
-                  {/* Model library */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>MODEL LIBRARY</div>
-                      <input value={ollamaSearch} onChange={e => setOllamaSearch(e.target.value)} placeholder="Filter models..." style={{ height: '32px', padding: '0 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', fontSize: '0.75rem', width: '180px', outline: 'none' }} />
+                  {/* Live HuggingFace search */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '10px' }}>
+                      🤗 SEARCH HUGGINGFACE LIBRARY <span style={{ fontWeight: 400, color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }}>— thousands of GGUF models, all Ollama-compatible</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px' }}>
-                      {OLLAMA_LIBRARY.filter(m => !ollamaSearch || m.name.includes(ollamaSearch.toLowerCase()) || m.label.toLowerCase().includes(ollamaSearch.toLowerCase()) || m.tags.some(t => t.includes(ollamaSearch.toLowerCase()))).map(model => {
+                    <form onSubmit={e => { e.preventDefault(); searchHF(ollamaSearch); }} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <Search size={14} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                        <input value={ollamaSearch} onChange={e => setOllamaSearch(e.target.value)} placeholder="Search any model… 'llama', 'mistral', 'coder', 'vision'…" style={{ width: '100%', height: '42px', paddingLeft: '38px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
+                      </div>
+                      <button type="submit" className="btn-premium" style={{ height: '42px', padding: '0 20px', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{hfSearching ? '⏳' : '🔍 Search'}</button>
+                      {hfResults.length > 0 && <button type="button" onClick={() => { setHfResults([]); setOllamaSearch(''); }} style={{ height: '42px', padding: '0 12px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', fontSize: '0.72rem' }}>Clear</button>}
+                    </form>
+                    {hfError && <p style={{ fontSize: '0.7rem', color: '#ff416c', marginBottom: '10px' }}>⚠ {hfError}</p>}
+
+                    {/* HF live results */}
+                    {hfResults.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                        {hfResults.map(model => {
+                          const isPulling = ollamaPulling === model.ollamaCmd;
+                          const isInstalled = ollamaModels.some(m => m.name.includes(model.name.split('/').pop() || ''));
+                          return (
+                            <div key={model.id} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
+                              <div style={{ marginBottom: '5px' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.82rem', wordBreak: 'break-word' }}>{model.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px' }}>
+                                <span>⬇ {formatNum(model.downloads)}</span>
+                                <span>❤️ {formatNum(model.likes)}</span>
+                                {model.pipeline && <span style={{ padding: '1px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{model.pipeline}</span>}
+                              </div>
+                              {isPulling && ollamaLog[model.ollamaCmd] && (
+                                <div style={{ fontSize: '0.58rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '6px', marginBottom: '8px', maxHeight: '50px', overflowY: 'auto', color: '#00ff88' }}>
+                                  {ollamaLog[model.ollamaCmd].split('\n').slice(-3).join('\n')}
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button onClick={() => (ipc as any).send('open-external-url', model.hfUrl)} style={{ flex: 1, height: '28px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem' }}>HF ↗</button>
+                                <button onClick={async () => {
+                                  if (isInstalled || isPulling) return;
+                                  setOllamaPulling(model.ollamaCmd);
+                                  setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: '' }));
+                                  await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
+                                  setOllamaPulling('');
+                                  loadOllamaModels();
+                                }} style={{ flex: 2, height: '28px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '7px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
+                                  {isInstalled ? '✅ Installed' : isPulling ? '⬇ Pulling...' : '⬇ Pull'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Featured models — shown when no search active */}
+                  {hfResults.length === 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px' }}>⭐ FEATURED MODELS</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+                      {OLLAMA_FEATURED.map(model => {
                         const isInstalled = ollamaModels.some(m => m.name.startsWith(model.name));
                         const isPulling = ollamaPulling === model.name;
                         return (
                           <div key={model.name} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                              <div>
-                                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{model.label}</span>
-                                <span style={{ marginLeft: '8px', fontSize: '0.6rem', color: 'var(--text-dim)' }}>{model.size}</span>
-                              </div>
-                              <div style={{ display: 'flex', gap: '4px' }}>
-                                {model.tags.map(tag => <span key={tag} style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '4px', color: 'var(--primary)' }}>{tag}</span>)}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{model.label}</span>
+                              <div style={{ display: 'flex', gap: '3px' }}>
+                                {model.tags.map((tag: string) => <span key={tag} style={{ fontSize: '0.5rem', padding: '2px 5px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '4px', color: 'var(--primary)' }}>{tag}</span>)}
                               </div>
                             </div>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc}</p>
+                            <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc} <span style={{ opacity: 0.5 }}>· {model.size}</span></p>
                             {isPulling && ollamaLog[model.name] && (
-                              <div style={{ fontSize: '0.6rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.4)', padding: '6px 10px', borderRadius: '6px', marginBottom: '8px', maxHeight: '60px', overflowY: 'auto', color: '#00ff88' }}>
+                              <div style={{ fontSize: '0.58rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.5)', padding: '6px', borderRadius: '6px', marginBottom: '8px', maxHeight: '50px', overflowY: 'auto', color: '#00ff88' }}>
                                 {ollamaLog[model.name].split('\n').slice(-3).join('\n')}
                               </div>
                             )}
-                            <button
-                              onClick={async () => {
-                                if (isInstalled || isPulling) return;
-                                setOllamaPulling(model.name);
-                                setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
-                                await (ipc as any).invoke('ollama-pull', model.name);
-                                setOllamaPulling('');
-                                loadOllamaModels();
-                              }}
-                              style={{ width: '100%', height: '30px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.15)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : isPulling ? 'rgba(255,165,0,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}
-                            >
+                            <button onClick={async () => {
+                              if (isInstalled || isPulling) return;
+                              setOllamaPulling(model.name);
+                              setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
+                              await (ipc as any).invoke('ollama-pull', model.name);
+                              setOllamaPulling('');
+                              loadOllamaModels();
+                            }} style={{ width: '100%', height: '30px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(255,165,0,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : isPulling ? 'orange' : 'var(--primary)', cursor: isInstalled || isPulling ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>
                               {isInstalled ? '✅ Installed' : isPulling ? '⬇ Pulling...' : '⬇ Pull Model'}
                             </button>
                           </div>
@@ -1336,6 +1384,7 @@ const App = () => {
                       })}
                     </div>
                   </div>
+                  )}
                 </div>
                 )}
 
