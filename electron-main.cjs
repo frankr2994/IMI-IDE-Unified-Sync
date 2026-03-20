@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, ipcMain, net } = require('electron');
+const { app, BrowserWindow, ipcMain, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -313,28 +313,48 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    // ≡ƒÜÇ [FULL AUTONOMY] Stage 2: Antigravity calls Gemini to implement the plan directly
-    // No task file, no human copy-paste. Brain plan ΓåÆ Gemini Coder ΓåÆ files written to disk.
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini key missing for Antigravity Coder." }); return; }
 
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
-    event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Engaging autonomous implementation engine...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[Antigravity] Reading project files...` });
 
-    const coderPrompt = `You are Antigravity, a precision surgical coding agent working on the IMI project.
-Project Root: ${currentProjectRoot}
+    // 🔒 SAFETY: Read existing file contents FIRST so Gemini sees the real code
+    const filesToCheck = ['electron-main.cjs', 'src/App.tsx', 'src/index.css'];
+    let existingContext = '';
+    for (const f of filesToCheck) {
+      const fp = path.join(currentProjectRoot, f);
+      if (fs.existsSync(fp)) {
+        const content = fs.readFileSync(fp, 'utf-8');
+        // Only include first 200 lines to stay within token limits
+        const lines = content.split('\n').slice(0, 200).join('\n');
+        existingContext += `\n\n=== EXISTING FILE: ${f} (first 200 lines) ===\n${lines}\n=== END ${f} ===`;
+      }
+    }
+
+    const coderPrompt = `You are Antigravity, a SURGICAL coding agent. You make MINIMAL precise changes to existing code.
+
+PROJECT: IMI IDE MERGE INTEGRATIONS
 Stack: Electron (electron-main.cjs) + React/Vite (src/App.tsx) + TypeScript
+Project Root: ${currentProjectRoot}
+
+${existingContext}
 
 IMPLEMENTATION PLAN FROM BRAIN:
 ${brainPlan.trim()}
 
-YOUR TASK: Implement the above plan exactly. Output ONLY a valid JSON array with no markdown fences, no explanation, just the raw JSON:
-[{ "file": "relative/path/from/project/root", "content": "COMPLETE file content here" }]
+YOUR TASK: Output ONLY a JSON array of SURGICAL changes. Each item must have:
+- "file": relative path
+- "search": the EXACT existing code block to find and replace (must be unique in the file)  
+- "replace": the new code to substitute in
 
-Rules:
-- Include the COMPLETE file content for each file (not just the changed parts)  
-- Use relative paths from the project root
-- Only include files that need to change
-- Do NOT include node_modules, dist, or binary files`;
+Example format:
+[{ "file": "src/App.tsx", "search": "const [theme, setTheme] = useState('glass');", "replace": "const [theme, setTheme] = useState('dark');" }]
+
+CRITICAL RULES:
+- Output ONLY raw JSON, no markdown, no explanation
+- "search" must be exact text that exists in the current file
+- Change ONLY what is necessary for the plan - do not rewrite whole files
+- If adding new code, use search to find the insertion point and include it in replace`;
 
     const req2 = net.request({ 
       method: 'POST', protocol: 'https:', 
@@ -344,7 +364,7 @@ Rules:
     req2.setHeader('Content-Type', 'application/json');
     req2.write(JSON.stringify({ 
       contents: [{ parts: [{ text: coderPrompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 65536 }
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
     }));
 
     let coderRaw = '';
