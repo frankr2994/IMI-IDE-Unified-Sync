@@ -441,27 +441,27 @@ Only output the JSON array.`;
     } catch(e) {}
     fullCmd = `npx -y @google/jules new ${repo}${escapedPrompt}`;
   } else if (engine.toLowerCase() === 'antigravity') {
-    // 🚀 [PERSISTENT HAND-OFF] Write instructions to a file to survive auth delay
-    const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
-    fs.writeFileSync(taskPath, `--- IMI ORCHESTRATION TASK ---\n${prompt}\n\n[Status] Awaiting implementation in Antigravity...`);
-
-    const agExe = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\Antigravity.exe`;
+    // 🚀 [INTERACTIVE TERMINAL BRIDGE]
+    // Opens a fresh CMD window running the Antigravity CLI in Agent Mode
+    const bin = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
     
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Instruction staged in .antigravity_task.md. Launching IDE...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Spawning Interactive Antigravity Terminal...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    // Launch Antigravity and point it to the task file
-    const child = spawn(agExe, ['chat', taskPath], {
+    // Use 'start cmd /k' to open a new visible window and run the chat command
+    // We pre-fill the prompt so Antigravity starts working immediately
+    const fullCmd = `start "" "${bin}" chat ${shellEscape(prompt)}`;
+    
+    spawn('cmd.exe', ['/c', fullCmd], {
       cwd: currentProjectRoot,
       env: finalEnv,
       detached: true,
       stdio: 'ignore'
-    });
-    child.unref();
+    }).unref();
 
     setTimeout(() => {
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF SUCCESSFUL ---` });
-      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is authenticating. Once open, it will load the staged task file.` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY HAND-OFF COMPLETE ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n[Note] Antigravity is active in the separate CMD window. You can type directly to it there.` });
       event.sender.send('command-end', { messageId, code: 0 });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
