@@ -162,13 +162,37 @@ async function triggerGitSync() {
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
-  const blueprintPrefix = "GLOBAL BLUEPRINT PROTOCOL: Refine this request into a TECHNICAL SPECIFICATION for a coding agent. Output only the spec. User Request: ";
-  
+
+  // ════════════════════════════════════════════
+  // 🧠 IMI SYSTEM MEMORY — Injected into every Brain request
+  // ════════════════════════════════════════════
+  const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface), a powerful AI orchestration desktop app built with Electron + React.
+Your role is to be the STRATEGY layer. You analyze requests, plan solutions, and hand off precise implementation specs to the Coder engine.
+
+PROJECT MEMORY:
+- App Name: IMI IDE MERGE INTEGRATIONS (version 1.0.4)
+- Project Root: ${currentProjectRoot}
+- Active Coder Engine: ${ACTIVE_ENGINE}
+- Stack: Electron (electron-main.cjs), React + Vite (src/App.tsx), TypeScript
+- Architecture: Brain (strategy AI) → Orchestrator (hand-off) → Coder (implementation)
+- The Coder engine is Antigravity (an AI coding assistant in the user's IDE)
+- Key files: electron-main.cjs (backend/IPC), src/App.tsx (entire UI)
+- The app has these tabs: Dashboard, Command Center, Global MCP, System
+- IMI syncs to GitHub repo: creepybunny99/IMI-IDE-Unified-Sync
+
+When the user says "IMI" they mean this app. When they say "my settings" they mean the System tab. When they say "make it look better" they mean update the React UI in src/App.tsx.
+Always respond as a knowledgeable collaborator who already knows this project inside out.
+`;
+  const blueprintPrefix = `${PROJECT_CONTEXT}
+GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE. Refine their request into a precise TECHNICAL SPECIFICATION for use by the Coder agent (Antigravity). Include: which file(s) to edit, what exact changes to make, and the desired outcome. Be surgical and specific. User Request: `;
+  const chatPrefix = `${PROJECT_CONTEXT}
+User message: `;
+
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
-    const activePrefix = isCodingAction ? blueprintPrefix : "You are a helpful assistant. Answer concisely. Request: ";
+    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const hostname = 'generativelanguage.googleapis.com';
     const modelName = 'gemini-2.5-flash';
     // Use alt=sse for proper Server-Sent Events streaming format
