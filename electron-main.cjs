@@ -248,25 +248,22 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   }
 
   if (engine.toLowerCase() === 'antigravity') {
-    const binAg = `C:\\Users\\nikol\\AppData\\Local\\Programs\\Antigravity\\bin\\antigravity.cmd`;
-    const tempTaskPath = path.join(os.tmpdir(), `imi_task_${Date.now()}.txt`);
-    
-    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Staging instruction for Antigravity...` });
+    // 🚀 [OPENCODE-AI BRIDGE] Uses the real background agent for Antigravity ecosystems
+    event.sender.send('command-chunk', { messageId, chunk: `\n[System] Connecting to OpenCode AI Agent...` });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     
-    fs.writeFileSync(tempTaskPath, prompt);
-
-    const child = spawn(binAg, ['chat', '--yolo', tempTaskPath], {
+    // Using opencode-ai chat which is a true headless agent
+    const child = spawn('opencode-ai', ['chat', '--yolo', prompt], {
       cwd: currentProjectRoot,
-      env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY },
+      env: { ...process.env, GEMINI_API_KEY: GEMINI_KEY },
       shell: true
     });
 
     child.stdout.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
+    child.stderr.on('data', (d) => { event.sender.send('command-chunk', { messageId, chunk: d.toString() }); });
 
     child.on('close', (code) => {
-      try { fs.unlinkSync(tempTaskPath); } catch(e) {} 
-      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: ANTIGRAVITY FINISHED ---` });
+      event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ✅ IMI ORCHESTRATOR: OPENCODE AGENT FINISHED ---` });
       event.sender.send('command-end', { messageId, code });
       if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
       triggerGitSync();
@@ -274,8 +271,12 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     return;
   }
 
-  // JULES FALLBACK
-  const child = spawn(`npx -y @google/jules new ${shellEscape(prompt)}`, [], { cwd: currentProjectRoot, shell: true, env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } });
+  // JULES FALLBACK (High Reliability)
+  const child = spawn(`jules new ${shellEscape(prompt)}`, [], { 
+    cwd: currentProjectRoot, 
+    shell: true, 
+    env: { ...process.env, JULES_API_KEY: JULES_KEY, GITHUB_PERSONAL_ACCESS_TOKEN: GITHUB_TOKEN } 
+  });
   child.stdout.on('data', (d) => event.sender.send('command-chunk', { messageId, chunk: d.toString() }));
   child.on('close', (code) => {
     event.sender.send('command-end', { messageId, code });
