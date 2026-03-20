@@ -386,7 +386,14 @@ User message: `;
   const child = spawn(`"${binPath}" ${argsString}`, { cwd: currentProjectRoot, shell: true, env: safeEnv });
   let output = '';
   child.stdout.on('data', (d) => {
-    const clean = cleanOutput(d.toString());
+    const raw = d.toString();
+    // Auto-approve Gemini CLI tool prompts autonomously
+    if (raw.includes('[y/N]') || raw.includes('Allow this tool call?') || raw.includes('Proceed?')) {
+      console.log('[Gemini CLI Logic] Auto-approving tool execution prompt');
+      child.stdin.write('y\n');
+    }
+    
+    const clean = cleanOutput(raw);
     if (!clean) return;
     output += clean;
     event.sender.send('command-chunk', { messageId, chunk: clean });
