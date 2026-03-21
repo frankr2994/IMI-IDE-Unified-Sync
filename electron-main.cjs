@@ -1169,50 +1169,97 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
 });
 
 // Execute a single plan phase by re-using the main stream handler
-// ── PLAN PHASE EXECUTOR — completely isolated, never touches execute-command-stream ──
+// ── PLAN PHASE EXECUTOR — isolated pipeline: selected Brain → selected Coder ──
 ipcMain.on('execute-plan-phase', async (event, payload) => {
-  const { prompt, messageId, engine = 'imi-core' } = payload;
-  if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: 'Gemini key missing.' }); return; }
+  const { prompt, director = 'gemini', engine = 'imi-core', messageId } = payload;
 
-  console.log(`[ROUTE] → Plan phase executor → Brain(gemini-2.5-flash) → ${engine}`);
+  console.log(`[ROUTE] → Plan phase: Brain(${director}) → Coder(${engine})`);
 
-  // Step 1: Call Gemini brain (non-streaming, thinkingBudget:0) to get the tech spec
-  const brainPrompt = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop app built with Electron + React/TypeScript/Vite.
+  const brainSystemPrompt = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop app built with Electron + React/TypeScript/Vite.
 Key files: electron-main.cjs (backend), src/App.tsx (UI), src/index.css (styles).
-Generate a precise TECHNICAL SPECIFICATION for IMI-CORE to implement this phase.
-State exact files, exact code to find, exact code to replace. Be surgical and specific.
+Generate a precise TECHNICAL SPECIFICATION for the coder to implement this phase.
+State exact files, exact existing code to find, exact replacement code. Be surgical and specific.`;
 
-Phase instruction: ${prompt}`;
-
+  // ── Call the correct brain API based on the selected director ──
   let brainText = '';
   try {
-    const raw = await new Promise((resolve, reject) => {
-      const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
-      req.setHeader('Content-Type', 'application/json');
-      req.write(JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: brainPrompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
-      }));
-      let body = '';
-      req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); });
-      req.on('error', reject);
-      req.end();
-    });
-    const parsed = JSON.parse(raw);
-    if (parsed.error) throw new Error(parsed.error.message);
-    brainText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (director === 'gemini' || director === 'geminicli') {
+      if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
+      const raw = await new Promise((resolve, reject) => {
+        const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+          path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+        req.setHeader('Content-Type', 'application/json');
+        req.write(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `${brainSystemPrompt}\n\nPhase: ${prompt}` }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } }));
+        let body = ''; req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); }); req.on('error', reject); req.end();
+      });
+      const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
+      brainText = p?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    } else if (director === 'claude') {
+      if (!CLAUDE_KEY) throw new Error('Claude API key missing — add it in Settings → APIs');
+      const raw = await new Promise((resolve, reject) => {
+        const req = https.request({ hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
+          headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' } }, res => {
+          let body = ''; res.on('data', d => body += d); res.on('end', () => resolve(body));
+        }); req.on('error', reject);
+        req.write(JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 8192, system: brainSystemPrompt,
+          messages: [{ role: 'user', content: `Phase: ${prompt}` }] })); req.end();
+      });
+      const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message || p.error);
+      brainText = p?.content?.[0]?.text || '';
+
+    } else if (director === 'chatgpt') {
+      if (!OPENAI_KEY) throw new Error('OpenAI API key missing — add it in Settings → APIs');
+      const raw = await new Promise((resolve, reject) => {
+        const req = https.request({ hostname: 'api.openai.com', path: '/v1/chat/completions', method: 'POST',
+          headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' } }, res => {
+          let body = ''; res.on('data', d => body += d); res.on('end', () => resolve(body));
+        }); req.on('error', reject);
+        req.write(JSON.stringify({ model: 'gpt-4o', max_tokens: 8192,
+          messages: [{ role: 'system', content: brainSystemPrompt }, { role: 'user', content: `Phase: ${prompt}` }] })); req.end();
+      });
+      const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
+      brainText = p?.choices?.[0]?.message?.content || '';
+
+    } else if (director === 'groq') {
+      if (!GROQ_KEY) throw new Error('Groq API key missing — add it in Settings → APIs');
+      const raw = await new Promise((resolve, reject) => {
+        const req = https.request({ hostname: 'api.groq.com', path: '/openai/v1/chat/completions', method: 'POST',
+          headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' } }, res => {
+          let body = ''; res.on('data', d => body += d); res.on('end', () => resolve(body));
+        }); req.on('error', reject);
+        req.write(JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 8192,
+          messages: [{ role: 'system', content: brainSystemPrompt }, { role: 'user', content: `Phase: ${prompt}` }] })); req.end();
+      });
+      const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
+      brainText = p?.choices?.[0]?.message?.content || '';
+
+    } else {
+      // Fallback: use Gemini if unknown director
+      if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
+      const raw = await new Promise((resolve, reject) => {
+        const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+          path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+        req.setHeader('Content-Type', 'application/json');
+        req.write(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `${brainSystemPrompt}\n\nPhase: ${prompt}` }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } }));
+        let body = ''; req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); }); req.on('error', reject); req.end();
+      });
+      const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
+      brainText = p?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    }
   } catch(e) {
-    event.sender.send('command-error', { messageId, error: `Brain failed: ${e.message}` }); return;
+    event.sender.send('command-error', { messageId, error: `Brain(${director}) failed: ${e.message}` }); return;
   }
 
-  if (!brainText.trim()) { event.sender.send('command-error', { messageId, error: 'Brain returned empty response.' }); return; }
+  if (!brainText.trim()) { event.sender.send('command-error', { messageId, error: `Brain(${director}) returned empty response.` }); return; }
 
-  // Stream brain text to UI so user sees the spec
+  // Send brain output to chat UI
   event.sender.send('command-chunk', { messageId, chunk: brainText });
-  event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to IMI-CORE` });
+  event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${engine.toUpperCase()}` });
 
-  // Step 2: Pass spec to IMI-CORE to apply the actual code changes
+  // Pass to selected coder engine (IMI-Core, Jules, Ollama, etc.)
   await triggerCoderImplementation(event, engine, brainText, messageId);
 });
 
