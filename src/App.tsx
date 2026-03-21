@@ -231,8 +231,12 @@ const App = () => {
   const [newSkillPattern, setNewSkillPattern] = useState('');
   const [newSkillResponse, setNewSkillResponse] = useState('');
   const [skillLibSearch, setSkillLibSearch] = useState('');
-  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'>('mine');
+  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'>('mine');
   const [installedSkillIds, setInstalledSkillIds] = useState<Set<string>>(new Set());
+  const [optimizerHistory, setOptimizerHistory] = useState<any[]>([]);
+  const [optimizerLastResult, setOptimizerLastResult] = useState<{ efficiency: number; removed: number } | null>(null);
+  const [optimizerRunning, setOptimizerRunning] = useState(false);
+  const [optimizerLastRun, setOptimizerLastRun] = useState<number | null>(null);
 
   const SKILL_LIBRARY = [
     // 🌐 Web — General

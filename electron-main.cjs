@@ -397,6 +397,7 @@ ipcMain.handle('skills-add',        (_e, skill) => skillEngine.addSkill(skill));
 ipcMain.handle('skills-remove',     (_e, id)    => { skillEngine.removeSkill(id); return true; });
 ipcMain.handle('skills-toggle',     (_e, id)    => { skillEngine.toggleSkill(id); return true; });
 ipcMain.handle('skills-optimize',   ()          => skillEngine._optimize());
+ipcMain.handle('skills-get-history',()          => ({ history: skillEngine.commandHistory, stats: skillEngine.stats, efficiency: skillEngine.getEfficiency() }));
 
 // ── ImiStore IPC handlers (no API calls, instant) ────────────────────────────
 ipcMain.handle('store-get-messages', (_e, projectKey) => imiStore.getMessages(projectKey || currentProjectRoot));
