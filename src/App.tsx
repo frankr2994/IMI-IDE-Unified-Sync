@@ -2240,6 +2240,9 @@ const App = () => {
                        {tab.id === 'plan' && activePlan && !activePlan.running && activePlan.completedPhases.size < activePlan.plan.phases.length && rightPanelTab !== 'plan' && (
                          <span style={{ position: 'absolute', top: '5px', right: '6px', width: '5px', height: '5px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
                        )}
+                      {tab.id === 'debate' && debateComplete && !debateComplete.error && rightPanelTab !== 'debate' && (
+                         <span style={{ position: 'absolute', top: '5px', right: '6px', width: '5px', height: '5px', borderRadius: '50%', background: '#ffa000', display: 'inline-block' }} />
+                       )}
                      </button>
                    ))}
                    <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ padding: '0 10px', background: 'transparent', border: 'none', borderBottom: '2px solid transparent', borderLeft: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 700, flexShrink: 0, transition: 'color 0.15s' }}
