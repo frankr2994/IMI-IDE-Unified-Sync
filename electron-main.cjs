@@ -1536,7 +1536,7 @@ User message: `;
     // ── Desktop / file operations ────────────────────────────────────────────
     const cmdL = command.toLowerCase();
 
-    // 1. Edit an existing file on desktop
+    // Edit an existing file on desktop (gemini-only: uses project context to decide what to edit)
     const isEditOp = (
       /\b(edit|modify|update|fix|improve|rewrite|change)\b.{0,60}(\.[a-z]{2,6}|\.txt|\.py|\.js|\.html|\.css|\.json|\.ts|\.md)\b/i.test(command)
       || (/\b(desktop|my desktop|folder)\b/i.test(command) && /\b(edit|modify|update|fix|improve|rewrite)\b/i.test(command) && /\b(file|\.)\b/i.test(command))
@@ -1544,28 +1544,6 @@ User message: `;
     if (isEditOp) {
       console.log(`[ROUTE] → triggerFileEdit`);
       triggerFileEdit(event, command, messageId);
-      return;
-    }
-
-    // 2. Create folder on desktop — check BEFORE isCreateProgram so "create folder + game inside" routes correctly
-    const isDesktopOp = (
-      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
-      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
-    );
-    if (isDesktopOp) {
-      console.log(`[ROUTE] → triggerDesktopTask (folder+file on desktop)`);
-      triggerDesktopTask(event, command, cmdL, messageId);
-      return;
-    }
-
-    // 3. Create a program/script/app/file on desktop with AI-generated content
-    const isCreateProgram = (
-      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
-      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
-    ) && /\b(desktop|my desktop)\b/i.test(command);
-    if (isCreateProgram) {
-      console.log(`[ROUTE] → triggerAutoCreateFile (desktop file)`);
-      triggerAutoCreateFile(event, command, messageId);
       return;
     }
 
@@ -2525,12 +2503,22 @@ async function triggerAutoCreateFile(event, command, messageId) {
     if (cmdL.includes(key)) { ext = val; break; }
   }
 
-  // Extract file name — look for "called X" / "named X" / "X.ext" pattern
+  // Extract file name — priority: "called X" → smart extraction → fallback
   const nameMatch = command.match(/(?:called?|named?)\s+["']?([a-zA-Z0-9_\- ]{2,40})["']?/i)
     || command.match(/["']([a-zA-Z0-9_\-\.]{2,40})["']/);
   let baseName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, '_') : null;
   if (!baseName) {
-    // Generate name from purpose
+    // Smart extraction: "make a html pong game" → "pong_game", "create a calculator" → "calculator"
+    // Grabs the descriptive words between the action verb and any transition word (on/and/put/for/etc)
+    const smartMatch = command.match(
+      /\b(?:make|create|build|write|generate)\b\s+(?:a\s+|an\s+)?(?:(?:html|css|js|python|javascript|typescript|simple|basic|small|fun|cool)\s+)?([a-zA-Z][a-zA-Z0-9 ]{1,30}?)(?=\s+(?:and|put|on|in|for|from|that|using|with|then|after|open)\b|\s*$)/i
+    );
+    if (smartMatch) {
+      // Take first 3 words max, lowercase with underscores
+      baseName = smartMatch[1].trim().split(/\s+/).slice(0, 3).join('_').toLowerCase();
+    }
+  }
+  if (!baseName) {
     const purposeMatch = command.match(/(?:that|which|to|for)\s+([a-zA-Z\s]{4,30})/i);
     baseName = purposeMatch ? purposeMatch[1].trim().replace(/\s+/g, '_').slice(0, 20) : 'new_file';
   }
