@@ -175,7 +175,56 @@ const App = () => {
   const formatNum = (n: number) => n >= 1000000 ? `${(n/1000000).toFixed(1)}M` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
   const loadOllamaModels = async () => {
     const res = await (ipc as any).invoke('ollama-list').catch(() => ({ models: [] }));
-    setOllamaModels(res.models || []);
+    const models = res.models || [];
+    // Tag each model with canRun based on VRAM + free RAM
+    try {
+      const hw = await (ipc as any).invoke('get-hardware-info');
+      const vramGB = hw.vramMB / 1024;
+      const freeRamGB = hw.freeRamMB / 1024;
+      models.forEach((m: any) => {
+        const sizeGB = parseFloat(m.size);
+        const isGB = m.size?.toUpperCase().includes('GB');
+        const modelGB = isGB ? sizeGB : sizeGB / 1024;
+        m.canRun = modelGB <= vramGB || modelGB <= freeRamGB;
+        m.tooLarge = !m.canRun;
+        m.vramGB = vramGB;
+      });
+    } catch { models.forEach((m: any) => { m.canRun = true; m.tooLarge = false; }); }
+    setOllamaModels(models);
+  };
+
+  // Pre-pull hardware check — returns true if safe to proceed, false if blocked
+  const checkHardwareBeforePull = async (sizeLabel: string): Promise<boolean> => {
+    if (!sizeLabel) return true;
+    // Parse size from label like "4.7GB", "22 GB", "899 MB – 49.8 GB (28 files)"
+    const maxMatch = sizeLabel.replace(/,/g, '').match(/(\d+\.?\d*)\s*GB/gi);
+    if (!maxMatch) return true;
+    const sizes = maxMatch.map(s => parseFloat(s));
+    const maxSizeGB = Math.max(...sizes);
+    if (maxSizeGB < 5) return true; // small model, always fine
+    try {
+      const hw = await (ipc as any).invoke('get-hardware-info');
+      const vramGB = hw.vramMB / 1024;
+      const freeRamGB = hw.freeRamMB / 1024;
+      if (maxSizeGB > vramGB && maxSizeGB > freeRamGB) {
+        const msg = `⚠️ Not enough memory to run this model!\n\n` +
+          `📦 Model size: ${maxSizeGB.toFixed(1)} GB\n` +
+          `🎮 Your GPU VRAM: ${vramGB.toFixed(1)} GB (${hw.gpuName})\n` +
+          `💾 Free RAM: ${freeRamGB.toFixed(1)} GB\n\n` +
+          `This model won't fit in your GPU or RAM — it will fail to load after downloading.\n\n` +
+          `✅ Recommended: pick a model under ${Math.floor(vramGB)}GB (like qwen2.5-coder:7b at 4.7GB).\n\nDownload anyway?`;
+        return window.confirm(msg);
+      }
+      if (maxSizeGB > vramGB) {
+        const msg = `⚠️ This model is larger than your GPU VRAM\n\n` +
+          `📦 Model size: ${maxSizeGB.toFixed(1)} GB\n` +
+          `🎮 Your GPU VRAM: ${vramGB.toFixed(1)} GB (${hw.gpuName})\n\n` +
+          `It will run on CPU RAM instead, which is much slower.\n` +
+          `For best speed, pick a model under ${Math.floor(vramGB)}GB.\n\nDownload anyway?`;
+        return window.confirm(msg);
+      }
+    } catch {}
+    return true;
   };
 
   const searchGitHub = async (q: string, sort?: string) => {
@@ -1806,7 +1855,7 @@ const App = () => {
                           {data.tags?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>{data.tags.slice(0,6).map((t: string) => <span key={t} style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{t}</span>)}</div>}
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button onClick={() => (ipc as any).send('open-external-url', data.hfUrl)} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>🤗 HF ↗</button>
-                            <button disabled={isPulling || isInstalled} onClick={async () => { if (isPulling || isInstalled) return; setOllamaPulling(data.ollamaCmd); const r = await (ipc as any).invoke('ollama-pull', data.ollamaCmd); setOllamaPulling(''); if (r.success) { loadOllamaModels(); } }} style={{ flex: 1, height: '34px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(155,77,255,0.2)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.4)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>{isInstalled ? '✅ Installed' : isPulling ? '⏳ Pulling…' : '⬇ Pull Model'}</button>
+                            <button disabled={isPulling || isInstalled} onClick={async () => { if (isPulling || isInstalled) return; const ok = await checkHardwareBeforePull(data.sizeLabel || ''); if (!ok) return; setOllamaPulling(data.ollamaCmd); const r = await (ipc as any).invoke('ollama-pull', data.ollamaCmd); setOllamaPulling(''); if (r.success) { loadOllamaModels(); } }} style={{ flex: 1, height: '34px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(155,77,255,0.2)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.4)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>{isInstalled ? '✅ Installed' : isPulling ? '⏳ Pulling…' : '⬇ Pull Model'}</button>
                             <button onClick={() => { setHfUrlPreview(null); setOllamaSearch(''); }} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>✕</button>
                           </div>
                         </div>
@@ -1868,6 +1917,8 @@ const App = () => {
                                 ) : (
                                   <button onClick={async () => {
                                     if (isInstalled) return;
+                                    const ok = await checkHardwareBeforePull(model.sizeLabel || '');
+                                    if (!ok) return;
                                     setOllamaPulling(model.ollamaCmd);
                                     setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: '' }));
                                     await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
@@ -1937,6 +1988,8 @@ const App = () => {
                             ) : (
                               <button onClick={async () => {
                                 if (isInstalled) return;
+                                const ok = await checkHardwareBeforePull(model.size || '');
+                                if (!ok) return;
                                 setOllamaPulling(model.name);
                                 setOllamaLog(prev => ({ ...prev, [model.name]: '' }));
                                 await (ipc as any).invoke('ollama-pull', model.name);

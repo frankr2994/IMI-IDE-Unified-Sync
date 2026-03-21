@@ -2730,6 +2730,19 @@ ipcMain.handle('ollama-list', async () => {
   } catch(e) { return { success: false, models: [], error: e.message }; }
 });
 
+// ── Hardware check — VRAM + free RAM ─────────────────────────────────────────
+ipcMain.handle('get-hardware-info', async () => {
+  let vramMB = 0, gpuName = 'Unknown GPU';
+  try {
+    const out = require('child_process').execSync('nvidia-smi --query-gpu=memory.total,name --format=csv,noheader', { timeout: 5000 }).toString().trim();
+    const m = out.match(/^(\d+)\s*MiB,\s*(.+)$/);
+    if (m) { vramMB = parseInt(m[1]); gpuName = m[2].trim(); }
+  } catch {}
+  const freeRamMB = Math.floor(require('os').freemem() / 1024 / 1024);
+  const totalRamMB = Math.floor(require('os').totalmem() / 1024 / 1024);
+  return { vramMB, gpuName, freeRamMB, totalRamMB };
+});
+
 const ollamaPullProcesses = new Map(); // modelName → child process
 
 ipcMain.handle('ollama-pull', async (event, modelName) => {
