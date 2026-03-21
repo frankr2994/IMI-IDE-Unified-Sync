@@ -146,6 +146,7 @@ class SkillEngine {
   // 5 built-in default skills — always 0 tokens
   _ensureDefaults() {
     const defaults = [
+      { id: 'sk_github_profile', name: 'Open My GitHub',   pattern: '(open|go to|show|take me to).{0,20}(my )?github|(my )?github\\.?com', type: 'direct', handler: 'browser', url: 'https://github.com/creepybunny99', desc: 'Opens your GitHub profile instantly' },
       { id: 'sk_browser',   name: 'Browser Navigation',    pattern: '\\b(open|go to|navigate|launch|visit)\\b.{0,60}\\b(chrome|browser|http|www|netflix|youtube|gmail|spotify|twitch|reddit|twitter|instagram|facebook|\\.com|\\.org|\\.io|\\.net)\\b', type: 'direct', handler: 'browser',  desc: 'Opens websites instantly via shell — no API call' },
       { id: 'sk_desktop',   name: 'Desktop File/Folder',   pattern: '\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b.{0,60}\\b(desktop|my desktop)\\b|\\b(desktop|my desktop)\\b.{0,60}\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b', type: 'direct', handler: 'desktop', desc: 'Creates files/folders on desktop — no API call' },
       { id: 'sk_stats',     name: 'Project Stats Query',   pattern: '\\b(show|get|what is|how many|display)\\b.{0,30}\\b(stats|status|files|tokens|memory|usage|quota)\\b', type: 'direct', handler: 'stats',   desc: 'Returns live stats without an AI call' },
@@ -1406,6 +1407,14 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     if (matchedSkill.type === 'direct') {
       // Route to existing direct handlers — they record the hit themselves
       if (matchedSkill.handler === 'browser') {
+        // If skill has a hardcoded URL, use it directly
+        if (matchedSkill.url) {
+          shell.openExternal(matchedSkill.url);
+          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${matchedSkill.url}` });
+          event.sender.send('command-end', { messageId, code: 0 });
+          skillEngine.recordHit(matchedSkill.id, 400, director);
+          return;
+        }
         const cmdL = command.toLowerCase();
         const urlMatch = command.match(/https?:\/\/[^\s]+/i);
         // Match "head to X", "go to X", "open X", "navigate to X", "visit X", "launch X"
