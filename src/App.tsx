@@ -119,7 +119,7 @@ const App = () => {
   const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
   const [ollamaPullProgress, setOllamaPullProgress] = useState<Record<string, { percent: number; downloaded: string; total: string; timeLeft: string; status: string }>>({});
   const [ollamaSearch, setOllamaSearch] = useState('');
-  const [isLightMode, setIsLightMode] = useState(false);
+
 
   // Parse raw ollama pull output into structured progress
   const parseOllamaProgress = (raw: string) => {
@@ -148,21 +148,9 @@ const App = () => {
   const [hardwareInfo, setHardwareInfo] = useState<{ vramMB: number; freeRamMB: number; gpuName: string } | null>(null);
   const [hfUrlPreview, setHfUrlPreview] = useState<any>(null);
   const [npmUrlPreview, setNpmUrlPreview] = useState<any>(null);
-  useEffect(() => {
-    if (isLightMode) {
-      document.body.classList.add('light-mode');
-    } else {
-      document.body.classList.remove('light-mode');
-    }
-    localStorage.setItem('isLightMode', String(isLightMode));
-  }, [isLightMode]);
 
-  useEffect(() => {
-    const savedMode = localStorage.getItem('isLightMode');
-    if (savedMode === 'true') {
-      setIsLightMode(true);
-    }
-  }, []);
+
+
 
   const OLLAMA_FEATURED = [
     // ── Chat & General ──────────────────────────────────────────────────────
