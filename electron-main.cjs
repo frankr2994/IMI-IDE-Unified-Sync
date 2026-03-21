@@ -1379,7 +1379,12 @@ ipcMain.handle('save-api-config', (e, config) => {
       syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
     }
   }
-  if (config.projectRoot && fs.existsSync(config.projectRoot)) currentProjectRoot = config.projectRoot;
+  if (config.projectRoot && fs.existsSync(config.projectRoot)) {
+    const changed = currentProjectRoot !== config.projectRoot;
+    currentProjectRoot = config.projectRoot;
+    // Re-analyze style non-blocking when project root changes
+    if (changed) setImmediate(() => { try { styleAnalyzer.analyze(currentProjectRoot); } catch(_) {} });
+  }
   saveGlobalState(); return { success: true };
 });
 
@@ -1409,6 +1414,31 @@ ipcMain.handle('get-agent-stats', () => ({
   maxTokens: BRAIN_MAX_TOKENS
 }));
 ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
+
+// ── STYLE ANALYZER IPC handlers ───────────────────────────────────────────────
+ipcMain.handle('analyze-style', async (_, { projectRoot } = {}) => {
+  const root = projectRoot || currentProjectRoot;
+  if (!root) return { error: 'No project root configured' };
+  try {
+    const profile = styleAnalyzer.analyze(root);
+    if (!profile) return { error: 'No source files found in project root' };
+    return profile;
+  } catch(e) { return { error: e.message }; }
+});
+
+ipcMain.handle('get-style-profile', () => styleAnalyzer.getProfile());
+
+// ── IMPACT ANALYZER IPC handler ───────────────────────────────────────────────
+ipcMain.handle('get-impact', async (_, { filePath, projectRoot } = {}) => {
+  const root = projectRoot || currentProjectRoot;
+  if (!root || !filePath) return { error: 'Missing filePath or projectRoot' };
+  try {
+    // Always rebuild graph fresh so it reflects current file state
+    impactAnalyzer.buildFromProjectRoot(root);
+    const affected = impactAnalyzer.getAffected(filePath);
+    return { filePath, affected, projectRoot: root };
+  } catch(e) { return { error: e.message }; }
+});
 
 // Native folder picker — opens Windows folder browser dialog
 ipcMain.handle('browse-folder', async () => {
@@ -1684,6 +1714,7 @@ ipcMain.handle('generate-plan', async (_e, { command }) => {
   const systemPrompt = `You are a task planner for IMI — an AI desktop assistant that can create files, create folders, open websites, open files in the browser, write HTML/CSS/JS, and edit code.
 
 ${desktopContext}
+${styleAnalyzer.getCompactPrompt()}
 
 The user wants to: "${command}"
 
@@ -2513,7 +2544,7 @@ RULES:
 4. If someone asks to make/create/build something, be specific about what you'd create and how.
 5. For questions, give direct answers first, explain only if needed.
 6. Be friendly and natural — talk like a person, not a corporate chatbot.
-
+${styleAnalyzer.getCompactPrompt()}
 User: `;
 
   if (director === 'gemini') {
@@ -3722,13 +3753,15 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
 
   // Ask Gemini to generate the file content
   if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
+  const styleHint = ext === 'html' || ext === 'css' || ext === 'js' || ext === 'ts' || ext === 'tsx' || ext === 'jsx'
+    ? styleAnalyzer.getCompactPrompt() : '';
   const prompt = `The user asked: "${command}"
 
 TARGET FILE: ${filePath}
 ${existingBlock}
 WHAT IS ON THE USER'S DESKTOP RIGHT NOW:
 ${desktopSnap}
-
+${styleHint}
 Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
 - If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
 - If it's an app/tool: make it polished with a clean modern UI.
