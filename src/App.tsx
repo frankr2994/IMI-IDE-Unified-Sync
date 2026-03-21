@@ -1402,30 +1402,48 @@ const App = () => {
                             {isDropdownOpen && (
                               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 15px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '320px' }}>
                                 <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)' }}>BRAIN MODEL</div>
-                                {[
-                                  // Always shown — Gemini API just needs the key in settings
-                                  { id: 'gemini',     name: 'Gemini API',  icon: <Zap size={12}/>,           always: true },
-                                  // Only show if API key is saved and non-empty
-                                  { id: 'chatgpt',    name: 'ChatGPT',     icon: <MessageSquare size={12}/>, always: false, key: openaiKey?.trim() },
-                                  { id: 'claude',     name: 'Claude',      icon: <ShieldCheck size={12}/>,   always: false, key: claudeKey?.trim() },
-                                  { id: 'mistral',    name: 'Mistral',     icon: <Activity size={12}/>,      always: false, key: mistralKey?.trim() },
-                                  { id: 'llama',      name: 'Llama 3',     icon: <Database size={12}/>,      always: false, key: llamaKey?.trim() },
-                                  { id: 'perplexity', name: 'Perplexity',  icon: <Search size={12}/>,        always: false, key: perplexityKey?.trim() },
-                                  { id: 'deepseek',   name: 'DeepSeek',    icon: <Terminal size={12}/>,      always: false, key: deepseekKey?.trim() },
-                                  { id: 'jules',      name: 'Jules',       icon: <Layers size={12}/>,        always: false, key: (julesApiKey || githubToken)?.trim() },
-                                  { id: 'custom',     name: 'Custom API',  icon: <Wifi size={12}/>,          always: false, key: (customApiKey?.trim() && customApiUrl?.trim()) ? 'set' : '' },
-                                ].filter(opt => opt.always || (opt.key && opt.key.length > 0))
-                                 .map(opt => (
-                                  <div key={opt.id} onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain set to ${opt.name}`); saveConfig({ activeBrain: opt.id }); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeDirector === opt.id ? 'var(--primary)' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeDirector === opt.id ? 'rgba(155,77,255,0.12)' : 'transparent', fontWeight: activeDirector === opt.id ? 900 : 400 }}
-                                    onMouseEnter={e => { if (activeDirector !== opt.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                                    onMouseLeave={e => { if (activeDirector !== opt.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                                  >
-                                    {opt.icon}
-                                    {opt.name}
-                                    {activeDirector === opt.id && <span style={{ marginLeft: 'auto', fontSize: '0.5rem', color: 'var(--primary)' }}>●</span>}
-                                  </div>
-                                ))}
+                                {(() => {
+                                  const cloudModels = [
+                                    { id: 'gemini',     name: 'Gemini',      sub: 'Google · Free',         icon: '✨', key: geminiKey?.trim() },
+                                    { id: 'chatgpt',    name: 'ChatGPT',     sub: 'OpenAI · GPT-4o',       icon: '🤖', key: openaiKey?.trim() },
+                                    { id: 'claude',     name: 'Claude',      sub: 'Anthropic · Sonnet',    icon: '🧠', key: claudeKey?.trim() },
+                                    { id: 'groq',       name: 'Groq',        sub: 'Llama 70B · Ultra Fast',icon: '⚡', key: groqKey?.trim() },
+                                    { id: 'grok',       name: 'Grok',        sub: 'xAI · Grok-3',          icon: '𝕏',  key: grokKey?.trim() },
+                                    { id: 'deepseek',   name: 'DeepSeek',    sub: 'DeepSeek · Reasoner',   icon: '🔥', key: deepseekKey?.trim() },
+                                    { id: 'mistral',    name: 'Mistral',     sub: 'Mistral · Large',       icon: '🌊', key: mistralKey?.trim() },
+                                    { id: 'perplexity', name: 'Perplexity',  sub: 'Web-search AI',         icon: '🔍', key: perplexityKey?.trim() },
+                                    { id: 'cohere',     name: 'Cohere',      sub: 'Command R+',            icon: '🪐', key: cohereKey?.trim() },
+                                    { id: 'llama',      name: 'Llama API',   sub: 'Meta · Cloud',          icon: '🦙', key: llamaKey?.trim() },
+                                    { id: 'jules',      name: 'Jules',       sub: 'Google · Agentic',      icon: '🤝', key: (julesApiKey || githubToken)?.trim() },
+                                    { id: 'custom',     name: 'Custom API',  sub: 'Your endpoint',         icon: '🔧', key: (customApiKey?.trim() && customApiUrl?.trim()) ? 'set' : '' },
+                                  ];
+                                  return cloudModels.map(opt => {
+                                    const hasKey = !!(opt.key && opt.key.length > 0);
+                                    const isActive = activeDirector === opt.id;
+                                    return (
+                                      <div key={opt.id}
+                                        onClick={() => {
+                                          if (!hasKey) { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); return; }
+                                          setActiveDirector(opt.id); setIsDropdownOpen(false);
+                                          addLog('system', `Brain set to ${opt.name}`);
+                                          saveConfig({ activeBrain: opt.id });
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', color: isActive ? 'var(--primary)' : hasKey ? 'white' : 'rgba(255,255,255,0.35)', fontSize: '0.72rem', cursor: 'pointer', background: isActive ? 'rgba(155,77,255,0.12)' : 'transparent', fontWeight: isActive ? 900 : 400 }}
+                                        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                        title={hasKey ? opt.sub : `Add ${opt.name} API key in Settings`}
+                                      >
+                                        <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center', flexShrink: 0 }}>{opt.icon}</span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <div style={{ lineHeight: 1.2 }}>{opt.name}</div>
+                                          <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2 }}>{opt.sub}</div>
+                                        </div>
+                                        {isActive && <span style={{ fontSize: '0.5rem', color: 'var(--primary)', flexShrink: 0 }}>●</span>}
+                                        {!hasKey && <span style={{ fontSize: '0.55rem', opacity: 0.4, flexShrink: 0 }}>🔒</span>}
+                                      </div>
+                                    );
+                                  });
+                                })()}
                                 {/* Local Ollama models as Brain */}
                                 {ollamaModels.length > 0 && <>
                                   <div style={{ padding: '5px 14px 3px', fontSize: '0.5rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em', borderTop: '1px solid var(--glass-border)', opacity: 0.7 }}>LOCAL MODELS</div>
@@ -2881,6 +2899,9 @@ const App = () => {
                           { emoji: '🔥', name: 'DeepSeek', desc: 'DeepSeek R1 · Cost-effective', val: deepseekKey, set: setDeepseekKey, ph: 'sk-…', link: 'https://platform.deepseek.com/api_keys', core: false, saveKey: 'deepseekKey' },
                           { emoji: '🌊', name: 'Mistral', desc: 'Mistral Large & Mixtral', val: mistralKey, set: setMistralKey, ph: 'API key…', link: 'https://console.mistral.ai/api-keys/', core: false, saveKey: 'mistralKey' },
                           { emoji: '🔍', name: 'Perplexity', desc: 'Web-search augmented AI', val: perplexityKey, set: setPerplexityKey, ph: 'pplx-…', link: 'https://www.perplexity.ai/settings/api', core: false, saveKey: 'perplexityKey' },
+                          { emoji: '⚡', name: 'Groq', desc: 'Llama 70B · Fastest inference on the planet', val: groqKey, set: setGroqKey, ph: 'gsk_…', link: 'https://console.groq.com/keys', core: false, saveKey: 'groqKey' },
+                          { emoji: '𝕏',  name: 'Grok (xAI)', desc: 'Elon\'s Grok-3 model by xAI', val: grokKey, set: setGrokKey, ph: 'xai-…', link: 'https://console.x.ai/', core: false, saveKey: 'grokKey' },
+                          { emoji: '🪐', name: 'Cohere', desc: 'Command R+ · Great for RAG & business tasks', val: cohereKey, set: setCohereKey, ph: 'API key…', link: 'https://dashboard.cohere.com/api-keys', core: false, saveKey: 'cohereKey' },
                         ];
                         const activeServices = allAiServices.filter(s => s.core || s.val);
                         const inactiveServices = allAiServices.filter(s => !s.core && !s.val);
