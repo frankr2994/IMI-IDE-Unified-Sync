@@ -1070,13 +1070,25 @@ ipcMain.handle('generate-plan', async (_e, { command }) => {
     ? `Desktop path: ${require('path').join(require('os').homedir(), 'Desktop')}\nThis task involves creating files or folders on the user's system — NOT editing IMI's own code.`
     : `Project structure:\n${projectMap}\n\nRelevant code:\n${relevantCode}`;
 
-  const systemPrompt = `You are a senior software architect planning a task for IMI (an AI desktop app).
+  const systemPrompt = `You are a task planner for IMI — an AI desktop assistant that can create files, create folders, open websites, open files in the browser, write HTML/CSS/JS, and edit code.
+
 ${desktopContext}
 
 The user wants to: "${command}"
-Generate a concise phased implementation plan.
-Keep phase "prompt" fields under 200 words each. Keep "description" under 50 words.
-IMPORTANT: Each phase "prompt" must be a self-contained instruction that IMI can execute — be specific about file paths, folder names, and what to create.
+
+Break this into clear sequential phases. Each phase must have a "prompt" that is a SHORT, DIRECT, PLAIN-ENGLISH COMMAND — exactly like something a user would type to IMI. NOT a technical spec. NOT code. NOT an explanation. Just a simple instruction.
+
+GOOD phase prompt examples:
+- "create a folder called 'pong game' on the desktop"
+- "create a complete playable pong game HTML file at C:\\Users\\nikol\\Desktop\\pong game\\pong_game.html"
+- "open C:\\Users\\nikol\\Desktop\\pong game\\pong_game.html in the browser"
+
+BAD phase prompt examples (never do this):
+- "Implement IPC handler in electron-main.cjs to create directory..."
+- "Add contextBridge.exposeInMainWorld to preload script..."
+- Anything mentioning IPC, preload, contextBridge, or React components for a simple file/folder task
+
+Keep phase "description" under 40 words. Keep "prompt" under 30 words.
 Respond with ONLY valid JSON matching exactly:
 {
   "title": "short title (max 60 chars)",
@@ -1181,17 +1193,19 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
   });
 });
 
-// Execute a single plan phase by re-using the main stream handler
-// ── PLAN PHASE EXECUTOR — isolated pipeline: selected Brain → selected Coder ──
-ipcMain.on('execute-plan-phase', async (event, payload) => {
+// ── PLAN PHASE EXECUTOR — routes directly through the main command pipeline ──
+// Each phase prompt is treated exactly like a user command — same skill engine,
+// same smart context, same desktop handlers, same AI brain. No separate pipeline.
+ipcMain.on('execute-plan-phase', (event, payload) => {
   const { prompt, director = 'gemini', engine = 'imi-core', messageId } = payload;
+  console.log(`[PLAN PHASE] → main pipeline: "${prompt.slice(0, 100)}"`);
+  // Re-emit as a normal command — goes through everything: skills, context, brain, coder
+  ipcMain.emit('execute-command-stream', event, { command: prompt, director, engine, messageId, history: [] });
+});
 
-  console.log(`[ROUTE] → Plan phase: Brain(${director}) → Coder(${engine})`);
-
-  const brainSystemPrompt = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop app built with Electron + React/TypeScript/Vite.
-Key files: electron-main.cjs (backend), src/App.tsx (UI), src/index.css (styles).
-Generate a precise TECHNICAL SPECIFICATION for the coder to implement this phase.
-State exact files, exact existing code to find, exact replacement code. Be surgical and specific.`;
+// ── DEAD CODE BELOW — kept temporarily for reference, never reached ──
+if (false) {
+  const _unused_brainSystemPrompt = `DEAD`;
 
   // ── Call the correct brain API based on the selected director ──
   let brainText = '';
@@ -1266,15 +1280,7 @@ State exact files, exact existing code to find, exact replacement code. Be surgi
     event.sender.send('command-error', { messageId, error: `Brain(${director}) failed: ${e.message}` }); return;
   }
 
-  if (!brainText.trim()) { event.sender.send('command-error', { messageId, error: `Brain(${director}) returned empty response.` }); return; }
-
-  // Send brain output to chat UI
-  event.sender.send('command-chunk', { messageId, chunk: brainText });
-  event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${engine.toUpperCase()}` });
-
-  // Pass to selected coder engine (IMI-Core, Jules, Ollama, etc.)
-  await triggerCoderImplementation(event, engine, brainText, messageId);
-});
+} // end dead code block
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
