@@ -2341,6 +2341,26 @@ const App = () => {
 
                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>{ap.plan.summary}</div>
 
+                         {/* Impact preview banner — shown when impact data is loaded */}
+                         {impactData && impactData.affected.length > 0 && (
+                           <div style={{ background: 'rgba(255,160,0,0.06)', border: '1px solid rgba(255,160,0,0.3)', borderRadius: '8px', padding: '10px 12px' }}>
+                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                               <div style={{ fontSize: '0.55rem', fontWeight: 900, color: '#ffa000', letterSpacing: '0.08em' }}>⚠ IMPACT PREVIEW — {impactData.affected.length} file{impactData.affected.length > 1 ? 's' : ''} affected by changing {impactData.filePath}</div>
+                               <button onClick={() => setImpactData(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '0.7rem', padding: '0 4px' }}>✕</button>
+                             </div>
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                               {impactData.affected.slice(0, 6).map((f, i) => (
+                                 <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '0.6rem' }}>
+                                   <span style={{ color: f.depth === 1 ? '#ff416c' : '#ffa000', fontWeight: 900, minWidth: '20px' }}>D{f.depth}</span>
+                                   <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.75)' }}>{f.path}</span>
+                                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.55rem' }}>{f.label}</span>
+                                 </div>
+                               ))}
+                               {impactData.affected.length > 6 && <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>+{impactData.affected.length - 6} more — check Settings → Style & Impact</div>}
+                             </div>
+                           </div>
+                         )}
+
                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                            {ap.plan.phases.map((phase: any, idx: number) => {
                              const isDone = ap.completedPhases.has(idx);
@@ -2354,7 +2374,26 @@ const App = () => {
                                    <div style={{ flex: 1, minWidth: 0 }}>
                                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
                                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
-                                     {phase.files?.length > 0 && <div style={{ fontSize: '0.72rem', color: 'rgba(200,180,255,0.85)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                     {phase.files?.length > 0 && (
+                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                         <span style={{ fontSize: '0.65rem', color: 'rgba(200,180,255,0.85)', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</span>
+                                         <button
+                                           onClick={async () => {
+                                             if (!phase.files?.[0]) return;
+                                             setImpactLoading(true);
+                                             setImpactData(null);
+                                             try {
+                                               const res = await (ipc as any).invoke('get-impact', { filePath: phase.files[0], projectRoot: stats.projectRoot });
+                                               if (!res.error) { setImpactData(res); setRightPanelTab('plan'); }
+                                             } catch(_) {}
+                                             setImpactLoading(false);
+                                           }}
+                                           title={`Check blast radius for ${phase.files[0]}`}
+                                           style={{ fontSize: '0.48rem', padding: '1px 5px', background: 'rgba(255,160,0,0.1)', border: '1px solid rgba(255,160,0,0.3)', borderRadius: '4px', color: '#ffa000', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                           {impactLoading ? '…' : '🔭 impact'}
+                                         </button>
+                                       </div>
+                                     )}
                                    </div>
                                    {!isDone && !isCurrent && !ap.running && !isEditing && (
                                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
@@ -4458,6 +4497,147 @@ const App = () => {
                               <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
                             </select>
                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* ── STYLE & IMPACT ─────────────────────────────────────── */}
+                  {settingsActiveSubTab === 'style' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+
+                      {/* Header */}
+                      <div style={{ background: 'linear-gradient(135deg, rgba(79,172,254,0.1), rgba(0,255,136,0.06))', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '14px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: '1rem', marginBottom: '4px' }}>🎨 Style & Impact Analyzer</div>
+                          <div style={{ color: 'var(--text-dim)', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                            Zero tokens — learns your coding style locally, predicts change impact from the import graph.
+                          </div>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setStyleLoading(true);
+                            try {
+                              const p = await (ipc as any).invoke('analyze-style', { projectRoot: stats.projectRoot });
+                              if (p && !p.error) setStyleProfile(p);
+                              else alert(p?.error || 'Analysis failed');
+                            } catch(e: any) { alert(e.message); }
+                            setStyleLoading(false);
+                          }}
+                          disabled={styleLoading || !stats.projectRoot}
+                          style={{ padding: '9px 18px', background: 'rgba(79,172,254,0.15)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '9px', color: '#4facfe', cursor: 'pointer', fontWeight: 800, fontSize: '0.72rem', whiteSpace: 'nowrap', opacity: (!stats.projectRoot || styleLoading) ? 0.5 : 1 }}>
+                          {styleLoading ? '⏳ Analyzing…' : '🔍 Learn My Style'}
+                        </button>
+                      </div>
+
+                      {/* Style Profile */}
+                      {styleProfile ? (
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.12em' }}>✅ STYLE PROFILE LOADED</div>
+                            <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>
+                              {styleProfile.filesAnalyzed} files · {new Date(styleProfile.analyzedAt).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            {[
+                              { label: 'Indent',     value: styleProfile.indent },
+                              { label: 'Quotes',     value: styleProfile.quotes },
+                              { label: 'Semicolons', value: styleProfile.semicolons ? 'yes' : 'no' },
+                              { label: 'Functions',  value: styleProfile.arrowFunctions ? 'arrow =>' : 'named fn' },
+                              { label: 'Variables',  value: styleProfile.constOverLet ? 'const first' : 'let/const' },
+                              { label: 'Async',      value: styleProfile.asyncAwait ? 'async/await' : '.then()' },
+                              { label: 'Naming',     value: styleProfile.naming },
+                              { label: 'Imports',    value: styleProfile.importStyle },
+                              { label: 'TypeScript', value: styleProfile.typescript ? 'yes' : 'no' },
+                              { label: 'JSDoc',      value: styleProfile.jsdocComments ? 'yes' : 'no' },
+                            ].map(s => (
+                              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{s.label}</span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'white' }}>{s.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(79,172,254,0.06)', border: '1px solid rgba(79,172,254,0.15)', borderRadius: '8px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+                            💡 This style profile is automatically injected into all code generation prompts. IMI will match your patterns without you asking.
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '28px', background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px', opacity: 0.5 }}>
+                          <span style={{ fontSize: '2rem' }}>🎨</span>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center' }}>No style profile yet.<br/>Set a project root, then click "Learn My Style".</div>
+                        </div>
+                      )}
+
+                      {/* Impact Analyzer */}
+                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em', marginBottom: '12px' }}>🔭 IMPACT ANALYZER</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '12px', lineHeight: 1.5 }}>
+                          Enter a file path to see what else in your project depends on it — the "blast radius" of a change.
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                          <input
+                            value={impactTarget}
+                            onChange={e => setImpactTarget(e.target.value)}
+                            placeholder="e.g. src/App.tsx or src/utils/auth.ts"
+                            className="chat-input"
+                            style={{ flex: 1, height: '36px', fontSize: '0.68rem', padding: '0 10px' }}
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!impactTarget.trim()) return;
+                              setImpactLoading(true);
+                              setImpactData(null);
+                              try {
+                                const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot });
+                                if (res.error) alert(res.error);
+                                else setImpactData(res);
+                              } catch(e: any) { alert(e.message); }
+                              setImpactLoading(false);
+                            }}
+                            disabled={impactLoading || !impactTarget.trim()}
+                            style={{ padding: '0 16px', height: '36px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.35)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer', fontWeight: 800, fontSize: '0.68rem', whiteSpace: 'nowrap', opacity: impactLoading ? 0.5 : 1 }}>
+                            {impactLoading ? '…' : 'Analyze'}
+                          </button>
+                        </div>
+
+                        {impactData && (
+                          <div>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
+                              {impactData.affected.length === 0
+                                ? `✅ "${impactData.filePath}" has no dependents — safe to change.`
+                                : `⚠ ${impactData.affected.length} file${impactData.affected.length > 1 ? 's' : ''} will be affected:`}
+                            </div>
+                            {impactData.affected.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '180px', overflowY: 'auto' }}>
+                                {impactData.affected.map((f, i) => (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 9px', background: `rgba(${f.depth === 1 ? '255,65,108' : '255,160,0'},0.06)`, border: `1px solid rgba(${f.depth === 1 ? '255,65,108' : '255,160,0'},0.2)`, borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.depth === 1 ? '#ff416c' : '#ffa000', minWidth: '18px' }}>D{f.depth}</span>
+                                    <span style={{ fontSize: '0.65rem', fontFamily: 'monospace', color: 'rgba(255,255,255,0.8)', flex: 1 }}>{f.path}</span>
+                                    <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>{f.label}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* How it works */}
+                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 16px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: '10px' }}>HOW IT WORKS</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                          {[
+                            { icon: '🔍', text: 'Style Analyzer scans your recent files locally — no API calls, no tokens used' },
+                            { icon: '🎨', text: 'Your style profile (indent, quotes, naming, etc.) is injected into every code generation prompt' },
+                            { icon: '🔭', text: 'Impact Analyzer builds a reverse import graph — finds what breaks when a file changes' },
+                            { icon: '⚡', text: 'Style re-learned automatically when you switch project roots' },
+                          ].map((h, i) => (
+                            <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                              <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{h.icon}</span>
+                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{h.text}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </motion.div>
