@@ -124,6 +124,8 @@ const App = () => {
   const [terminalRunning, setTerminalRunning] = useState(false);
   const terminalInputRef = React.useRef<HTMLInputElement>(null);
   const terminalOutputRef = React.useRef<HTMLDivElement>(null);
+  const [terminalHeight, setTerminalHeight] = useState(320);
+  const terminalDragRef = React.useRef<{ dragging: boolean; startY: number; startH: number }>({ dragging: false, startY: 0, startH: 320 });
 
   // 🛠 Installed Tools
   const [toolsList, setToolsList] = useState<any[]>([]);
@@ -1077,6 +1079,23 @@ const App = () => {
     if (terminalOutputRef.current) terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
   }, [terminalLines]);
 
+  // Terminal drag-to-resize
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!terminalDragRef.current.dragging) return;
+      const delta = terminalDragRef.current.startY - e.clientY;
+      const newH = Math.max(120, Math.min(window.innerHeight * 0.75, terminalDragRef.current.startH + delta));
+      setTerminalHeight(Math.round(newH));
+    };
+    const onUp = () => { terminalDragRef.current.dragging = false; };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
   // Auto-scan project navigator when the tab opens
   useEffect(() => {
     if (activeTab !== 'navigator') return;
@@ -1510,7 +1529,7 @@ const App = () => {
         </div>
       </div>
 
-      <div className="main-content">
+      <div className="main-content" style={{ paddingBottom: terminalOpen ? terminalHeight + 8 : undefined }}>
         <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', marginBottom: '5px' }}>
@@ -1719,7 +1738,7 @@ const App = () => {
 
           {activeTab === 'command center' && (
             <motion.div key="cc" className="full-height-panel" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr clamp(280px, 25vw, 400px)', gap: 'clamp(12px, 1.5vw, 25px)', height: 'calc(100vh - clamp(3rem, 5vw, 6rem))' }}>
-              <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', position: 'relative' }}>
+              <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.07)', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <div style={{ width: '24px', height: '24px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2145,104 +2164,6 @@ const App = () => {
                       <button type="submit" className="btn-chat-send" style={{ width: '38px', height: '38px' }}><Send size={15}/></button>
                     </form>
                 </div>
-
-                {/* ── EMBEDDED TERMINAL — absolute overlay, slides up from bottom ── */}
-                <AnimatePresence>
-                {terminalOpen && (
-                  <motion.div
-                    initial={{ y: '100%', opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: '100%', opacity: 0 }}
-                    transition={{ duration: 0.22, ease: 'easeOut' }}
-                    style={{
-                      position: 'absolute', bottom: 0, left: 0, right: 0,
-                      height: '260px',
-                      background: 'rgba(8, 8, 20, 0.97)',
-                      borderTop: '1px solid rgba(0,255,136,0.3)',
-                      display: 'flex', flexDirection: 'column',
-                      zIndex: 20,
-                      backdropFilter: 'blur(8px)',
-                      borderRadius: '0 0 20px 20px'
-                    }}
-                  >
-                    {/* Terminal header bar */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 14px', background: 'rgba(0,255,136,0.07)', borderBottom: '1px solid rgba(0,255,136,0.15)', flexShrink: 0, borderRadius: '0' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Terminal size={11} color="#00ff88"/>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.14em' }}>TERMINAL</span>
-                        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{terminalCwd}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => setTerminalLines([{ text: 'Terminal cleared.', type: 'info' }])} style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.35)', cursor: 'pointer' }}>CLEAR</button>
-                        <button onClick={() => setTerminalOpen(false)} style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(255,65,108,0.08)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '4px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
-                      </div>
-                    </div>
-
-                    {/* Output area */}
-                    <div ref={terminalOutputRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 14px', fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace', fontSize: '0.72rem', lineHeight: 1.6 }}>
-                      {terminalLines.map((line, i) => (
-                        <div key={i} style={{ color: line.type === 'cmd' ? '#00ff88' : line.type === 'err' ? '#ff5555' : line.type === 'info' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.8)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                          {line.type === 'cmd' && <span style={{ color: 'rgba(0,255,136,0.4)', userSelect: 'none' }}>❯ </span>}
-                          {line.text}
-                        </div>
-                      ))}
-                      {terminalRunning && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', fontSize: '0.65rem' }}>
-                          <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity }}>●</motion.span> running…
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Command input */}
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '7px 14px', borderTop: '1px solid rgba(0,255,136,0.12)', background: 'rgba(0,0,0,0.4)', flexShrink: 0, borderRadius: '0 0 20px 20px' }}>
-                      <span style={{ color: '#00ff88', fontSize: '0.75rem', marginRight: '10px', fontFamily: 'monospace', flexShrink: 0, userSelect: 'none' }}>❯</span>
-                      <input
-                        ref={terminalInputRef}
-                        value={terminalInput}
-                        onChange={e => setTerminalInput(e.target.value)}
-                        onKeyDown={async e => {
-                          if (e.key === 'Enter' && terminalInput.trim() && !terminalRunning) {
-                            const cmd = terminalInput.trim();
-                            setTerminalHistory(h => [cmd, ...h.slice(0, 49)]);
-                            setTerminalHistoryIdx(-1);
-                            setTerminalInput('');
-                            setTerminalLines(l => [...l, { text: cmd, type: 'cmd' }]);
-                            setTerminalRunning(true);
-                            try {
-                              const result: any = await (ipc as any).invoke('terminal-run', { cmd, cwd: terminalCwd });
-                              if (result.output === '__CLEAR__') {
-                                setTerminalLines([{ text: '', type: 'info' }]);
-                              } else if (result.output) {
-                                setTerminalLines(l => [...l, { text: result.output, type: result.error ? 'err' : 'out' }]);
-                              }
-                              if (result.cwd) setTerminalCwd(result.cwd);
-                            } catch (err: any) {
-                              setTerminalLines(l => [...l, { text: err?.message || 'Unknown error', type: 'err' }]);
-                            }
-                            setTerminalRunning(false);
-                            setTimeout(() => terminalInputRef.current?.focus(), 30);
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            const next = Math.min(terminalHistoryIdx + 1, terminalHistory.length - 1);
-                            setTerminalHistoryIdx(next);
-                            if (terminalHistory[next] !== undefined) setTerminalInput(terminalHistory[next]);
-                          } else if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            const next = Math.max(terminalHistoryIdx - 1, -1);
-                            setTerminalHistoryIdx(next);
-                            setTerminalInput(next === -1 ? '' : terminalHistory[next] || '');
-                          }
-                        }}
-                        placeholder="type a command and press Enter…"
-                        style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace', fontSize: '0.72rem', caretColor: '#00ff88' }}
-                        spellCheck={false}
-                        autoComplete="off"
-                        autoCapitalize="off"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-                </AnimatePresence>
 
               </div>
 
