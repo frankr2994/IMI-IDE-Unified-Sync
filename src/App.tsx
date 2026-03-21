@@ -2076,27 +2076,27 @@ const App = () => {
 
               <div className="devtools-panel">
                  {/* Tab switcher header */}
-                 <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
+                 <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)', alignItems: 'stretch' }}>
                    {[
-                     { id: 'console',  label: 'SYS CONSOLE' },
-                     { id: 'plan',     label: activePlan ? `📋 PLAN${activePlan.running ? ' ⚙' : ''}` : '📋 PLAN' },
-                     { id: 'parallel', label: '⚡ PARALLEL' },
-                     { id: 'docs',     label: '📦 DOCS' },
+                     { id: 'console',  label: 'CONSOLE' },
+                     { id: 'plan',     label: activePlan?.running ? 'PLAN ⚙' : 'PLAN' },
+                     { id: 'parallel', label: 'PARALLEL' },
+                     { id: 'docs',     label: 'DOCS' },
                    ].map(tab => (
-                     <button key={tab.id} onClick={() => setRightPanelTab(tab.id as any)} style={{ flex: 1, padding: '8px 6px', background: 'transparent', border: 'none', borderBottom: rightPanelTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: rightPanelTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.05em', transition: 'all 0.2s', position: 'relative' }}>
+                     <button key={tab.id} onClick={() => setRightPanelTab(tab.id as any)} style={{ flex: 1, padding: '10px 4px', background: 'transparent', border: 'none', borderBottom: rightPanelTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: rightPanelTab === tab.id ? 'var(--primary)' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', transition: 'color 0.15s, border-color 0.15s', position: 'relative', whiteSpace: 'nowrap' }}
+                       onMouseEnter={e => { if (rightPanelTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)'; }}
+                       onMouseLeave={e => { if (rightPanelTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}
+                     >
                        {tab.label}
                        {tab.id === 'plan' && activePlan && !activePlan.running && activePlan.completedPhases.size < activePlan.plan.phases.length && rightPanelTab !== 'plan' && (
-                         <span style={{ position: 'absolute', top: '5px', right: '8px', width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
+                         <span style={{ position: 'absolute', top: '5px', right: '6px', width: '5px', height: '5px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
                        )}
                      </button>
                    ))}
-                   {rightPanelTab === 'console' && (
-                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', flexShrink: 0 }}>
-                       {syncStatus !== 'Idle' && <RefreshCw size={9} className="spin" style={{ color: 'var(--primary)' }} />}
-                       <span style={{ color: '#00ff88', fontSize: '0.5rem', fontWeight: 700, whiteSpace: 'nowrap' }}>● ACTIVE</span>
-                       <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.5rem', padding: '2px 7px', fontWeight: 700 }}>📄 LOG</button>
-                     </div>
-                   )}
+                   <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ padding: '0 10px', background: 'transparent', border: 'none', borderBottom: '2px solid transparent', borderLeft: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 700, flexShrink: 0, transition: 'color 0.15s' }}
+                     onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.6)') as any}
+                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)') as any}
+                   >LOG</button>
                  </div>
 
                  {rightPanelTab === 'console' && <>
