@@ -76,6 +76,9 @@ const App = () => {
   const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
   const planPhaseResolvers = React.useRef<Map<number, () => void>>(new Map());
   const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'>('console');
+  const [editingPhase, setEditingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
+  const [editPhaseData, setEditPhaseData] = useState<{ name: string; description: string; prompt: string }>({ name: '', description: '', prompt: '' });
+  const [suggestingPhase, setSuggestingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -868,6 +871,59 @@ const App = () => {
     setActivePlan(prev => prev ? { ...prev, running: false } : null);
   };
 
+  const cancelPlan = (planMsgId: number) => {
+    setMessages(prev => prev.filter(m => m.id !== planMsgId));
+    setActivePlan(null);
+    planPhaseResolvers.current.clear();
+    setRightPanelTab('console');
+    setEditingPhase(null);
+    setSuggestingPhase(null);
+  };
+
+  const startEditPhase = (planMsgId: number, phaseIdx: number, phase: any) => {
+    setEditingPhase({ planMsgId, phaseIdx });
+    setEditPhaseData({ name: phase.name, description: phase.description || '', prompt: phase.prompt || '' });
+    setSuggestingPhase(null);
+  };
+
+  const saveEditPhase = () => {
+    if (!editingPhase) return;
+    const { planMsgId, phaseIdx } = editingPhase;
+    const updatePhases = (phases: any[]) => {
+      const updated = [...phases];
+      updated[phaseIdx] = { ...updated[phaseIdx], ...editPhaseData };
+      return updated;
+    };
+    setActivePlan(prev => {
+      if (!prev || prev.messageId !== planMsgId) return prev;
+      return { ...prev, plan: { ...prev.plan, phases: updatePhases(prev.plan.phases) } };
+    });
+    setMessages(prev => prev.map(m => {
+      if (m.id !== planMsgId || (m as any).type !== 'plan') return m;
+      return { ...m, plan: { ...(m as any).plan, phases: updatePhases((m as any).plan.phases) } };
+    }));
+    setEditingPhase(null);
+  };
+
+  const suggestPhaseEdit = async (planMsgId: number, phaseIdx: number, phase: any) => {
+    setSuggestingPhase({ planMsgId, phaseIdx });
+    const prompt = `You are reviewing a software implementation plan phase. Suggest a concise improvement to this phase and return ONLY a JSON object with keys: name, description, prompt. Keep changes minimal and focused.\n\nPhase:\n${JSON.stringify(phase, null, 2)}`;
+    try {
+      const result = await (ipc as any).invoke('generate-plan', { command: prompt, _suggestOnly: true });
+      // generate-plan returns a full plan; use first phase as the suggestion
+      const suggested = result?.phases?.[0];
+      if (suggested) {
+        setEditingPhase({ planMsgId, phaseIdx });
+        setEditPhaseData({ name: suggested.name || phase.name, description: suggested.description || phase.description, prompt: suggested.prompt || phase.prompt || '' });
+      }
+    } catch {
+      // fallback: just open editor with current data
+      startEditPhase(planMsgId, phaseIdx, phase);
+    } finally {
+      setSuggestingPhase(null);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
 
@@ -1498,11 +1554,14 @@ const App = () => {
                         return (
                           <div style={{ maxWidth: '85%', background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '14px', padding: '18px 20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                              <div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.14em', marginBottom: '4px' }}>📋 IMPLEMENTATION PLAN</div>
                                 <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{m.plan.title}</div>
                               </div>
-                              <span style={{ fontSize: '0.6rem', padding: '3px 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)', flexShrink: 0, marginLeft: '10px' }}>{(m.plan.complexity || 'medium').toUpperCase()}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '10px', flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.6rem', padding: '3px 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)' }}>{(m.plan.complexity || 'medium').toUpperCase()}</span>
+                                <button onClick={() => cancelPlan(m.planId)} title="Cancel & remove plan" style={{ fontSize: '0.55rem', padding: '3px 9px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>✕ Cancel</button>
+                              </div>
                             </div>
                             <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '14px', lineHeight: 1.5 }}>{m.plan.summary}</div>
 
