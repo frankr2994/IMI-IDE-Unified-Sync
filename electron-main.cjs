@@ -596,7 +596,7 @@ TASK: ${command}
 Start by reading the relevant file(s). Then make changes. Then run the build to verify. Fix any errors. When done, call the done tool.`;
 
   const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
-  const MAX_STEPS = 12;
+  const MAX_STEPS = 15;
   let step = 0;
 
   event.sender.send('command-chunk', { messageId, chunk: `🤖 **Agent Mode** — reasoning through your request...\n\n` });
@@ -676,11 +676,13 @@ Start by reading the relevant file(s). Then make changes. Then run the build to 
     const preview = resultStr.length > 400 ? resultStr.slice(0, 400) + `\n... (${resultStr.length - 400} more chars)` : resultStr;
     event.sender.send('command-chunk', { messageId, chunk: `\`\`\`\n${preview}\n\`\`\`\n` });
 
-    // Add tool result to conversation
-    conversationHistory.push({
-      role: 'user',
-      parts: [{ text: `Tool result for ${tool}:\n${resultStr}` }]
-    });
+    // Add tool result to conversation — include screenshot image if one was just taken
+    const toolResultParts = [{ text: `Tool result for ${tool}:\n${resultStr}` }];
+    if (tool === 'take_screenshot' && global._lastScreenshot) {
+      toolResultParts.push({ inlineData: { mimeType: 'image/png', data: global._lastScreenshot } });
+      global._lastScreenshot = null; // consume it
+    }
+    conversationHistory.push({ role: 'user', parts: toolResultParts });
 
     // Small delay to avoid rate limiting
     await new Promise(r => setTimeout(r, 300));
