@@ -3147,88 +3147,92 @@ const App = () => {
                 </div>
               </div>
 
-              {/* MY SKILLS tab */}
+              {/* ── MY SKILLS ── */}
               {skillsSubTab === 'mine' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
-                  {/* Per-model savings leaderboard */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+
+                  {/* Model savings bar — only shown if data exists */}
                   {skillStats?.modelSavings && Object.keys(skillStats.modelSavings).length > 0 && (() => {
-                    const entries = Object.entries(skillStats.modelSavings as Record<string,number>).sort(([,a],[,b]) => b - a);
-                    const medals = ['🥇','🥈','🥉'];
+                    const entries = Object.entries(skillStats.modelSavings as Record<string,number>).sort(([,a],[,b]) => b - a).slice(0, 3);
                     return (
-                      <div style={{ marginBottom: '14px', padding: '12px 14px', background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.18)', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '8px' }}>🏆 MODEL TOKEN SAVINGS LEADERBOARD</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {entries.map(([model, saved], i) => {
-                            const label = model.startsWith('ollama:') ? (model.slice(7).split(':').pop() || model.slice(7)) : model;
-                            const pct = Math.round((saved / entries[0][1]) * 100);
-                            return (
-                              <div key={model} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.65rem', width: '18px' }}>{medals[i] || `${i+1}.`}</span>
-                                <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 700, minWidth: '90px' }}>{label}</span>
-                                <div style={{ flex: 1, height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                                  <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? 'linear-gradient(90deg,#9b4dff,#4facfe)' : 'rgba(155,77,255,0.4)', borderRadius: '3px', transition: 'width 0.4s' }} />
-                                </div>
-                                <span style={{ fontSize: '0.55rem', color: '#9b4dff', minWidth: '60px', textAlign: 'right' }}>{(saved as number).toLocaleString()} tkns</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                      <div style={{ padding: '12px 24px', background: 'rgba(155,77,255,0.04)', borderBottom: '1px solid rgba(155,77,255,0.1)', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <span style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', flexShrink: 0 }}>TOP SAVERS</span>
+                        {entries.map(([model, saved], i) => {
+                          const label = model.startsWith('ollama:') ? (model.slice(7).split(':').pop() || model.slice(7)) : model;
+                          const medals = ['#1','#2','#3'];
+                          return (
+                            <div key={model} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontSize: '0.5rem', color: i === 0 ? '#ffa500' : 'var(--text-dim)', fontWeight: 900 }}>{medals[i]}</span>
+                              <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.7)', fontWeight: 700 }}>{label}</span>
+                              <span style={{ fontSize: '0.58rem', color: 'var(--primary)', fontFamily: 'monospace' }}>{(saved as number).toLocaleString()} tkns</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {skills.map(skill => (
-                      <div key={skill.id} style={{ background: skill.active ? 'rgba(155,77,255,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${skill.active ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '10px', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+                  {/* Skills list */}
+                  <div style={{ padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {skills.length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.4 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>No skills yet — add some from the Library</div>
+                      </div>
+                    )}
+                    {skills.map((skill, idx) => (
+                      <div key={skill.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 14px', borderRadius: '8px', background: 'transparent', transition: 'background 0.12s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)') as any}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent') as any}>
+                        {/* Status dot */}
+                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: skill.active ? '#00ff88' : 'rgba(255,255,255,0.15)', flexShrink: 0, boxShadow: skill.active ? '0 0 6px rgba(0,255,136,0.5)' : 'none' }} />
+
+                        {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: skill.active ? 'white' : 'var(--text-dim)' }}>{skill.name}</span>
-                            {skill.autoCreated && <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '4px', color: '#00ff88' }}>AUTO</span>}
-                            <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{skill.type}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: skill.active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>{skill.name}</span>
+                            {skill.autoCreated && <span style={{ fontSize: '0.47rem', padding: '1px 5px', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '3px', color: '#00ff88', fontWeight: 900, letterSpacing: '0.08em' }}>AUTO</span>}
+                            <span style={{ fontSize: '0.47rem', padding: '1px 5px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.15)', borderRadius: '3px', color: '#4facfe', fontWeight: 900, letterSpacing: '0.08em' }}>{skill.type}</span>
                           </div>
-                          <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '6px' }}>{skill.desc}</div>
-                          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Uses: <b style={{ color: 'white' }}>{skill.uses}</b></span>
-                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Saved: <b style={{ color: '#9b4dff' }}>{skill.tokensSaved?.toLocaleString()} tkns</b></span>
-                            <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Score: <b style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</b></span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '260px' }}>{skill.desc}</span>
+                            <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', flexShrink: 0 }}>{skill.uses} uses · {(skill.tokensSaved||0).toLocaleString()} tkns · <span style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</span></span>
                           </div>
-                          {skill.modelUsage && Object.keys(skill.modelUsage).length > 0 && (
-                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
-                              {Object.entries(skill.modelUsage as Record<string,number>)
-                                .sort(([,a],[,b]) => b - a)
-                                .map(([model, count]) => {
-                                  const label = model.startsWith('ollama:') ? model.slice(7).split(':').pop() || model.slice(7) : model;
-                                  return (
-                                    <span key={model} style={{ fontSize: '0.5rem', padding: '1px 6px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '10px', color: 'var(--primary)', whiteSpace: 'nowrap' }}>
-                                      {label} × {count}
-                                    </span>
-                                  );
-                                })}
-                            </div>
-                          )}
                         </div>
+
+                        {/* Actions */}
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                          <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: skill.active ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer' }}>{skill.active ? 'ON' : 'OFF'}</button>
+                          <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }}
+                            style={{ height: '26px', padding: '0 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.25)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '5px', color: skill.active ? '#00ff88' : 'rgba(255,255,255,0.3)', cursor: 'pointer', letterSpacing: '0.06em', transition: 'all 0.15s' }}>
+                            {skill.active ? 'ON' : 'OFF'}
+                          </button>
                           {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (
-                            <button onClick={async () => { if (confirm(`Remove skill "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
+                            <button onClick={async () => { if (confirm(`Remove "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }}
+                              style={{ height: '26px', width: '26px', fontSize: '0.65rem', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.15)', borderRadius: '5px', color: 'rgba(255,65,108,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ff416c'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,65,108,0.4)'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,65,108,0.5)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,65,108,0.15)'; }}>
+                              ✕
+                            </button>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Add custom skill */}
-                  <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.15)', borderRadius: '10px' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '12px' }}>+ CREATE CUSTOM SKILL</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <input value={newSkillName} onChange={e => setNewSkillName(e.target.value)} placeholder="Skill name (e.g. Open Spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
-                      <input value={newSkillPattern} onChange={e => setNewSkillPattern(e.target.value)} placeholder="Trigger pattern (e.g. open spotify)" className="chat-input" style={{ fontSize: '0.75rem' }} />
-                      <input value={newSkillResponse} onChange={e => setNewSkillResponse(e.target.value)} placeholder="Cached response (leave blank for passthrough)" className="chat-input" style={{ fontSize: '0.75rem' }} />
+                  {/* Create custom skill */}
+                  <div style={{ margin: '4px 24px 20px', padding: '16px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px' }}>
+                    <div style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: '12px' }}>NEW SKILL</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                      <input value={newSkillName} onChange={e => setNewSkillName(e.target.value)} placeholder="Name — e.g. Open Spotify" className="chat-input" style={{ fontSize: '0.72rem' }} />
+                      <input value={newSkillPattern} onChange={e => setNewSkillPattern(e.target.value)} placeholder="Trigger — e.g. open spotify" className="chat-input" style={{ fontSize: '0.72rem' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input value={newSkillResponse} onChange={e => setNewSkillResponse(e.target.value)} placeholder="Response (leave blank to pass through to AI)" className="chat-input" style={{ fontSize: '0.72rem', flex: 1 }} />
                       <button onClick={async () => {
                         if (!newSkillName || !newSkillPattern) return;
                         await (ipc as any).invoke('skills-add', { name: newSkillName, pattern: newSkillPattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), type: newSkillResponse ? 'cached' : 'passthrough', cachedResponse: newSkillResponse || null, desc: 'Custom user skill' });
                         setNewSkillName(''); setNewSkillPattern(''); setNewSkillResponse('');
                         fetchStats();
-                      }} className="btn-premium" style={{ padding: '8px 20px', fontSize: '0.65rem' }}>ADD SKILL</button>
+                      }} style={{ height: '38px', padding: '0 18px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>ADD</button>
                     </div>
                   </div>
                 </div>
@@ -3336,78 +3340,85 @@ const App = () => {
                 </div>
               )}
 
-              {/* ── OPTIMIZER TAB ── */}
+              {/* ── OPTIMIZER ── */}
               {skillsSubTab === 'optimizer' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
-                  {/* Efficiency Gauge */}
-                  <div style={{ background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '14px', padding: '20px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <div>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '4px' }}>EFFICIENCY GOAL</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                          <span style={{ fontSize: '2.4rem', fontWeight: 900, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 60 ? '#ffa500' : 'var(--primary)' }}>{skillEfficiency}%</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>/ 90% target</span>
-                        </div>
+                  {/* Efficiency + run */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 24px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', marginBottom: '14px' }}>
+                    <div style={{ flexShrink: 0 }}>
+                      <div style={{ fontSize: '3.2rem', fontWeight: 900, lineHeight: 1, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 60 ? '#ffa500' : 'var(--primary)' }}>{skillEfficiency}<span style={{ fontSize: '1.2rem', opacity: 0.6 }}>%</span></div>
+                      <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginTop: '4px' }}>EFFICIENCY</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ height: '8px', background: 'rgba(255,255,255,0.07)', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginBottom: '6px' }}>
+                        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)', borderRadius: '4px', transition: 'width 0.6s ease' }} />
+                        <div style={{ position: 'absolute', left: '90%', top: 0, height: '100%', width: '1px', background: 'rgba(255,255,255,0.3)' }} />
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginBottom: '2px' }}>Skills intercepting AI calls</div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: skillEfficiency >= 90 ? '#00ff88' : '#ffa500' }}>
-                          {skillEfficiency >= 90 ? '🎯 Goal Reached!' : skillEfficiency >= 60 ? '📈 Getting there…' : '🚀 Keep adding skills'}
-                        </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{skillEfficiency >= 90 ? 'Goal reached' : `${90 - skillEfficiency}% to goal`}</span>
+                        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>90% target</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginTop: '12px' }}>
+                        {[
+                          { label: 'INTERCEPTED', value: skillStats.skillHits || 0, color: '#00ff88' },
+                          { label: 'AI CALLS', value: skillStats.totalRequests || 0, color: '#4facfe' },
+                          { label: 'TOKENS SAVED', value: (skillStats.tokensSaved || 0).toLocaleString(), color: 'var(--primary)' },
+                        ].map(s => (
+                          <div key={s.label} style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 900, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
+                            <div style={{ fontSize: '0.48rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '2px' }}>{s.label}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {/* Progress bar */}
-                    <div style={{ height: '10px', background: 'rgba(255,255,255,0.07)', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? 'linear-gradient(90deg,#00ff88,#4facfe)' : 'linear-gradient(90deg,var(--primary),#4facfe)', borderRadius: '5px', transition: 'width 0.6s ease' }} />
-                      {/* 90% goal marker */}
-                      <div style={{ position: 'absolute', left: '90%', top: 0, height: '100%', width: '2px', background: 'rgba(255,255,255,0.4)' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>0%</span>
-                      <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.4)' }}>◀ 90% goal</span>
-                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>100%</span>
+                    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                      <button onClick={async () => {
+                        setOptimizerRunning(true);
+                        const result = await (ipc as any).invoke('skills-optimize');
+                        const h = await (ipc as any).invoke('skills-get-history');
+                        if (result) setOptimizerLastResult(result);
+                        if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
+                        setOptimizerLastRun(Date.now()); setOptimizerRunning(false); fetchStats();
+                      }} disabled={optimizerRunning} style={{ height: '36px', padding: '0 18px', background: optimizerRunning ? 'rgba(155,77,255,0.08)' : 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: optimizerRunning ? 'default' : 'pointer', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', opacity: optimizerRunning ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+                        {optimizerRunning ? 'RUNNING…' : 'RUN NOW'}
+                      </button>
+                      {optimizerLastRun && <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)', textAlign: 'right' }}>Last run {Math.round((Date.now() - optimizerLastRun) / 1000)}s ago</span>}
                     </div>
                   </div>
 
-                  {/* Stats Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                    {[
-                      { label: 'INTERCEPTED', value: skillStats.skillHits || 0, color: '#00ff88', icon: '⚡', desc: 'Handled by skills' },
-                      { label: 'AI CALLS',    value: skillStats.totalRequests || 0, color: '#4facfe', icon: '🧠', desc: 'Sent to AI model' },
-                      { label: 'TOKENS SAVED',value: (skillStats.tokensSaved || 0).toLocaleString(), color: 'var(--primary)', icon: '💰', desc: 'Not billed' },
-                    ].map(s => (
-                      <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{s.icon}</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color }}>{s.value}</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '3px' }}>{s.label}</div>
-                        <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.25)', marginTop: '2px' }}>{s.desc}</div>
-                      </div>
-                    ))}
-                  </div>
+                  {/* Last result */}
+                  {optimizerLastResult && (
+                    <div style={{ padding: '10px 14px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: '8px', fontSize: '0.62rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ color: '#00ff88', fontWeight: 900 }}>Optimization complete</span>
+                      <span style={{ color: 'var(--text-dim)' }}>Efficiency: <b style={{ color: 'white' }}>{optimizerLastResult.efficiency}%</b></span>
+                      {optimizerLastResult.removed > 0 ? <span style={{ color: '#ff416c' }}>{optimizerLastResult.removed} weak skill{optimizerLastResult.removed !== 1 ? 's' : ''} removed</span> : <span style={{ color: 'var(--text-dim)' }}>No weak skills found</span>}
+                    </div>
+                  )}
 
-                  {/* The Loop */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '12px' }}>THE OPTIMIZATION LOOP</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                      {[
-                        { step: '1', label: 'Deploy Skills', color: '#9b4dff' },
-                        { step: '→', label: '', color: 'var(--text-dim)' },
-                        { step: '2', label: 'Intercept Queries', color: '#4facfe' },
-                        { step: '→', label: '', color: 'var(--text-dim)' },
-                        { step: '3', label: 'Measure Performance', color: '#ffa500' },
-                        { step: '→', label: '', color: 'var(--text-dim)' },
-                        { step: '4', label: 'Auto-Optimize', color: '#00ff88' },
-                        { step: '→', label: '', color: 'var(--text-dim)' },
-                        { step: '5', label: 'Repeat', color: '#9b4dff' },
-                      ].map((item, i) => item.step === '→' ? (
-                        <span key={i} style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>→</span>
-                      ) : (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', background: `${item.color}18`, border: `1px solid ${item.color}40`, borderRadius: '20px' }}>
-                          <span style={{ fontSize: '0.55rem', fontWeight: 900, color: item.color, background: `${item.color}25`, borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.step}</span>
-                          <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'white' }}>{item.label}</span>
-                        </div>
-                      ))}
+                  {/* AI call history */}
+                  <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', overflow: 'hidden' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em' }}>LEARNING — QUERIES THAT REACHED AI</span>
+                      <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)' }}>{optimizerHistory.length} entries</span>
+                    </div>
+                    {optimizerHistory.length === 0 ? (
+                      <div style={{ padding: '30px', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-dim)', opacity: 0.5 }}>
+                        No history yet — use the Command Center and the engine will learn your patterns
+                      </div>
+                    ) : (
+                      <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                        {[...optimizerHistory].reverse().map((entry: any, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{ flex: 1, fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{entry.command}"</span>
+                            <span style={{ fontSize: '0.48rem', padding: '1px 6px', background: 'rgba(255,165,0,0.08)', border: '1px solid rgba(255,165,0,0.18)', borderRadius: '3px', color: '#ffa500', flexShrink: 0, fontWeight: 900, letterSpacing: '0.06em' }}>AI</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>
+                      Same pattern <b style={{ color: 'rgba(255,255,255,0.6)' }}>3+ times</b> → engine auto-creates a skill · Auto-optimizes every <b style={{ color: 'rgba(255,255,255,0.6)' }}>5 minutes</b>
                     </div>
                     <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '10px' }}>
                       ⏱ Auto-runs every <b style={{ color: 'white' }}>5 minutes</b> · Removes skills scoring below 20% · Creates skills from repeated patterns
