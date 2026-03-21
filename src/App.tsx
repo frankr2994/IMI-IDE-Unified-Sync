@@ -3623,6 +3623,192 @@ const App = () => {
                 </div>
               )}
 
+              {/* ── COMMUNITY ── */}
+              {skillsSubTab === 'community' && (
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+
+                  {/* Header bar */}
+                  <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '2px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: 'white' }}>Community Skills Hub</span>
+                        {communitySource && (
+                          <span style={{ fontSize: '0.47rem', padding: '1px 6px', background: communitySource === 'remote' ? 'rgba(0,255,136,0.1)' : 'rgba(255,165,0,0.1)', border: `1px solid ${communitySource === 'remote' ? 'rgba(0,255,136,0.3)' : 'rgba(255,165,0,0.3)'}`, borderRadius: '4px', color: communitySource === 'remote' ? '#00ff88' : '#ffa500', fontWeight: 900, letterSpacing: '0.08em' }}>
+                            {communitySource === 'remote' ? '🌐 LIVE' : '📦 CACHED'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>{communitySkills.length} skills from the community · one-click install</div>
+                    </div>
+                    <button onClick={async () => {
+                      setCommunityLoading(true);
+                      const res = await (ipc as any).invoke('skills-fetch-community', true).catch(() => null);
+                      if (res) { setCommunitySkills(res.skills || []); setCommunitySource(res.source || 'local'); }
+                      setCommunityLoading(false);
+                    }} style={{ height: '30px', padding: '0 12px', background: 'rgba(155,77,255,0.08)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <RefreshCw size={11} style={{ animation: communityLoading ? 'spin 1s linear infinite' : 'none' }}/> REFRESH
+                    </button>
+                  </div>
+
+                  {/* Search + filter bar */}
+                  <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <Search size={12} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
+                      <input value={communitySearch} onChange={e => setCommunitySearch(e.target.value)}
+                        placeholder="Search community skills..." className="chat-input"
+                        style={{ paddingLeft: '30px', fontSize: '0.7rem', width: '100%', height: '32px' }} />
+                      {communitySearch && <button onClick={() => setCommunitySearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.75rem', padding: '2px' }}>✕</button>}
+                    </div>
+                    {/* Category filter */}
+                    <select value={communityCategory} onChange={e => setCommunityCategory(e.target.value)}
+                      style={{ height: '32px', padding: '0 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '130px' }}>
+                      <option value="all">All Categories</option>
+                      {[...new Set(communitySkills.map(s => s.category))].map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    {/* Sort */}
+                    <select value={communitySort} onChange={e => setCommunitySort(e.target.value as any)}
+                      style={{ height: '32px', padding: '0 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '110px' }}>
+                      <option value="installs">Most Installed</option>
+                      <option value="rating">Top Rated</option>
+                      <option value="newest">Newest</option>
+                    </select>
+                  </div>
+
+                  {/* Loading state */}
+                  {communityLoading && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '12px', opacity: 0.6 }}>
+                      <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }}/>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Fetching community skills…</span>
+                    </div>
+                  )}
+
+                  {/* Skills list */}
+                  {!communityLoading && (() => {
+                    const q = communitySearch.trim().toLowerCase();
+                    let filtered = communitySkills.filter(s => {
+                      const matchSearch = !q || s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || s.pattern.toLowerCase().includes(q) || s.category?.toLowerCase().includes(q) || s.author?.toLowerCase().includes(q);
+                      const matchCat = communityCategory === 'all' || s.category === communityCategory;
+                      return matchSearch && matchCat;
+                    });
+                    filtered = [...filtered].sort((a, b) => {
+                      if (communitySort === 'installs') return (b.installs || 0) - (a.installs || 0);
+                      if (communitySort === 'rating')   return (b.rating || 0) - (a.rating || 0);
+                      return 0; // newest — keep original order
+                    });
+
+                    if (filtered.length === 0) return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px 20px', opacity: 0.5 }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>🔍</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>No community skills match your search</div>
+                      </div>
+                    );
+
+                    // Group by category if no search filter
+                    const categories = q || communityCategory !== 'all'
+                      ? ['__flat__']
+                      : [...new Set(filtered.map(s => s.category))];
+
+                    return (
+                      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Quick stats row */}
+                        {!q && communityCategory === 'all' && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginBottom: '4px' }}>
+                            {[
+                              { label: 'TOTAL SKILLS', value: communitySkills.length, color: 'var(--primary)' },
+                              { label: 'INSTALLED', value: communitySkills.filter(s => installedSkillIds.has(s.id)).length, color: '#00ff88' },
+                              { label: 'CATEGORIES', value: new Set(communitySkills.map(s => s.category)).size, color: '#4facfe' },
+                            ].map(stat => (
+                              <div key={stat.label} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: stat.color, fontFamily: 'monospace' }}>{stat.value}</div>
+                                <div style={{ fontSize: '0.48rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '2px' }}>{stat.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {categories.map(cat => {
+                          const items = cat === '__flat__' ? filtered : filtered.filter(s => s.category === cat);
+                          return (
+                            <div key={cat}>
+                              {cat !== '__flat__' && (
+                                <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {cat}
+                                  <span style={{ fontSize: '0.48rem', padding: '1px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>{items.length}</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px' }}>
+                                {items.map(skill => {
+                                  const installed = installedSkillIds.has(skill.id);
+                                  const stars = skill.rating ? '★'.repeat(Math.round(skill.rating)) + '☆'.repeat(5 - Math.round(skill.rating)) : '—';
+                                  return (
+                                    <div key={skill.id} style={{ background: installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${installed ? 'rgba(0,255,136,0.18)' : 'rgba(255,255,255,0.07)'}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'border-color 0.15s' }}>
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                        <span style={{ fontSize: '1.3rem', flexShrink: 0, lineHeight: 1, marginTop: '1px' }}>{skill.icon || '⚡'}</span>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <div style={{ fontSize: '0.68rem', fontWeight: 900, color: 'white', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {skill.name}
+                                            {installed && <span style={{ fontSize: '0.45rem', padding: '1px 4px', background: 'rgba(0,255,136,0.15)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '3px', color: '#00ff88' }}>✓</span>}
+                                          </div>
+                                          <div style={{ fontSize: '0.57rem', color: 'var(--text-dim)', marginBottom: '3px' }}>{skill.desc}</div>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '0.5rem', color: 'rgba(155,77,255,0.6)' }}>{skill.category}</span>
+                                            <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>by <span style={{ color: 'rgba(255,255,255,0.5)' }}>{skill.author}</span></span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      {/* Pattern preview */}
+                                      <code style={{ fontSize: '0.53rem', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: '5px', color: '#4facfe', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>"{skill.pattern}"</code>
+                                      {/* Stats + action row */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          <span style={{ fontSize: '0.5rem', color: '#ffa500' }}>{stars}</span>
+                                          <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>{(skill.installs || 0).toLocaleString()} installs</span>
+                                          <span style={{ fontSize: '0.48rem', padding: '1px 5px', background: 'rgba(79,172,254,0.07)', border: '1px solid rgba(79,172,254,0.15)', borderRadius: '3px', color: '#4facfe' }}>v{skill.version || '1.0.0'}</span>
+                                        </div>
+                                        {installed ? (
+                                          <span style={{ fontSize: '0.55rem', padding: '4px 10px', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '6px', color: '#00ff88', flexShrink: 0 }}>✓ Installed</span>
+                                        ) : (
+                                          <button onClick={async () => {
+                                            await (ipc as any).invoke('skills-add', {
+                                              id: skill.id, name: skill.name, pattern: skill.pattern,
+                                              type: skill.type || (skill.response ? 'cached' : 'passthrough'),
+                                              cachedResponse: skill.response || null, desc: skill.desc
+                                            });
+                                            fetchStats();
+                                          }} style={{ fontSize: '0.55rem', padding: '4px 12px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.35)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', fontWeight: 900, flexShrink: 0, transition: 'all 0.15s' }}
+                                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.25)'; }}
+                                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.15)'; }}>
+                                            + Install
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Share your skills CTA */}
+                        <div style={{ marginTop: '8px', padding: '16px 20px', background: 'linear-gradient(135deg, rgba(155,77,255,0.08), rgba(79,172,254,0.08))', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ fontSize: '1.8rem' }}>🚀</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 900, color: 'white', marginBottom: '3px' }}>Share your skills with the community</div>
+                            <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>Go to MY SKILLS → click ↑ on any skill to export it as shareable JSON</div>
+                          </div>
+                          <button onClick={() => setSkillsSubTab('mine')} style={{ padding: '7px 14px', background: 'rgba(155,77,255,0.2)', border: '1px solid rgba(155,77,255,0.4)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900, whiteSpace: 'nowrap' }}>
+                            My Skills →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* ── OPTIMIZER ── */}
               {skillsSubTab === 'optimizer' && (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
