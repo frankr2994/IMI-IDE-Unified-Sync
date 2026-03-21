@@ -1379,7 +1379,6 @@ const App = () => {
             { id: 'command center',  label: 'Command Center',  icon: <TerminalIcon size={14}/> },
             { id: 'tools',           label: 'Dev Hub',         icon: <Layers size={14}/> },
             { id: 'skills',          label: 'Skills',          icon: <Zap size={14}/> },
-            { id: 'settings',        label: 'System',          icon: <Settings size={14}/> },
           ] as { id: string; label: string; icon: React.ReactNode }[]).map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`sidebar-btn ${activeTab === item.id ? 'active' : ''}`}>
               <span style={{ opacity: activeTab === item.id ? 1 : 0.6, flexShrink: 0 }}>{item.icon}</span>
@@ -1387,6 +1386,12 @@ const App = () => {
             </button>
           ))}
         </div>
+
+        {/* Settings pinned to bottom */}
+        <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 'auto' }}>
+          <span style={{ opacity: activeTab === 'settings' ? 1 : 0.6, flexShrink: 0 }}><Settings size={14}/></span>
+          System
+        </button>
 
         {/* Footer — project root */}
         <div style={{ padding: '14px 20px 18px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
