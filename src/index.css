@@ -374,9 +374,9 @@ button:disabled {
 .sidebar-btn {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 16px 1.5rem;
-  border-radius: 16px;
+  gap: 12px;
+  padding: 14px 1.2rem;
+  border-radius: 14px;
   border: none;
   background: transparent;
   color: rgba(255,255,255,0.5);
@@ -384,7 +384,11 @@ button:disabled {
   transition: all 0.3s;
   text-align: left;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .sidebar-btn:hover {
