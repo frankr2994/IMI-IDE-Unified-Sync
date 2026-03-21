@@ -418,6 +418,289 @@ class SmartContext {
 
 const smartContext = new SmartContext();
 
+// ══════════════════════════════════════════════════════════════
+// 🎨 STYLE ANALYZER — zero tokens, pure local analysis
+// Learns user's coding style from their existing files
+// ══════════════════════════════════════════════════════════════
+const STYLE_PROFILE_PATH = path.join(os.homedir(), '.imi', 'style-profile.json');
+
+class StyleAnalyzer {
+  constructor() {
+    this.profile = null;
+    this._load();
+  }
+
+  _load() {
+    try {
+      if (fs.existsSync(STYLE_PROFILE_PATH)) {
+        this.profile = JSON.parse(fs.readFileSync(STYLE_PROFILE_PATH, 'utf-8'));
+      }
+    } catch(e) { this.profile = null; }
+  }
+
+  _save() {
+    try {
+      const dir = path.dirname(STYLE_PROFILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(STYLE_PROFILE_PATH, JSON.stringify(this.profile, null, 2));
+    } catch(e) {}
+  }
+
+  // Main analysis — scans up to 30 most-recently-modified files, zero API calls
+  analyze(projectRoot) {
+    if (!projectRoot || !fs.existsSync(projectRoot)) return null;
+
+    const files = [];
+    const walk = (dir, depth = 0) => {
+      if (depth > 4) return;
+      try {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (['node_modules','.git','dist','build','.next','coverage','__pycache__'].includes(e.name)) continue;
+          const full = path.join(dir, e.name);
+          if (e.isDirectory()) { walk(full, depth + 1); continue; }
+          if (/\.(ts|tsx|js|jsx)$/.test(e.name) && !e.name.endsWith('.d.ts')) {
+            try { files.push({ path: full, mtime: fs.statSync(full).mtimeMs }); } catch(_) {}
+          }
+        }
+      } catch(_) {}
+    };
+    walk(projectRoot);
+
+    // Most recent 30 files — bias toward what user is actively writing
+    files.sort((a, b) => b.mtime - a.mtime);
+    const targets = files.slice(0, 30);
+
+    let sp2=0, sp4=0, tabI=0;
+    let sqt=0, dqt=0;
+    let semi=0, noSemi=0;
+    let arrowF=0, namedF=0;
+    let constC=0, letC=0;
+    let jsdoc=0;
+    let namedImp=0, defImp=0;
+    let awaitC=0, thenC=0;
+    let tsAnn=0;
+    let camelC=0, pascalC=0, snakeC=0;
+
+    for (const f of targets) {
+      try {
+        const raw = fs.readFileSync(f.path, 'utf-8');
+        const lines = raw.split('\n').slice(0, 200);
+
+        for (const line of lines) {
+          // Indentation — look at first indented line
+          const indM = line.match(/^(\s+)\S/);
+          if (indM) {
+            const ind = indM[1];
+            if (ind.includes('\t')) tabI++;
+            else if (ind.length % 4 === 0 && ind.length >= 4) sp4++;
+            else if (ind.length >= 2) sp2++;
+          }
+          // Quotes — strip template literals first to avoid counting backtick contents
+          const noTpl = line.replace(/`[^`]*`/g, '""');
+          sqt += (noTpl.match(/'/g) || []).length;
+          dqt += (noTpl.match(/"/g) || []).length;
+
+          // Semicolons — code lines ending with ; vs statement starters without
+          const t = line.trim();
+          if (t.length > 2 && /;\s*(?:\/\/.*)?$/.test(t)) semi++;
+          else if (/^(const|let|var|return|throw|break|continue)\b/.test(t) && !t.endsWith(',') && !t.endsWith('{')) noSemi++;
+
+          // Functions
+          if (/(?:=>|= \()/.test(line)) arrowF++;
+          if (/\bfunction\s+\w+/.test(line)) namedF++;
+
+          // const vs let
+          if (/\bconst\b/.test(line)) constC++;
+          if (/\blet\b/.test(line)) letC++;
+
+          // JSDoc
+          if (/\/\*\*/.test(line)) jsdoc++;
+
+          // Imports
+          if (/^import\s*\{/.test(t)) namedImp++;
+          else if (/^import\s+[A-Za-z_$]/.test(t) && !/^import\s*\{/.test(t)) defImp++;
+
+          // Async pattern
+          if (/\bawait\b/.test(line)) awaitC++;
+          if (/\.then\(/.test(line)) thenC++;
+
+          // TypeScript
+          if (/:\s*(string|number|boolean|void|any|null|undefined|Record|Array|Promise|React\.)/.test(line)) tsAnn++;
+        }
+
+        // Naming from variable declarations
+        for (const m of raw.matchAll(/(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/g)) {
+          const n = m[1];
+          if (n.length < 2) continue;
+          if (/^[A-Z]/.test(n)) pascalC++;
+          else if (/_/.test(n) && /[a-z]/.test(n[0])) snakeC++;
+          else if (/[a-z]/.test(n[0]) && /[A-Z]/.test(n)) camelC++;
+        }
+      } catch(_) {}
+    }
+
+    if (targets.length === 0) return null;
+
+    // Derive dominant pattern for each dimension
+    const indent   = tabI > sp2 && tabI > sp4 ? 'tabs' : sp4 > sp2 ? '4 spaces' : '2 spaces';
+    const quotes   = sqt > dqt * 1.3 ? 'single' : dqt > sqt * 1.3 ? 'double' : 'single';
+    const useSemi  = semi > noSemi * 1.2;
+    const useArrow = arrowF > namedF * 1.2;
+    const useConst = constC > letC * 1.5;
+    const useAsync = awaitC > thenC;
+    const isTS     = tsAnn > 5;
+    const naming   = pascalC > camelC && pascalC > snakeC ? 'PascalCase'
+                   : snakeC > camelC ? 'snake_case' : 'camelCase';
+    const impStyle = namedImp > defImp * 1.5 ? 'named' : defImp > namedImp * 1.5 ? 'default' : 'mixed';
+    const useJSDoc = jsdoc > 3;
+
+    const rules = [
+      `indent: ${indent}`,
+      `quotes: ${quotes}`,
+      `semicolons: ${useSemi ? 'yes' : 'no'}`,
+      `functions: ${useArrow ? 'arrow (=>)' : 'named function keyword'}`,
+      `variables: ${useConst ? 'const preferred' : 'let/const mixed'}`,
+      `async: ${useAsync ? 'async/await' : '.then() chains'}`,
+      `naming: ${naming}`,
+      `imports: ${impStyle} imports`,
+      useJSDoc ? 'JSDoc on exported functions' : '',
+      isTS ? 'TypeScript with full type annotations' : '',
+    ].filter(Boolean);
+
+    this.profile = {
+      indent, quotes, semicolons: useSemi,
+      arrowFunctions: useArrow, constOverLet: useConst,
+      asyncAwait: useAsync, typescript: isTS,
+      naming, importStyle: impStyle, jsdocComments: useJSDoc,
+      filesAnalyzed: targets.length,
+      analyzedAt: Date.now(),
+      projectRoot,
+      rules,
+      // Compact block injected into prompts — ~100 tokens max
+      compact: `CODING STYLE (match the user's existing patterns exactly):\n${rules.map(r => `• ${r}`).join('\n')}`,
+    };
+    this._save();
+    return this.profile;
+  }
+
+  // Auto-analyze if profile is stale (>30 min) or from a different project root
+  autoAnalyzeIfNeeded(projectRoot) {
+    if (!projectRoot) return;
+    const stale = !this.profile
+      || Date.now() - (this.profile.analyzedAt || 0) > 30 * 60 * 1000
+      || this.profile.projectRoot !== projectRoot;
+    if (stale) {
+      try { this.analyze(projectRoot); } catch(_) {}
+    }
+  }
+
+  getCompactPrompt() {
+    return this.profile?.compact ? `\n${this.profile.compact}\n` : '';
+  }
+
+  getProfile() { return this.profile; }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔭 IMPACT ANALYZER — zero tokens, traverses import graph
+// Shows blast radius before any change is applied
+// ══════════════════════════════════════════════════════════════
+class ImpactAnalyzer {
+  constructor() {
+    this._reverseGraph = {}; // absPath → Set<absPath> of files that import it
+    this._projectRoot  = '';
+  }
+
+  // Build graph from scan data — called lazily before each impact query
+  buildFromProjectRoot(projectRoot) {
+    if (!projectRoot || !fs.existsSync(projectRoot)) return;
+    this._projectRoot = projectRoot;
+    this._reverseGraph = {};
+
+    const extensions = ['.ts','.tsx','.js','.jsx'];
+    const walk = (dir, depth = 0) => {
+      if (depth > 6) return;
+      try {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (['node_modules','.git','dist','build','.next','coverage'].includes(e.name)) continue;
+          const full = path.join(dir, e.name);
+          if (e.isDirectory()) { walk(full, depth + 1); continue; }
+          if (!extensions.some(x => e.name.endsWith(x))) continue;
+          try {
+            const content = fs.readFileSync(full, 'utf-8');
+            const re = /(?:^|\n)\s*(?:import|export)[^'"]*['"]([^'"]+)['"]/g;
+            let m;
+            while ((m = re.exec(content)) !== null) {
+              const imp = m[1];
+              if (!imp.startsWith('.') && !imp.startsWith('/')) continue; // skip npm packages
+              const resolved = this._resolveImport(full, imp);
+              if (!resolved) continue;
+              if (!this._reverseGraph[resolved]) this._reverseGraph[resolved] = new Set();
+              this._reverseGraph[resolved].add(full); // full imports resolved
+            }
+          } catch(_) {}
+        }
+      } catch(_) {}
+    };
+    walk(projectRoot);
+  }
+
+  _resolveImport(fromFile, importPath) {
+    try {
+      const dir  = path.dirname(fromFile);
+      const base = path.resolve(dir, importPath);
+      const exts = ['','.ts','.tsx','.js','.jsx','/index.ts','/index.tsx','/index.js','/index.jsx'];
+      for (const ext of exts) {
+        const c = base + ext;
+        if (fs.existsSync(c)) return c;
+      }
+      return base; // return unresolved for partial matching
+    } catch(_) { return null; }
+  }
+
+  // BFS — find all files that will be affected if targetFile changes
+  getAffected(targetFile, maxDepth = 3) {
+    const abs = path.isAbsolute(targetFile)
+      ? targetFile
+      : path.resolve(this._projectRoot || '', targetFile);
+
+    const visited = new Set();
+    const result  = [];
+    const queue   = [{ file: abs, depth: 0 }];
+
+    while (queue.length) {
+      const { file, depth } = queue.shift();
+      if (visited.has(file) || depth > maxDepth) continue;
+      visited.add(file);
+
+      if (depth > 0) {
+        const rel = this._projectRoot
+          ? path.relative(this._projectRoot, file).replace(/\\/g, '/')
+          : file;
+        result.push({
+          path: rel,
+          depth,
+          label: depth === 1 ? 'directly imports' : `depends (${depth} levels away)`,
+        });
+      }
+
+      for (const importer of (this._reverseGraph[file] || new Set())) {
+        if (!visited.has(importer)) queue.push({ file: importer, depth: depth + 1 });
+      }
+    }
+
+    return result.sort((a, b) => a.depth - b.depth).slice(0, 20); // cap at 20
+  }
+}
+
+const styleAnalyzer  = new StyleAnalyzer();
+const impactAnalyzer = new ImpactAnalyzer();
+
+// Auto-analyze style on startup (non-blocking)
+setImmediate(() => {
+  try { styleAnalyzer.autoAnalyzeIfNeeded(currentProjectRoot); } catch(_) {}
+});
+
 // ── IMI Agent Tools — used by the agentic loop ───────────────────────────────
 const getAgentToolsDesc = () => `
 You are an AI coding agent inside IMI. You have full access to the file system, terminal, screen, and browser.
