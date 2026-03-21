@@ -83,6 +83,7 @@ const App = () => {
   const [ghTotal, setGhTotal] = useState(0);
   const [ghError, setGhError] = useState('');
   const [ghSort, setGhSort] = useState('stars');
+  const [ghUrlPreview, setGhUrlPreview] = useState<any>(null);
   const [cloningRepo, setCloningRepo] = useState('');
 
   // 🛠 Installed Tools
@@ -159,7 +160,16 @@ const App = () => {
 
   const searchGitHub = async (q: string, sort?: string) => {
     if (!q.trim()) return;
-    setGhSearching(true); setGhError('');
+    setGhSearching(true); setGhError(''); setGhUrlPreview(null); setGhResults([]);
+    // Detect GitHub URL — fetch directly instead of searching
+    if (/^https?:\/\/(www\.)?github\.com\//i.test(q.trim())) {
+      try {
+        const res = await (ipc as any).invoke('github-fetch-url', q.trim());
+        if (res.error) setGhError(res.error);
+        else setGhUrlPreview(res);
+      } catch(e: any) { setGhError(e.message); }
+      setGhSearching(false); return;
+    }
     try {
       const res = await (ipc as any).invoke('github-search', q, sort || ghSort);
       setGhResults(res.results || []);
