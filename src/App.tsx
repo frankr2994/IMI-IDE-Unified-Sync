@@ -1962,7 +1962,7 @@ const App = () => {
                     {/* HuggingFace URL Preview */}
                     {hfUrlPreview && (() => {
                       const { data } = hfUrlPreview;
-                      const isPulling = ollamaPulling === data.ollamaCmd;
+                      const isPulling = ollamaPulling === data.ollamaCmd || ollamaPulling.startsWith(data.ollamaCmd + ':');
                       const isInstalled = ollamaModels.some(m => m.name.includes((data.name||'').split('/').pop()||''));
                       return (
                         <div style={{ background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(255,170,0,0.35)'}`, borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
@@ -1991,7 +1991,7 @@ const App = () => {
                     {hfResults.length > 0 && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '10px', marginBottom: '12px' }}>
                         {hfResults.map(model => {
-                          const isPulling = ollamaPulling === model.ollamaCmd;
+                          const isPulling = ollamaPulling === model.ollamaCmd || ollamaPulling.startsWith(model.ollamaCmd + ':');
                           const isInstalled = ollamaModels.some(m => m.name.includes(model.name.split('/').pop() || ''));
                           // Determine if official or community repack
                           const author = (model.name || '').split('/')[0].toLowerCase();
@@ -2022,7 +2022,7 @@ const App = () => {
                                 {model.pipeline && <span style={{ padding: '1px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{model.pipeline}</span>}
                               </div>
                               {isPulling && (() => {
-                                const p = ollamaPullProgress[model.ollamaCmd];
+                                const p = ollamaPullProgress[ollamaPulling] || ollamaPullProgress[model.ollamaCmd];
                                 const pct = p?.percent ?? 0;
                                 return (
                                   <div style={{ marginBottom: '8px' }}>
@@ -2046,9 +2046,9 @@ const App = () => {
                                 <button onClick={() => (ipc as any).send('open-external-url', model.hfUrl)} style={{ flex: 1, height: '28px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem' }}>HF ↗</button>
                                 {isPulling ? (
                                   <button onClick={async () => {
-                                    await (ipc as any).invoke('ollama-pull-cancel', model.ollamaCmd);
+                                    await (ipc as any).invoke('ollama-pull-cancel', ollamaPulling);
                                     setOllamaPulling('');
-                                    setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: 'Cancelled.' }));
+                                    setOllamaLog(prev => ({ ...prev, [ollamaPulling]: 'Cancelled.' }));
                                   }} style={{ flex: 2, height: '28px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '7px', color: '#ff416c', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
                                     ✕ Cancel
                                   </button>
