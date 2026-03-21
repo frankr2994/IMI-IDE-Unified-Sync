@@ -2818,17 +2818,21 @@ ipcMain.handle('ollama-update', async (event) => {
   try {
     const installerPath = path.join(require('os').tmpdir(), `imi-ollama-update-${Date.now()}.exe`);
     // Send real progress so UI can show download %
-    event.sender.send('ollama-update-progress', { status: 'downloading', percent: 0, label: '⬇ Downloading Ollama…' });
+    safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'downloading', percent: 0 });
     await downloadFile(event, 'ollama-update', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
     // Push to 95% — installing phase
-    event.sender.send('install-dep-progress', { dep: 'ollama-update', status: 'installing', percent: 95 });
+    safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'installing', percent: 95 });
+    // Kill Ollama BEFORE running installer so it doesn't lock files
+    await new Promise(res => exec(`taskkill /F /IM "Ollama.exe" /T`, { windowsHide: true }, () => res()));
+    await new Promise(res => setTimeout(res, 800)); // brief pause after kill
     await new Promise((resolve, reject) => {
-      exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
+      // /TASKS=!runapp prevents NSIS from launching Ollama after install
+      exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /TASKS=!runapp`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
     });
     try { require('fs').unlinkSync(installerPath); } catch {}
-    // Kill any Ollama window that auto-launched after install
+    // Kill again in case the installer still launched it
     exec(`taskkill /F /IM "Ollama.exe" /T`, { windowsHide: true }, () => {});
-    event.sender.send('install-dep-progress', { dep: 'ollama-update', status: 'done', percent: 100 });
+    safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'done', percent: 100 });
     // Get new version to confirm
     const newVersion = await new Promise(resolve => {
       exec('ollama --version', { timeout: 4000 }, (err, stdout) => {
@@ -2838,7 +2842,7 @@ ipcMain.handle('ollama-update', async (event) => {
     });
     return { success: true, upToDate: false, newVersion };
   } catch(e) {
-    event.sender.send('ollama-update-progress', { status: 'error', percent: 0, label: '❌ Failed' });
+    safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'error', percent: 0 });
     return { success: false, message: e.message };
   }
 });
@@ -2881,6 +2885,11 @@ const resolveInstallKey = (name) => {
   return null;
 };
 
+// Safe send — never crashes if webContents was destroyed
+const safeSend = (event, channel, data) => {
+  try { if (event?.sender && !event.sender.isDestroyed()) event.sender.send(channel, data); } catch {}
+};
+
 // Download file with progress streaming
 const downloadFile = (event, dep, url, destPath) => new Promise((resolve, reject) => {
   const parsed = new URL(url);
@@ -2897,7 +2906,7 @@ const downloadFile = (event, dep, url, destPath) => new Promise((resolve, reject
       let received = 0;
       res.on('data', chunk => {
         file.write(chunk); received += chunk.length;
-        if (total > 0) event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: Math.round((received/total)*88), received: Math.round(received/1e6), total: Math.round(total/1e6) });
+        if (total > 0) safeSend(event, 'install-dep-progress', { dep, status: 'downloading', percent: Math.round((received/total)*88), received: Math.round(received/1e6), total: Math.round(total/1e6) });
       });
       res.on('end', () => { file.end(); resolve(); });
       res.on('error', reject);
@@ -2914,29 +2923,29 @@ ipcMain.handle('install-dep', async (event, dep) => {
   const info = INSTALL_MANIFEST[key];
   if (!info) return { success: false, error: `Unknown dependency: ${dep}` };
 
-  event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'starting', percent: 0 });
+  safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'starting', percent: 0 });
 
   try {
     // npm packages — just run npm install -g
     if (info.npm && !info.winExe) {
-      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 20 });
+      safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 20 });
       await new Promise((resolve, reject) => {
         exec(`npm install -g ${info.npm}`, { timeout: 120000 }, (err, stdout, stderr) => {
           if (err) reject(new Error(stderr || err.message)); else resolve();
         });
       });
-      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+      safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
       return { success: true };
     }
 
     // Try winget first — fully silent, no popup, no UAC on supported packages
     if (info.winget) {
       try {
-        event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 10 });
+        safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 10 });
         await new Promise((resolve, reject) => {
           exec(`winget install --id ${info.winget} --silent --accept-package-agreements --accept-source-agreements`, { timeout: 180000 }, (err) => err ? reject(err) : resolve());
         });
-        event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+        safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
         return { success: true };
       } catch { /* fall through to EXE installer */ }
     }
@@ -2947,7 +2956,7 @@ ipcMain.handle('install-dep', async (event, dep) => {
       const ext = isMsi ? '.msi' : '.exe';
       const installerPath = path.join(require('os').tmpdir(), `imi-install-${key}${ext}`);
       await downloadFile(event, key, info.winExe, installerPath);
-      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 92 });
+      safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 92 });
       // Use start /wait with windowstyle hidden to suppress any popup
       const silentArgs = info.winArgs || (isMsi ? '/quiet /norestart' : '/VERYSILENT /NORESTART /SP-');
       const cmd = isMsi
@@ -2955,13 +2964,13 @@ ipcMain.handle('install-dep', async (event, dep) => {
         : `start /wait /b "" "${installerPath}" ${silentArgs}`;
       await new Promise((resolve, reject) => exec(cmd, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve()));
       require('fs').unlink(installerPath, () => {});
-      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+      safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
       return { success: true };
     }
 
     return { success: false, error: 'No installer method available' };
   } catch(e) {
-    event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'error', percent: 0, error: e.message });
+    safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'error', percent: 0, error: e.message });
     return { success: false, error: e.message };
   }
 });
@@ -3020,8 +3029,8 @@ ipcMain.handle('ollama-pull', async (event, modelName) => {
     const child = spawn('ollama', ['pull', modelName], { shell: true });
     ollamaPullProcesses.set(modelName, child);
     let out = '';
-    child.stdout.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
-    child.stderr.on('data', d => { out += d.toString(); event.sender.send('ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
+    child.stdout.on('data', d => { out += d.toString(); safeSend(event, 'ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
+    child.stderr.on('data', d => { out += d.toString(); safeSend(event, 'ollama-pull-progress', { model: modelName, chunk: d.toString() }); });
     child.on('close', code => {
       ollamaPullProcesses.delete(modelName);
       resolve({ success: code === 0, cancelled: code !== 0, output: out });

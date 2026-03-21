@@ -1880,13 +1880,17 @@ const App = () => {
                                   {isOllama && tool.installed && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', minWidth: '110px' }}>
                                       {updatingTool === 'ollama' ? (
-                                        /* Download/install progress bar */
+                                        /* Update in progress — show bar if downloading, otherwise spinner */
                                         <div style={{ width: '100%' }}>
                                           {(() => {
                                             const upd = depInstalling['ollama-update'];
-                                            const pct = upd?.percent ?? 0;
-                                            const isInstalling = upd?.status === 'installing';
-                                            const isDone = upd?.status === 'done';
+                                            const hasProgress = upd && (upd.status === 'downloading' || upd.status === 'installing' || upd.status === 'done');
+                                            if (!hasProgress) {
+                                              return <span style={{ fontSize: '0.6rem', color: '#4facfe', fontWeight: 700 }}>⏳ Checking…</span>;
+                                            }
+                                            const pct = upd.percent ?? 0;
+                                            const isInstalling = upd.status === 'installing';
+                                            const isDone = upd.status === 'done';
                                             return (<>
                                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                                 <span style={{ fontSize: '0.6rem', color: isDone ? '#00ff88' : isInstalling ? '#ffaa00' : '#4facfe', fontWeight: 700 }}>
@@ -1897,9 +1901,9 @@ const App = () => {
                                               <div style={{ height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
                                                 <div style={{ height: '100%', width: `${pct}%`, background: isDone ? '#00ff88' : isInstalling ? 'linear-gradient(90deg,#ffaa00,#ff6b6b)' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${isDone ? 'rgba(0,255,136,0.8)' : isInstalling ? 'rgba(255,170,0,0.8)' : 'rgba(79,172,254,0.8)'}` }} />
                                               </div>
-                                              {!isInstalling && !isDone && (upd?.total ?? 0) > 0 && (
+                                              {!isInstalling && !isDone && (upd.total ?? 0) > 0 && (
                                                 <div style={{ fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '2px', textAlign: 'right' }}>
-                                                  {upd?.received}MB / {upd?.total}MB
+                                                  {upd.received}MB / {upd.total}MB
                                                 </div>
                                               )}
                                             </>);
@@ -1907,13 +1911,15 @@ const App = () => {
                                         </div>
                                       ) : (
                                         <button onClick={async () => {
+                                          // clear previous progress + result before starting
+                                          setDepInstalling(p => { const n = {...p}; delete n['ollama-update']; return n; });
+                                          setUpdateResult(p => ({ ...p, ollama: '' }));
                                           setUpdatingTool('ollama');
-                                          setUpdateResult(p => ({ ...p, ollama: '' }));  // clear previous result on new click
                                           const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
                                           setUpdatingTool(null);
-                                          const msg = res?.upToDate ? '✅ Already latest' : res?.success ? `✅ Updated!` : '❌ Failed';
+                                          const msg = res?.upToDate ? '✅ Up to date' : res?.success ? `✅ Updated!` : '❌ Failed';
                                           setUpdateResult(p => ({ ...p, ollama: msg }));
-                                          setTimeout(loadTools, 1000); // always refresh version badge
+                                          setTimeout(loadTools, 1000);
                                         }} style={{ height: '24px', padding: '0 8px', background: updateResult['ollama']?.startsWith('✅') ? 'rgba(0,255,136,0.12)' : updateResult['ollama']?.startsWith('❌') ? 'rgba(255,65,108,0.12)' : 'rgba(79,172,254,0.1)', border: `1px solid ${updateResult['ollama']?.startsWith('✅') ? 'rgba(0,255,136,0.4)' : updateResult['ollama']?.startsWith('❌') ? 'rgba(255,65,108,0.4)' : 'rgba(79,172,254,0.4)'}`, borderRadius: '6px', color: updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', width: '100%' }}>
                                           {updateResult['ollama'] || '⬆ Update'}
                                         </button>
@@ -1943,9 +1949,9 @@ const App = () => {
                                 {isOllama && isExpanded && (
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingTop: '2px', alignItems: 'center' }}>
                                     {ollamaModels.length === 0
-                                      ? <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>No models yet.</span>
+                                      ? <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>No models yet — pull one in AI Models.</span>
                                       : ollamaModels.map(m => (
-                                          <div key={m.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px 2px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.08)' : 'rgba(0,255,136,0.06)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, color: m.tooLarge ? '#ff416c' : '#00ff88' }}>
+                                          <div key={m.name} title={m.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px 2px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.08)' : 'rgba(0,255,136,0.06)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, color: m.tooLarge ? '#ff416c' : '#00ff88' }}>
                                             <span>{m.tooLarge ? '⚠' : '🦙'}</span>
                                             <span>{shortModelName(m.name)}</span>
                                             <span style={{ opacity: 0.6, fontWeight: 400, fontSize: '0.6rem' }}>{m.size}</span>
@@ -1953,6 +1959,7 @@ const App = () => {
                                           </div>
                                         ))
                                     }
+                                    <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)', width: '100%', marginTop: '2px', opacity: 0.7 }}>💡 Models only show here — the Ollama tray app doesn't list HF models.</span>
                                   </div>
                                 )}
                               </div>
