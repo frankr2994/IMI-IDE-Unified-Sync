@@ -4371,6 +4371,130 @@ const App = () => {
           </div>
         </div>
       )}
+      {/* ── GLOBAL TERMINAL PANEL — fixed bottom, resizable ── */}
+      <AnimatePresence>
+      {terminalOpen && (
+        <motion.div
+          initial={{ y: terminalHeight + 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: terminalHeight + 10, opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: '300px',
+            right: 0,
+            height: terminalHeight,
+            background: 'rgba(6, 6, 16, 0.98)',
+            borderTop: '1px solid rgba(0,255,136,0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 1000,
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Drag handle — grab this to resize */}
+          <div
+            onMouseDown={e => {
+              terminalDragRef.current = { dragging: true, startY: e.clientY, startH: terminalHeight };
+              e.preventDefault();
+            }}
+            style={{
+              height: '6px',
+              cursor: 'ns-resize',
+              background: 'transparent',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ width: '40px', height: '3px', background: 'rgba(0,255,136,0.3)', borderRadius: '2px', transition: 'background 0.15s' }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,255,136,0.7)'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(0,255,136,0.3)'}
+            />
+          </div>
+
+          {/* Terminal header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 16px', background: 'rgba(0,255,136,0.06)', borderBottom: '1px solid rgba(0,255,136,0.12)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Terminal size={12} color="#00ff88" />
+              <span style={{ fontSize: '0.62rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.14em' }}>TERMINAL</span>
+              <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{terminalCwd}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.2)', userSelect: 'none' }}>drag top edge to resize</span>
+              <button onClick={() => setTerminalLines([{ text: 'Terminal cleared.', type: 'info' }])} style={{ fontSize: '0.58rem', padding: '3px 9px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>CLEAR</button>
+              <button onClick={() => setTerminalOpen(false)} style={{ fontSize: '0.58rem', padding: '3px 9px', background: 'rgba(255,65,108,0.08)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
+            </div>
+          </div>
+
+          {/* Output */}
+          <div ref={terminalOutputRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 16px', fontFamily: '"Cascadia Code","Fira Code","Consolas",monospace', fontSize: '0.72rem', lineHeight: 1.6 }}>
+            {terminalLines.map((line, i) => (
+              <div key={i} style={{ color: line.type === 'cmd' ? '#00ff88' : line.type === 'err' ? '#ff5555' : line.type === 'info' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.82)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {line.type === 'cmd' && <span style={{ color: 'rgba(0,255,136,0.45)', userSelect: 'none' }}>❯ </span>}
+                {line.text}
+              </div>
+            ))}
+            {terminalRunning && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic', fontSize: '0.65rem' }}>
+                <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity }}>●</motion.span> running…
+              </div>
+            )}
+          </div>
+
+          {/* Input row */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderTop: '1px solid rgba(0,255,136,0.1)', background: 'rgba(0,0,0,0.35)', flexShrink: 0 }}>
+            <span style={{ color: '#00ff88', fontSize: '0.8rem', marginRight: '10px', fontFamily: 'monospace', flexShrink: 0, userSelect: 'none' }}>❯</span>
+            <input
+              ref={terminalInputRef}
+              value={terminalInput}
+              onChange={e => setTerminalInput(e.target.value)}
+              onKeyDown={async e => {
+                if (e.key === 'Enter' && terminalInput.trim() && !terminalRunning) {
+                  const cmd = terminalInput.trim();
+                  setTerminalHistory(h => [cmd, ...h.slice(0, 49)]);
+                  setTerminalHistoryIdx(-1);
+                  setTerminalInput('');
+                  setTerminalLines(l => [...l, { text: cmd, type: 'cmd' }]);
+                  setTerminalRunning(true);
+                  try {
+                    const result: any = await (ipc as any).invoke('terminal-run', { cmd, cwd: terminalCwd });
+                    if (result.output === '__CLEAR__') {
+                      setTerminalLines([{ text: '', type: 'info' }]);
+                    } else if (result.output) {
+                      setTerminalLines(l => [...l, { text: result.output, type: result.error ? 'err' : 'out' }]);
+                    }
+                    if (result.cwd) setTerminalCwd(result.cwd);
+                  } catch (err: any) {
+                    setTerminalLines(l => [...l, { text: err?.message || 'Unknown error', type: 'err' }]);
+                  }
+                  setTerminalRunning(false);
+                  setTimeout(() => terminalInputRef.current?.focus(), 30);
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  const next = Math.min(terminalHistoryIdx + 1, terminalHistory.length - 1);
+                  setTerminalHistoryIdx(next);
+                  if (terminalHistory[next] !== undefined) setTerminalInput(terminalHistory[next]);
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  const next = Math.max(terminalHistoryIdx - 1, -1);
+                  setTerminalHistoryIdx(next);
+                  setTerminalInput(next === -1 ? '' : terminalHistory[next] || '');
+                }
+              }}
+              placeholder="type a command and press Enter…"
+              style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.9)', fontFamily: '"Cascadia Code","Fira Code","Consolas",monospace', fontSize: '0.72rem', caretColor: '#00ff88' }}
+              spellCheck={false}
+              autoComplete="off"
+              autoCapitalize="off"
+            />
+          </div>
+        </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   );
 };
