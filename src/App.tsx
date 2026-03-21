@@ -99,6 +99,7 @@ const App = () => {
   // 🤖 Ollama AI Models
   const [ollamaModels, setOllamaModels] = useState<any[]>([]);
   const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null); // null = checking
+  const [depInstalling, setDepInstalling] = useState<Record<string, { status: string; percent: number; received?: number; total?: number; error?: string }>>({});
   const [ollamaPulling, setOllamaPulling] = useState('');
   const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
   const [ollamaPullProgress, setOllamaPullProgress] = useState<Record<string, { percent: number; downloaded: string; total: string; timeLeft: string; status: string }>>({});
@@ -874,6 +875,16 @@ const App = () => {
     ipc.on('sync-status', (_: any, status: string) => {
       setSyncStatus(status);
       addLog('system', `Sync: ${status}`);
+    });
+
+    ipc.on('install-dep-progress', (_: any, data: any) => {
+      setDepInstalling(prev => ({ ...prev, [data.dep]: data }));
+      if (data.status === 'done') {
+        setTimeout(() => {
+          setDepInstalling(prev => { const n = {...prev}; delete n[data.dep]; return n; });
+          loadOllamaModels();
+        }, 1500);
+      }
     });
 
     ipc.on('sync-end', () => {
@@ -1874,11 +1885,27 @@ const App = () => {
                     {ollamaInstalled === false
                       ? <div style={{ padding: '1.5rem', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.35)', borderRadius: '12px' }}>
                           <div style={{ fontWeight: 900, fontSize: '0.85rem', color: '#ff416c', marginBottom: '6px' }}>⚠️ Ollama is not installed</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '14px' }}>Ollama is required to run local AI models. Free, takes 2 minutes, runs silently in the background.</div>
-                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button onClick={() => (ipc as any).send('open-external-url', 'https://ollama.com/download')} style={{ height: '36px', padding: '0 20px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '8px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 900 }}>⬇ Download Ollama</button>
-                            <button onClick={loadOllamaModels} style={{ height: '36px', padding: '0 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.72rem' }}>🔄 I installed it — check again</button>
-                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '14px' }}>Ollama is required to run local AI models. Free, runs silently in the background. IMI will install it for you.</div>
+                          {depInstalling['ollama'] ? (
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#00ff88', fontWeight: 700 }}>
+                                  {depInstalling['ollama'].status === 'downloading' ? `⬇ Downloading Ollama… ${depInstalling['ollama'].received || 0}MB / ${depInstalling['ollama'].total || 0}MB` :
+                                   depInstalling['ollama'].status === 'installing' ? '⚙️ Installing…' :
+                                   depInstalling['ollama'].status === 'done' ? '✅ Installed!' : `❌ ${depInstalling['ollama'].error}`}
+                                </span>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900 }}>{depInstalling['ollama'].percent}%</span>
+                              </div>
+                              <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${depInstalling['ollama'].percent}%`, background: depInstalling['ollama'].status === 'done' ? '#00ff88' : 'linear-gradient(90deg,#ff416c,#ff6b6b)', borderRadius: '4px', transition: 'width 0.3s' }} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                              <button onClick={async () => { await (ipc as any).invoke('install-dep', 'ollama'); }} style={{ height: '36px', padding: '0 20px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '8px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 900 }}>⬇ Install Ollama</button>
+                              <button onClick={loadOllamaModels} style={{ height: '36px', padding: '0 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.72rem' }}>🔄 Check again</button>
+                            </div>
+                          )}
                         </div>
                       : ollamaModels.length === 0
                       ? <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>

@@ -2728,11 +2728,58 @@ ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
 // Dependency checker — returns { installed, version, installUrl }
 const DEP_CHECK = {
-  ollama:  { cmd: 'ollama --version', url: 'https://ollama.com/download', name: 'Ollama' },
+  ollama:  { cmd: 'ollama --version', url: 'https://ollama.com/download', name: 'Ollama', winInstaller: 'https://ollama.com/download/OllamaSetup.exe' },
   node:    { cmd: 'node --version',   url: 'https://nodejs.org', name: 'Node.js' },
   git:     { cmd: 'git --version',    url: 'https://git-scm.com', name: 'Git' },
   python:  { cmd: 'python --version', url: 'https://python.org', name: 'Python' },
 };
+
+// Auto-install dependency — downloads installer and runs it silently
+ipcMain.handle('install-dep', async (event, dep) => {
+  const info = DEP_CHECK[dep];
+  if (!info || !info.winInstaller) return { success: false, error: 'No installer available' };
+  const os = require('os');
+  const installerPath = path.join(os.tmpdir(), `imi-install-${dep}.exe`);
+  event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: 0 });
+  try {
+    // Download installer with progress
+    await new Promise((resolve, reject) => {
+      const file = require('fs').createWriteStream(installerPath);
+      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'ollama.com', path: '/download/OllamaSetup.exe' });
+      req.setHeader('User-Agent', 'IMI-Installer/1.0');
+      req.on('response', (res) => {
+        const total = parseInt(res.headers['content-length'] || '0');
+        let received = 0;
+        res.on('data', chunk => {
+          file.write(chunk);
+          received += chunk.length;
+          if (total > 0) {
+            const pct = Math.round((received / total) * 90);
+            event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: pct, received: Math.round(received/1e6), total: Math.round(total/1e6) });
+          }
+        });
+        res.on('end', () => { file.end(); resolve(); });
+        res.on('error', reject);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    event.sender.send('install-dep-progress', { dep, status: 'installing', percent: 92 });
+    // Run installer silently
+    await new Promise((resolve, reject) => {
+      exec(`"${installerPath}" /S`, { timeout: 120000 }, (err) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    event.sender.send('install-dep-progress', { dep, status: 'done', percent: 100 });
+    // Clean up installer file
+    require('fs').unlink(installerPath, () => {});
+    return { success: true };
+  } catch(e) {
+    event.sender.send('install-dep-progress', { dep, status: 'error', percent: 0, error: e.message });
+    return { success: false, error: e.message };
+  }
+});
 ipcMain.handle('check-dep', async (_e, dep) => {
   const info = DEP_CHECK[dep];
   if (!info) return { installed: false };
