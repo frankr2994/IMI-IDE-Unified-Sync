@@ -1284,7 +1284,7 @@ const App = () => {
         if (/^-{3,}/.test(trimmed) || /^\[IMI /.test(trimmed)) {
           const label = trimmed.replace(/^-+\s*|\s*-+$/g, '').trim();
           if (label) nodes.push(
-            <div key={k} style={{ fontSize: '0.6rem', color: 'rgba(155,77,255,0.45)', fontStyle: 'italic', marginBottom: '2px', letterSpacing: '0.03em' }}>{label}</div>
+            <div key={k} style={{ fontSize: '0.72rem', color: 'rgba(200,180,255,0.7)', fontStyle: 'italic', marginBottom: '2px', letterSpacing: '0.03em' }}>{label}</div>
           );
           i++; continue;
         }
@@ -1440,7 +1440,7 @@ const App = () => {
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>live</span>
+              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>live</span>
             </div>
           </div>
         </header>
