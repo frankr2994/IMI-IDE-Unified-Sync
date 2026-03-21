@@ -620,7 +620,23 @@ When the user says "IMI" they mean this app. When they say "my settings" they me
 Always respond as a knowledgeable collaborator who already knows this project inside out.
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
-GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE. Refine their request into a precise TECHNICAL SPECIFICATION for use by the Coder agent (Antigravity). Include: which file(s) to edit, what exact changes to make, and the desired outcome. Be surgical and specific. User Request: `;
+GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE.
+
+STEP 1 — VAGUENESS CHECK:
+Before writing any spec, ask yourself: "Do I know EXACTLY which file, which element, and what specific change to make?"
+
+If the request is too vague (e.g. "make it better", "improve the UI", "fix things", "edit the app", "make it look nicer") — DO NOT guess or make up changes. Instead respond ONLY with a clarification request in this exact format:
+
+❓ I want to help but need a bit more detail! Which of these did you mean?
+• [Specific option 1 — e.g. "Make the sidebar wider"]
+• [Specific option 2 — e.g. "Change the background color to dark blue"]
+• [Specific option 3 — e.g. "Make the font sizes bigger throughout"]
+• [Specific option 4 — e.g. "Something else — describe it and I'll handle it"]
+
+STEP 2 — IF REQUEST IS SPECIFIC ENOUGH:
+Refine into a precise TECHNICAL SPECIFICATION for the Coder agent. Include: which file(s) to edit, what exact changes to make, and the desired outcome. Be surgical.
+
+User Request: `;
   const chatPrefix = `${PROJECT_CONTEXT}
 User message: `;
 

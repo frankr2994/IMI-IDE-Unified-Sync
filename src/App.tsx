@@ -748,6 +748,57 @@ const App = () => {
 
   const renderContent = (text: string) => {
     if (!text) return null;
+
+    // Detect clarification response — starts with ❓ and has bullet options (•)
+    const isClarification = text.includes('❓') && text.includes('•');
+    if (isClarification) {
+      const lines = text.split('\n');
+      const headerLines: string[] = [];
+      const options: string[] = [];
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•')) {
+          options.push(trimmed.replace(/^•\s*/, ''));
+        } else if (trimmed) {
+          headerLines.push(trimmed);
+        }
+      }
+      return (
+        <div>
+          {headerLines.map((l, i) => (
+            <p key={i} style={{ marginBottom: '0.6rem', color: 'white', fontWeight: i === 0 ? 700 : 400 }}>{l}</p>
+          ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+            {options.map((opt, i) => (
+              <button
+                key={i}
+                onPointerDown={e => {
+                  e.preventDefault();
+                  setChatInput(opt);
+                  setTimeout(() => {
+                    const el = document.querySelector('input[data-main]') as HTMLInputElement;
+                    if (el) el.focus();
+                  }, 50);
+                }}
+                style={{
+                  textAlign: 'left', padding: '10px 14px', background: 'rgba(155,77,255,0.1)',
+                  border: '1px solid rgba(155,77,255,0.3)', borderRadius: '10px',
+                  color: 'white', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 500,
+                  transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.22)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.6)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.1)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.3)'; }}
+              >
+                <span style={{ fontSize: '0.7rem', opacity: 0.5, flexShrink: 0 }}>→</span>
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Standard message rendering
     return text.split('\n').map((line, i) => (
       <p key={i} style={{ marginBottom: line.trim() ? '0.5rem' : '1rem' }}>{line}</p>
     ));
@@ -1065,7 +1116,7 @@ const App = () => {
                           </AnimatePresence>
                         </div>
 
-                        <input value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} />
+                        <input data-main value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} />
                         <div onClick={handleMicClick} style={{ cursor: 'pointer', padding: '0 10px', display: 'flex', alignItems: 'center', opacity: isListening ? 1 : 0.6, color: isListening ? '#ff416c' : '#ffffff' }}>
                            <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
                         </div>
