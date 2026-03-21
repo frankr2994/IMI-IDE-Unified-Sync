@@ -1810,13 +1810,13 @@ const App = () => {
                       </div>
                     )}
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '5px', alignItems: 'flex-end' }}>
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
-                        {/* ── Top toolbar: BRAIN + CODER ── */}
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)' }}>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                        {/* ── Left column: BRAIN + CODER stacked ── */}
+                        <div style={{ display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--glass-border)', width: '90px', flexShrink: 0 }}>
                         {/* BRAIN */}
                         <div style={{ position: 'relative', flex: 1 }}>
-                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: 'rgba(155,77,255,0.08)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.65rem', textTransform: 'uppercase', cursor: 'pointer' }}>
-                            <span style={{ fontSize: '0.55rem', opacity: 0.6, letterSpacing: '0.08em', flexShrink: 0 }}>BRAIN</span>
+                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '6px 8px', background: 'rgba(155,77,255,0.08)', borderBottom: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', height: '100%', minHeight: '36px' }}>
+                            <span style={{ fontSize: '0.5rem', opacity: 0.55, letterSpacing: '0.1em' }}>BRAIN</span>
                             {activeDirector === 'gemini' && <Zap size={12} />}
                             {activeDirector === 'geminicli' && <Terminal size={12} />}
                             {activeDirector === 'jules' && <Layers size={12} />}
@@ -1829,10 +1829,10 @@ const App = () => {
                             {activeDirector === 'deepseek' && <Terminal size={12} />}
                             {activeDirector === 'custom' && <Wifi size={12} />}
                             {activeDirector.startsWith('ollama:') && <Database size={12} style={{ color: '#00ff88' }} />}
-                            <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '0.6rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70px', textAlign: 'center' }}>
                               {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector === 'antigravity' ? 'AG AI' : activeDirector.toUpperCase()}
                             </span>
-                            <ChevronRight size={12} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
+                            <ChevronRight size={10} style={{ opacity: 0.5 }} />
                           </div>
                           <AnimatePresence>
                             {isDropdownOpen && (
@@ -1917,11 +1917,11 @@ const App = () => {
 
                         {/* CODER */}
                         <div style={{ position: 'relative', flex: 1 }}>
-                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', background: 'rgba(0,255,136,0.04)', color: '#00ff88', fontWeight: 900, fontSize: '0.65rem', textTransform: 'uppercase', cursor: 'pointer' }}>
-                            <span style={{ fontSize: '0.55rem', opacity: 0.6, letterSpacing: '0.08em', flexShrink: 0 }}>CODER</span>
+                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '6px 8px', background: 'rgba(0,255,136,0.04)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', height: '100%', minHeight: '36px' }}>
+                            <span style={{ fontSize: '0.5rem', opacity: 0.55, letterSpacing: '0.1em' }}>CODER</span>
                             {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine.toUpperCase()}</span>
-                            <ChevronRight size={12} style={{ transform: isCoderDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
+                            <span style={{ fontSize: '0.6rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70px', textAlign: 'center' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine.toUpperCase()}</span>
+                            <ChevronRight size={10} style={{ opacity: 0.5 }} />
                           </div>
                           <AnimatePresence>
                             {isCoderDropdownOpen && (
@@ -1970,10 +1970,10 @@ const App = () => {
                             )}
                           </AnimatePresence>
                         </div>
-                        </div>{/* ── end top toolbar ── */}
+                        </div>{/* ── end left column ── */}
 
-                        {/* ── Textarea row ── */}
-                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        {/* ── Textarea (right side, full height) ── */}
+                        <div style={{ display: 'flex', flex: 1, alignItems: 'flex-end' }}>
                         <textarea
                           data-main
                           value={chatInput}
