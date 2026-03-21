@@ -2333,6 +2333,7 @@ const App = () => {
                     { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
                     { id: 'tools',  label: '🛠 Installed Tools',    sub: 'system check' },
                     { id: 'ai',     label: '🤖 AI Models',         sub: 'run locally' },
+                    { id: 'agent',  label: '🧠 Agent SDK',         sub: 'how Claude thinks' },
                   ].map(t => (
                     <button key={t.id} onClick={() => { setMcpHubTab(t.id as any); if (t.id === 'ai') loadOllamaModels(); }} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
                       {t.label} <span style={{ opacity: 0.6, fontSize: '0.65rem', marginLeft: '4px' }}>{t.sub}</span>
