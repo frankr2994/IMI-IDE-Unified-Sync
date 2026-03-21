@@ -98,6 +98,7 @@ const App = () => {
 
   // 🤖 Ollama AI Models
   const [ollamaModels, setOllamaModels] = useState<any[]>([]);
+  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null); // null = checking
   const [ollamaPulling, setOllamaPulling] = useState('');
   const [ollamaLog, setOllamaLog] = useState<Record<string,string>>({});
   const [ollamaPullProgress, setOllamaPullProgress] = useState<Record<string, { percent: number; downloaded: string; total: string; timeLeft: string; status: string }>>({});
