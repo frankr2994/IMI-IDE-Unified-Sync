@@ -1726,12 +1726,12 @@ const App = () => {
                         <button type="button" onClick={() => setAttachedImage(null)} style={{ background: 'none', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.9rem', opacity: 0.7 }}>✕</button>
                       </div>
                     )}
-                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '5px', alignItems: 'flex-end' }}>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible' }}>
                         
                         {/* BRAIN */}
                         <div style={{ position: 'relative' }}>
-                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
+                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100px', padding: '0 10px', background: 'rgba(155, 77, 255, 0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.55rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', textShadow: '0 0 10px var(--primary-glow)' }}>BRAIN</div>
                             {activeDirector === 'gemini' && <Zap size={12} />}
                             {activeDirector === 'geminicli' && <Terminal size={12} />}
@@ -1833,7 +1833,7 @@ const App = () => {
 
                         {/* CODER */}
                         <div style={{ position: 'relative' }}>
-                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
+                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100px', padding: '0 10px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.55rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.1em', textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CODER</div>
                             {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
                             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine.toUpperCase()}</span>
@@ -1928,13 +1928,35 @@ const App = () => {
                            <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
                         </div>
                       </div>
-                      <button type="button" onClick={handleImageAttach} title="Attach image" style={{ height: '44px', width: '44px', background: attachedImage ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${attachedImage ? 'rgba(155,77,255,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: attachedImage ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
-                      <button type="button" onClick={handleUIPreview} disabled={generatingPreview} title="Generate UI mockup with Gemini Imagen" style={{ height: '44px', width: '44px', background: generatingPreview ? 'rgba(255,180,0,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${generatingPreview ? 'rgba(255,180,0,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: generatingPreview ? '#ffb400' : 'var(--text-dim)', cursor: generatingPreview ? 'default' : 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: generatingPreview ? 0.7 : 1 }}>{generatingPreview ? '⏳' : '🎨'}</button>
-                      <button type="button" onClick={() => (ipc as any).invoke('open-external', 'https://stitch.withgoogle.com')} title="Open Google Stitch — AI UI design tool" style={{ height: '44px', width: '44px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '-0.02em' }}>Stitch</button>
-                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — generate a phased plan before executing'} style={{ height: '44px', width: '44px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.05)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '10px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
-                      {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title={yoloMode ? 'YOLO ON — auto-runs all phases' : 'YOLO — auto-run all phases without confirmation'} style={{ height: '44px', padding: '0 10px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', flexShrink: 0 }}>YOLO</button>}
-                      <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
-                      <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
+                      {/* Attach */}
+                      <button type="button" onClick={handleImageAttach} title="Attach image" style={{ height: '38px', width: '38px', background: attachedImage ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${attachedImage ? 'rgba(155,77,255,0.5)' : 'var(--glass-border)'}`, borderRadius: '9px', color: attachedImage ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
+
+                      {/* UI Preview — 🎨 opens mini popup with Imagen + Stitch options */}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <button type="button" onClick={() => setShowPreviewMenu(p => !p)} title="UI Preview tools" style={{ height: '38px', width: '38px', background: showPreviewMenu ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${showPreviewMenu ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: showPreviewMenu ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🎨</button>
+                        {showPreviewMenu && (
+                          <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', right: 0, background: 'rgba(16,16,24,0.98)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '6px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 200, minWidth: '170px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                            <button type="button" onClick={() => { setShowPreviewMenu(false); handleUIPreview(); }} disabled={generatingPreview} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'transparent', border: 'none', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.75rem', textAlign: 'left', opacity: generatingPreview ? 0.5 : 1 }} onMouseEnter={e => (e.currentTarget.style.background='rgba(155,77,255,0.12)')} onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
+                              <span>{generatingPreview ? '⏳' : '✨'}</span>
+                              <div><div style={{ fontWeight: 700 }}>Gemini Imagen</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>Generate UI mockup</div></div>
+                            </button>
+                            <button type="button" onClick={() => { setShowPreviewMenu(false); (ipc as any).invoke('open-external', 'https://stitch.withgoogle.com'); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'transparent', border: 'none', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.75rem', textAlign: 'left' }} onMouseEnter={e => (e.currentTarget.style.background='rgba(155,77,255,0.12)')} onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
+                              <span>🪡</span>
+                              <div><div style={{ fontWeight: 700 }}>Google Stitch</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>Open AI design tool</div></div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Plan Mode */}
+                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON' : 'Plan Mode'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
+                      {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title="YOLO — auto-run all phases" style={{ height: '38px', padding: '0 9px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '9px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.05em', flexShrink: 0 }}>YOLO</button>}
+
+                      {/* Send */}
+                      <button type="submit" className="btn-chat-send" style={{ width: '38px', height: '38px' }}><Send size={15}/></button>
+
+                      {/* Clear */}
+                      <button type="button" title="Clear chat" onClick={async () => { setMessages([]); setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '38px', height: '38px', background: 'rgba(255,65,108,0.12)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '9px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><X size={13}/></button>
                     </form>
                 </div>
               </div>
