@@ -2091,8 +2091,8 @@ const App = () => {
                                       <span style={{ fontSize: '0.65rem', color: '#00ff88', fontWeight: 700 }}>{p?.status === 'Complete!' ? '✅ Done!' : p?.status || 'Connecting…'}</span>
                                       <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'white' }}>{pct}%</span>
                                     </div>
-                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-                                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease' }} />
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: pct > 0 ? '0 0 6px rgba(155,77,255,0.6)' : 'none' }} />
                                     </div>
                                     {p?.downloaded && p?.total && (
                                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
