@@ -1685,22 +1685,29 @@ const App = () => {
               </div>
 
               <div className="devtools-panel">
-                 <div className="devtools-header" style={{ padding: '10px 15px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>SYS CONSOLE</span>
-                      {syncStatus !== 'Idle' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--primary)' }}>
-                          <RefreshCw size={10} className="spin" />
-                          <span style={{ fontSize: '0.55rem' }}>GIT: {syncStatus.toUpperCase()}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
-                      <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.5rem', padding: '2px 7px', fontWeight: 700 }}>📄 LOG</button>
-                    </div>
+                 {/* Tab switcher header */}
+                 <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
+                   {[
+                     { id: 'console', label: 'SYS CONSOLE' },
+                     { id: 'plan',    label: activePlan ? `📋 PLAN${activePlan.running ? ' ⚙' : ''}` : '📋 PLAN' },
+                   ].map(tab => (
+                     <button key={tab.id} onClick={() => setRightPanelTab(tab.id as any)} style={{ flex: 1, padding: '8px 10px', background: 'transparent', border: 'none', borderBottom: rightPanelTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: rightPanelTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.08em', transition: 'all 0.2s', position: 'relative' }}>
+                       {tab.label}
+                       {tab.id === 'plan' && activePlan && !activePlan.running && activePlan.completedPhases.size < activePlan.plan.phases.length && rightPanelTab !== 'plan' && (
+                         <span style={{ position: 'absolute', top: '5px', right: '8px', width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
+                       )}
+                     </button>
+                   ))}
+                   {rightPanelTab === 'console' && (
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', flexShrink: 0 }}>
+                       {syncStatus !== 'Idle' && <RefreshCw size={9} className="spin" style={{ color: 'var(--primary)' }} />}
+                       <span style={{ color: '#00ff88', fontSize: '0.5rem', fontWeight: 700, whiteSpace: 'nowrap' }}>● ACTIVE</span>
+                       <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.5rem', padding: '2px 7px', fontWeight: 700 }}>📄 LOG</button>
+                     </div>
+                   )}
                  </div>
 
+                 {rightPanelTab === 'console' && <>
                  {coderStatus !== 'Idle' && (
                    <div style={{ padding: '15px', background: 'rgba(0,255,136,0.05)', borderBottom: '1px solid rgba(0,255,136,0.1)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -1708,7 +1715,7 @@ const App = () => {
                         <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#00ff88', opacity: 0.8 }}>{coderStatus.toUpperCase()}...</span>
                       </div>
                       <div className="quota-bar" style={{ height: '3px', background: 'rgba(0,255,136,0.1)', margin: 0 }}>
-                        <motion.div 
+                        <motion.div
                           initial={{ width: '0%' }}
                           animate={{ width: '100%' }}
                           transition={{ duration: 20, ease: "linear" }}
@@ -1717,7 +1724,6 @@ const App = () => {
                       </div>
                    </div>
                  )}
-
                  <div className="devtools-content" style={{ height: coderStatus !== 'Idle' ? '465px' : '515px', padding: '15px', overflowY: 'auto', fontSize: '0.75rem', fontFamily: 'monospace', transition: 'height 0.3s' }}>
                     {logs.map(l => (
                       <div key={l.id} style={{ marginBottom: '6px', color: l.type === 'ag' ? '#00ff88' : (l.type === 'gemini' ? '#4facfe' : '#ffffff88') }}>
@@ -1725,6 +1731,70 @@ const App = () => {
                       </div>
                     ))}
                  </div>
+                 </>}
+
+                 {rightPanelTab === 'plan' && (
+                   <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', height: '515px' }}>
+                     {!activePlan ? (
+                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', opacity: 0.4 }}>
+                         <span style={{ fontSize: '2rem' }}>📋</span>
+                         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5 }}>No active plan.<br/>Enable <strong>Plan Mode</strong> and send a task.</div>
+                       </div>
+                     ) : (() => {
+                       const ap = activePlan;
+                       const allDone = ap.completedPhases.size === ap.plan.phases.length;
+                       return <>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                           <div>
+                             <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.14em', marginBottom: '3px' }}>IMPLEMENTATION PLAN</div>
+                             <div style={{ fontWeight: 800, fontSize: '0.85rem', lineHeight: 1.3 }}>{ap.plan.title}</div>
+                           </div>
+                           <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', flexShrink: 0, marginLeft: '8px' }}>{(ap.plan.complexity || 'medium').toUpperCase()}</span>
+                         </div>
+
+                         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>{ap.plan.summary}</div>
+
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                           {ap.plan.phases.map((phase: any, idx: number) => {
+                             const isDone = ap.completedPhases.has(idx);
+                             const isCurrent = ap.currentPhaseIdx === idx && ap.running;
+                             return (
+                               <div key={phase.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '9px 11px', borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : 'var(--glass-border)'}`, transition: 'all 0.3s' }}>
+                                 <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '1px' }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
+                                 <div style={{ flex: 1, minWidth: 0 }}>
+                                   <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
+                                   <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
+                                   {phase.files?.length > 0 && <div style={{ fontSize: '0.52rem', color: 'rgba(155,77,255,0.7)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                 </div>
+                                 {!isDone && !isCurrent && !ap.running && (
+                                   <button onClick={() => runPlanPhase(ap.plan, idx, ap.messageId)} style={{ fontSize: '0.52rem', padding: '3px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>▶ Run</button>
+                                 )}
+                               </div>
+                             );
+                           })}
+                         </div>
+
+                         {!ap.running && !allDone && (
+                           <button onClick={() => runFullPlan(ap.plan, ap.messageId)} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg,rgba(155,77,255,0.3),rgba(79,172,254,0.2))', border: '1px solid rgba(155,77,255,0.5)', borderRadius: '9px', color: 'white', fontWeight: 800, cursor: 'pointer', fontSize: '0.78rem', letterSpacing: '0.05em', marginTop: 'auto' }}>
+                             ▶ RUN FULL PLAN ({ap.plan.phases.length - ap.completedPhases.size} phases left)
+                           </button>
+                         )}
+                         {ap.running && (
+                           <div style={{ textAlign: 'center', padding: '10px', fontSize: '0.7rem', color: '#00ff88', fontWeight: 700 }}>
+                             ⚙ Executing phase {ap.currentPhaseIdx + 1} of {ap.plan.phases.length}…
+                           </div>
+                         )}
+                         {allDone && <div style={{ textAlign: 'center', padding: '10px', fontSize: '0.75rem', color: '#00ff88', fontWeight: 800 }}>✅ All {ap.plan.phases.length} phases complete!</div>}
+
+                         {ap.plan.risks?.length > 0 && (
+                           <div style={{ padding: '8px 12px', background: 'rgba(255,180,0,0.05)', border: '1px solid rgba(255,180,0,0.2)', borderRadius: '7px', fontSize: '0.6rem', color: 'rgba(255,180,0,0.8)', lineHeight: 1.5 }}>
+                             ⚠ {ap.plan.risks.join(' · ')}
+                           </div>
+                         )}
+                       </>;
+                     })()}
+                   </div>
+                 )}
               </div>
             </motion.div>
           )}
