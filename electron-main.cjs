@@ -461,6 +461,37 @@ async function triggerGitSync() {
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
+  const cmdLower = command.toLowerCase().trim();
+
+  // ── 🔍 HARDCODED SYSTEM QUERIES — always intercept, no skill file needed ──
+  if (/\b(what|which|list|show)\b.{0,50}\b(ai|ollama|llm|model|models)\b.{0,50}\b(installed|have|downloaded|available)\b/i.test(cmdLower)
+    || /\b(installed|downloaded)\b.{0,30}\b(ai|ollama|llm|model|models)\b/i.test(cmdLower)) {
+    try {
+      const ollamaRaw = await new Promise(resolve => exec('ollama list', { timeout: 5000 }, (err, stdout) => resolve(err ? null : stdout.trim())));
+      let ollamaSection = '🦙 **Ollama:** Not installed or no models pulled yet.';
+      if (ollamaRaw) {
+        const lines = String(ollamaRaw).split('\n').slice(1).filter(Boolean);
+        ollamaSection = lines.length > 0
+          ? `🦙 **Ollama (local models):**\n${lines.map(l => `  • ${l.trim().split(/\s+/).slice(0,2).join('  ')}`).join('\n')}`
+          : '🦙 **Ollama:** Installed but no models pulled yet. Use Dev Hub → AI Models to pull one.';
+      }
+      const aiTools = [
+        { name: 'Gemini CLI', cmd: 'gemini --version' },
+        { name: 'Claude CLI', cmd: 'claude --version' },
+        { name: 'Jules CLI',  cmd: 'jules --version' },
+      ];
+      const toolChecks = await Promise.all(aiTools.map(t => new Promise(resolve =>
+        exec(t.cmd, { timeout: 3000 }, (err, stdout) => resolve(err ? null : { name: t.name, version: stdout.trim().split('\n')[0] }))
+      )));
+      const installedCLIs = toolChecks.filter(Boolean);
+      const cliSection = installedCLIs.length > 0
+        ? `🔧 **AI CLI Tools:**\n${installedCLIs.map(t => `  • ${t.name} v${t.version}`).join('\n')}`
+        : '🔧 **AI CLI Tools:** None detected.';
+      event.sender.send('command-chunk', { messageId, chunk: `⚡ [IMI System]\n\n${ollamaSection}\n\n${cliSection}\n\n💡 Pull more models in **Dev Hub → AI Models**.` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    } catch(e) { /* fall through to AI */ }
+  }
 
   // ── ⚡ SKILL ENGINE — check skills FIRST before any API call ──────────────
   const matchedSkill = skillEngine.match(command);
