@@ -250,10 +250,16 @@ const App = () => {
 
   // Shorten raw Ollama model names for display
   const shortModelName = (raw: string) => {
-    let s = raw.replace(/^hf\.co\/[^/]+\//i, '').replace(/:latest$/i, '').replace(/-GGUF$/i, '');
-    // e.g. "Qwen3.5-35B-A3B" → "Qwen 3.5 35B"
-    s = s.replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/(\d)([A-Za-z])/g, '$1 $2').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-    return s.length > 22 ? s.slice(0, 20) + '…' : s;
+    let s = raw
+      .replace(/^hf\.co\/[^/]+\//i, '')  // strip hf.co/author/
+      .replace(/:latest$/i, '')            // strip :latest
+      .replace(/-GGUF$/i, '')             // strip -GGUF
+      .replace(/-A\d+B(-|$)/gi, '$1')    // strip quantisation tags like -A3B
+      .replace(/-\d+bit(-|$)/gi, '$1')   // strip -4bit etc
+      .replace(/-Q\d+_\w+(-|$)/gi, '$1') // strip -Q4_K_M etc
+      .replace(/-/g, ' ')                 // dashes → spaces
+      .replace(/\s+/g, ' ').trim();
+    return s.length > 20 ? s.slice(0, 18) + '…' : s;
   };
 
   const formatStars = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
@@ -1076,7 +1082,7 @@ const App = () => {
                         <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED QUOTA</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeEngine.toUpperCase()} CORE</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</div>
                  </div>
                  <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1093,7 +1099,7 @@ const App = () => {
                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                           <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>MASTER ENGINE OVERSIGHT</div>
-                          <h3 style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: '5px' }}>{activeEngine.toUpperCase()} CORE</h3>
+                          <h3 style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: '5px' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</h3>
                         </div>
                         <div className="glass-card" style={{ padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #00ff8844' }}>
                           <div style={{ width: '10px', height: '10px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88' }}></div>
