@@ -1064,15 +1064,27 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
             mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 20 });
             await new Promise((res2, rej2) => exec(`npm install -g ${depInfo.npm}`, { timeout: 120000 }, (err) => err ? rej2(err) : res2()));
             mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'done', percent: 100 });
-          } else if (depInfo.winExe) {
-            const isMsi = depInfo.winExe.includes('.msi');
-            const ext = isMsi ? '.msi' : '.exe';
-            const installerPath = path.join(require('os').tmpdir(), `imi-install-${depKey}${ext}`);
-            await downloadFile(mockEvent, depKey, depInfo.winExe, installerPath);
-            mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 92 });
-            const cmd2 = isMsi ? `msiexec /i "${installerPath}" ${depInfo.winArgs||'/quiet'}` : `"${installerPath}" ${depInfo.winArgs||'/S'}`;
-            await new Promise((res2, rej2) => exec(cmd2, { timeout: 180000 }, (err) => err ? rej2(err) : res2()));
-            require('fs').unlink(installerPath, () => {});
+          } else if (depInfo.winget || depInfo.winExe) {
+            // Try winget first — fully silent, no popup
+            let wingetDone = false;
+            if (depInfo.winget) {
+              try {
+                mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 10 });
+                await new Promise((res2, rej2) => exec(`winget install --id ${depInfo.winget} --silent --accept-package-agreements --accept-source-agreements`, { timeout: 180000 }, (err) => err ? rej2(err) : res2()));
+                wingetDone = true;
+              } catch { /* fall through to EXE */ }
+            }
+            if (!wingetDone && depInfo.winExe) {
+              const isMsi = depInfo.winExe.includes('.msi');
+              const ext = isMsi ? '.msi' : '.exe';
+              const installerPath = path.join(require('os').tmpdir(), `imi-install-${depKey}${ext}`);
+              await downloadFile(mockEvent, depKey, depInfo.winExe, installerPath);
+              mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 92 });
+              const silentArgs2 = depInfo.winArgs || (isMsi ? '/quiet /norestart' : '/VERYSILENT /NORESTART /SP-');
+              const cmd2 = isMsi ? `msiexec /i "${installerPath}" ${silentArgs2}` : `start /wait /b "" "${installerPath}" ${silentArgs2}`;
+              await new Promise((res2, rej2) => exec(cmd2, { timeout: 180000, windowsHide: true }, (err) => err ? rej2(err) : res2()));
+              require('fs').unlink(installerPath, () => {});
+            }
             mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'done', percent: 100 });
           }
           resolve({ success: true });
@@ -2794,10 +2806,10 @@ ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 // ── Universal Install Manifest ─────────────────────────────────────────────
 // Each entry: cmd=version check, winExe=silent installer URL, winArgs=silent flags, npm=npm package name
 const INSTALL_MANIFEST = {
-  ollama:     { name: 'Ollama',       cmd: 'ollama --version',   winExe: 'https://ollama.com/download/OllamaSetup.exe',                                  winArgs: '/S' },
-  git:        { name: 'Git',          cmd: 'git --version',      winExe: 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.1/Git-2.47.0-64-bit.exe', winArgs: '/VERYSILENT /NORESTART' },
-  vscode:     { name: 'VS Code',      cmd: 'code --version',     winExe: 'https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user',    winArgs: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' },
-  gh:         { name: 'GitHub CLI',   cmd: 'gh --version',       npm: '@github/github-cli', winExe: 'https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_windows_amd64.msi', winArgs: '/quiet' },
+  ollama:     { name: 'Ollama',       cmd: 'ollama --version',   winget: 'Ollama.Ollama',           winExe: 'https://ollama.com/download/OllamaSetup.exe',                                  winArgs: '/VERYSILENT /NORESTART /SP-' },
+  git:        { name: 'Git',          cmd: 'git --version',      winget: 'Git.Git',                 winExe: 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.1/Git-2.47.0-64-bit.exe', winArgs: '/VERYSILENT /NORESTART' },
+  vscode:     { name: 'VS Code',      cmd: 'code --version',     winget: 'Microsoft.VisualStudioCode', winExe: 'https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user', winArgs: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' },
+  gh:         { name: 'GitHub CLI',   cmd: 'gh --version',       winget: 'GitHub.cli',              winExe: 'https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_windows_amd64.msi', winArgs: '/quiet /norestart' },
   gemini:     { name: 'Gemini CLI',   cmd: 'gemini --version',   npm: '@google/gemini-cli' },
   typescript: { name: 'TypeScript',   cmd: 'tsc --version',      npm: 'typescript' },
   prettier:   { name: 'Prettier',     cmd: 'prettier --version', npm: 'prettier' },
@@ -2876,15 +2888,31 @@ ipcMain.handle('install-dep', async (event, dep) => {
       return { success: true };
     }
 
-    // EXE/MSI installer — download then run silently
+    // Try winget first — fully silent, no popup, no UAC on supported packages
+    if (info.winget) {
+      try {
+        event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 10 });
+        await new Promise((resolve, reject) => {
+          exec(`winget install --id ${info.winget} --silent --accept-package-agreements --accept-source-agreements`, { timeout: 180000 }, (err) => err ? reject(err) : resolve());
+        });
+        event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+        return { success: true };
+      } catch { /* fall through to EXE installer */ }
+    }
+
+    // EXE/MSI installer — download then run fully hidden (no window)
     if (info.winExe) {
       const isMsi = info.winExe.includes('.msi');
       const ext = isMsi ? '.msi' : '.exe';
       const installerPath = path.join(require('os').tmpdir(), `imi-install-${key}${ext}`);
       await downloadFile(event, key, info.winExe, installerPath);
       event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 92 });
-      const cmd = isMsi ? `msiexec /i "${installerPath}" ${info.winArgs || '/quiet'}` : `"${installerPath}" ${info.winArgs || '/S'}`;
-      await new Promise((resolve, reject) => exec(cmd, { timeout: 180000 }, (err) => err ? reject(err) : resolve()));
+      // Use start /wait with windowstyle hidden to suppress any popup
+      const silentArgs = info.winArgs || (isMsi ? '/quiet /norestart' : '/VERYSILENT /NORESTART /SP-');
+      const cmd = isMsi
+        ? `msiexec /i "${installerPath}" ${silentArgs}`
+        : `start /wait /b "" "${installerPath}" ${silentArgs}`;
+      await new Promise((resolve, reject) => exec(cmd, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve()));
       require('fs').unlink(installerPath, () => {});
       event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
       return { success: true };
@@ -2897,7 +2925,8 @@ ipcMain.handle('install-dep', async (event, dep) => {
   }
 });
 ipcMain.handle('check-dep', async (_e, dep) => {
-  const info = DEP_CHECK[dep];
+  const key = resolveInstallKey(dep) || dep;
+  const info = INSTALL_MANIFEST[key];
   if (!info) return { installed: false };
   try {
     const out = execSync(info.cmd, { timeout: 4000 }).toString().trim();
