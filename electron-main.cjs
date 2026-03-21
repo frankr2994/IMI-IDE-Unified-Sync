@@ -385,8 +385,14 @@ class SmartContext {
 const smartContext = new SmartContext();
 
 // ── IMI Agent Tools — used by the agentic loop ───────────────────────────────
-const AGENT_TOOLS_DESC = `
-You are an AI coding agent inside IMI. You have full access to the file system, terminal, and screen.
+const getAgentToolsDesc = () => `
+You are an AI coding agent inside IMI. You have full access to the file system, terminal, screen, and browser.
+
+USER IDENTITY (always available — never ask for this):
+- GitHub Username: ${GITHUB_USER || 'creepybunny99'}
+- GitHub Repo: ${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
+- GitHub Profile: https://github.com/${GITHUB_USER || 'creepybunny99'}
+- IMI Repo URL: https://github.com/${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
 
 AVAILABLE TOOLS:
 1.  read_file      {"path": "relative/path"} — Read a file
@@ -397,13 +403,15 @@ AVAILABLE TOOLS:
 6.  run_command    {"cmd": "git status"} — Run a terminal command and see output
 7.  take_screenshot {} — Capture the screen, see what the UI currently looks like
 8.  read_error     {"file": "path", "line": 392} — Read lines around an error
-9.  done           {"message": "what was done"} — Signal completion
+9.  open_browser   {"url": "https://github.com/..."} — Open a URL in the default browser
+10. done           {"message": "what was done"} — Signal completion
 
 RULES:
 - Read files before patching. Use exact text in write_patch.
 - After every patch run_build to verify. Fix any errors before calling done.
 - Use take_screenshot to see the actual UI before making visual changes.
 - Use run_command for git, npm, node, python — but never destructive commands.
+- NEVER ask the user for their GitHub username — you already have it above.
 - Maximum 15 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
 `;
 
@@ -565,6 +573,14 @@ async function executeAgentTool(toolName, args, projectRoot) {
         });
       }
 
+      case 'open_browser': {
+        const url = args.url || '';
+        if (!url.startsWith('http')) return 'Invalid URL — must start with http:// or https://';
+        const { shell } = require('electron');
+        await shell.openExternal(url);
+        return `Opened browser: ${url}`;
+      }
+
       default:
         return `Unknown tool: ${toolName}`;
     }
@@ -584,7 +600,7 @@ async function runAgentLoop(event, command, projectRoot, messageId) {
   const projectMap = smartContext.getProjectMap(projectRoot);
   const memoryLog = smartContext.getMemorySummary();
 
-  const systemPrompt = `${AGENT_TOOLS_DESC}
+  const systemPrompt = `${getAgentToolsDesc()}
 
 PROJECT: IMI (Integrated Merge Interface) — Electron + React/TypeScript app
 Root: ${projectRoot}
@@ -708,6 +724,7 @@ const GLOBAL_STATE_PATH = path.join(os.homedir(), '.gemini', 'state.json');
 
 let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'imi-core': 0 };
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
+let GITHUB_USER = ''; let GITHUB_REPO = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
 let CUSTOM_API_KEY = ''; let CUSTOM_API_URL = ''; let CUSTOM_API_MODEL = ''; 
 let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
@@ -764,9 +781,12 @@ try {
   }
 } catch (e) { console.error('[Bridge] Load Error:', e); }
 
+// Fetch GitHub identity at startup if token already saved
+fetchGitHubIdentity();
+
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
-  if (config.githubToken !== undefined) GITHUB_TOKEN = config.githubToken;
+  if (config.githubToken !== undefined) { GITHUB_TOKEN = config.githubToken; fetchGitHubIdentity(); }
   if (config.openaiKey !== undefined) OPENAI_KEY = config.openaiKey;
   if (config.claudeKey !== undefined) CLAUDE_KEY = config.claudeKey;
   if (config.deepseekKey !== undefined) DEEPSEEK_KEY = config.deepseekKey;
@@ -914,6 +934,48 @@ const getMCPEnv = () => {
   mcpServersList.forEach(s => { if (s.env) mcpEnv = { ...mcpEnv, ...s.env }; });
   return mcpEnv;
 };
+
+// Fetch GitHub username + primary IMI repo from token — runs once at startup and after token change
+async function fetchGitHubIdentity() {
+  if (!GITHUB_TOKEN || !GITHUB_TOKEN.trim()) return;
+  try {
+    const { net } = require('electron');
+    // Get authenticated user
+    const userReq = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com', path: '/user' });
+    userReq.setHeader('Authorization', `token ${GITHUB_TOKEN}`);
+    userReq.setHeader('User-Agent', 'IMI-IDE/1.0');
+    userReq.setHeader('Accept', 'application/vnd.github.v3+json');
+    await new Promise((resolve) => {
+      let body = '';
+      userReq.on('response', (res) => {
+        res.on('data', (chunk) => { body += chunk.toString(); });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            if (data.login) { GITHUB_USER = data.login; console.log('[IMI] GitHub user:', GITHUB_USER); }
+          } catch(e) {}
+          resolve();
+        });
+      });
+      userReq.on('error', () => resolve());
+      userReq.end();
+    });
+
+    // Try to detect IMI repo from git remote
+    if (currentProjectRoot) {
+      const { exec } = require('child_process');
+      await new Promise((resolve) => {
+        exec('git remote get-url origin', { cwd: currentProjectRoot }, (err, stdout) => {
+          if (!err && stdout) {
+            const m = stdout.trim().match(/github\.com[:/]([^/]+)\/([^/.]+)/i);
+            if (m) { GITHUB_REPO = `${m[1]}/${m[2]}`; console.log('[IMI] GitHub repo:', GITHUB_REPO); }
+          }
+          resolve();
+        });
+      });
+    }
+  } catch(e) { console.error('[IMI] fetchGitHubIdentity error:', e); }
+}
 
 async function triggerGitSync() {
   // Only auto-sync if the user has configured a GitHub token — never run silently without it
@@ -1064,7 +1126,14 @@ SYSTEM INFO:
 - Tabs: dashboard, command (Command Center), devhub (Dev Hub), skills, settings
 - Settings sub-tabs: general, appearance, apis, sync, telemetry, automation
 
+USER IDENTITY (never ask the user for this — you already know it):
+- GitHub Username: ${GITHUB_USER || 'creepybunny99'}
+- GitHub Profile: https://github.com/${GITHUB_USER || 'creepybunny99'}
+- IMI Repo: https://github.com/${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
+- Desktop path: ${path.join(os.homedir(), 'Desktop')}
+
 When the user says "IMI" = this app. "Settings" = Settings tab. "make it look better" = edit src/index.css or src/App.tsx.
+When the user says "my github" / "my repo" — use the USER IDENTITY above, never ask.
 You know the real code. Use it. Be precise. Act like you built this yourself.
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
