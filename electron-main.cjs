@@ -781,9 +781,6 @@ try {
   }
 } catch (e) { console.error('[Bridge] Load Error:', e); }
 
-// Fetch GitHub identity at startup if token already saved
-fetchGitHubIdentity();
-
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
   if (config.githubToken !== undefined) { GITHUB_TOKEN = config.githubToken; fetchGitHubIdentity(); }
@@ -2174,6 +2171,8 @@ app.whenReady().then(() => {
     }
   });
   createWindow();
+  // Fetch GitHub identity now that net module is available
+  fetchGitHubIdentity();
   // Only start auto-sync timer if GitHub token is already saved — user must opt in
   if (GITHUB_TOKEN && GITHUB_TOKEN.trim()) {
     syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
@@ -2377,13 +2376,15 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
           const results = (Array.isArray(models) ? models : []).map(m => {
             // Parse GGUF file sizes from siblings
             const siblings = m.siblings || [];
-            const ggufFiles = siblings.filter(s => s.rfilename && s.rfilename.toLowerCase().endsWith('.gguf') && s.size > 0);
+            // HF stores actual file size in lfs.size (LFS pointer), fallback to size field
+            const getSize = (s) => s.lfs?.size || s.size || 0;
+            const ggufFiles = siblings.filter(s => s.rfilename && s.rfilename.toLowerCase().endsWith('.gguf') && getSize(s) > 0);
             let sizeLabel = '';
             if (ggufFiles.length === 1) {
-              sizeLabel = fmtBytes(ggufFiles[0].size);
+              sizeLabel = fmtBytes(getSize(ggufFiles[0]));
             } else if (ggufFiles.length > 1) {
-              const smallest = Math.min(...ggufFiles.map(f => f.size));
-              const largest = Math.max(...ggufFiles.map(f => f.size));
+              const smallest = Math.min(...ggufFiles.map(f => getSize(f)));
+              const largest = Math.max(...ggufFiles.map(f => getSize(f)));
               sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
             }
             return {
