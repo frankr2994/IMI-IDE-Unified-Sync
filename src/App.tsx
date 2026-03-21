@@ -2030,7 +2030,6 @@ const App = () => {
                               <span style={{ fontSize: '1.2rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{shortModelName(m.name)}</div>
-                                <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: '1px', fontFamily: 'monospace', opacity: 0.6 }}>{m.name}</div>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
                                 {m.tooLarge && <div style={{ fontSize: '0.62rem', color: '#ff416c', marginTop: '2px', fontWeight: 700 }}>⚠️ Too large for your GPU ({m.vramGB?.toFixed(0)}GB VRAM) — won't run. Delete and pull a smaller model.</div>}
                               </div>
