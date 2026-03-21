@@ -3071,6 +3071,187 @@ const App = () => {
                 </div>
                 )}
 
+                {/* ── AGENT SDK TAB ── */}
+                {mcpHubTab === 'agent' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                    {/* Header banner */}
+                    <div style={{ background: 'linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,212,255,0.08))', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--primary)', marginBottom: '6px' }}>ANTHROPIC · CLAUDE AGENT SDK</div>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'white' }}>How Claude Thinks & Acts</div>
+                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>Event system · Tool use · Reasoning patterns · Agentic loop</div>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)' }}>
+                        <div>Model: claude-sonnet-4-5</div>
+                        <div style={{ marginTop: '2px' }}>API: api.anthropic.com/v1</div>
+                        <div style={{ marginTop: '2px' }}>Version: 2023-06-01</div>
+                      </div>
+                    </div>
+
+                    {/* Row 1: SSE Events + Tool Use Flow */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+                      {/* SSE Event Stream */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00d4ff', marginBottom: '14px' }}>SSE EVENT STREAM</div>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>Every response streams these events in order:</div>
+                        {[
+                          { event: 'message_start',        color: '#9b4dff', note: 'New message ID + model info' },
+                          { event: 'content_block_start',  color: '#00d4ff', note: 'New block — text or tool_use' },
+                          { event: 'content_block_delta',  color: '#00ff88', note: 'Chunk arrives — text_delta or input_json_delta' },
+                          { event: 'content_block_stop',   color: '#00d4ff', note: 'Block complete' },
+                          { event: 'message_delta',        color: '#ff9b4d', note: 'Stop reason + token usage' },
+                          { event: 'message_stop',         color: '#9b4dff', note: 'Stream finished' },
+                        ].map(e => (
+                          <div key={e.event} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', marginBottom: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: `3px solid ${e.color}` }}>
+                            <code style={{ fontSize: '0.68rem', color: e.color, fontFamily: 'monospace', minWidth: '185px' }}>{e.event}</code>
+                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{e.note}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Tool Use Flow */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#ff9b4d', marginBottom: '14px' }}>TOOL USE FLOW</div>
+                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>How Claude calls tools and loops:</div>
+                        {[
+                          { step: '1', label: 'User sends message', detail: 'role: user → messages array', color: '#9b4dff' },
+                          { step: '2', label: 'Claude picks tool', detail: 'stop_reason: tool_use  content_block type: tool_use', color: '#00d4ff' },
+                          { step: '3', label: 'Tool JSON streams in', detail: 'input_json_delta events build the args', color: '#00ff88' },
+                          { step: '4', label: 'Tool executes', detail: 'Your code runs — file read, bash, web fetch, etc.', color: '#ff9b4d' },
+                          { step: '5', label: 'Result sent back', detail: 'role: user  type: tool_result  tool_use_id', color: '#ff4d8d' },
+                          { step: '6', label: 'Loop continues', detail: 'Claude sees result → picks next tool or gives final answer', color: '#9b4dff' },
+                        ].map(s => (
+                          <div key={s.step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '7px 10px', marginBottom: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, flexShrink: 0, marginTop: '1px' }}>{s.step}</div>
+                            <div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'white' }}>{s.label}</div>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginTop: '2px' }}>{s.detail}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Reasoning Patterns */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00ff88', marginBottom: '14px' }}>HOW CLAUDE REASONS — BAKED INTO IMI'S BRAIN</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                        {[
+                          { title: 'Read Before Edit', rule: 'Always reads a file before modifying it. Never guesses existing content.', icon: '📖' },
+                          { title: 'Parallel When Independent', rule: 'Launches multiple tool calls in one turn when they don\'t depend on each other. Faster.', icon: '⚡' },
+                          { title: 'Infer Intent', rule: 'Never says "I don\'t understand." Always makes the most reasonable interpretation and acts.', icon: '🎯' },
+                          { title: 'Minimal Footprint', rule: 'Only touches what needs to change. No full rewrites when a surgical edit will do.', icon: '✂️' },
+                          { title: 'Verify Before Destroy', rule: 'Asks before deleting, publishing, or sending. Shows what will happen. Waits for yes.', icon: '🛡️' },
+                          { title: 'Sequential When Dependent', rule: 'Waits for a tool result before calling the next tool that needs it. Never guesses outputs.', icon: '🔗' },
+                          { title: 'No Unnecessary Questions', rule: 'If the answer can be found by looking at the code/files, looks first. Only asks when truly unknown.', icon: '🔍' },
+                          { title: 'Trust the Code', rule: 'Reads the actual live code rather than assuming. What\'s in the file is the ground truth.', icon: '💻' },
+                          { title: 'Best-Effort Fallback', rule: 'If an optional step fails (like web grounding), continues anyway. Never blocks on non-critical paths.', icon: '🔄' },
+                        ].map(r => (
+                          <div key={r.title} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '12px' }}>
+                            <div style={{ fontSize: '1.1rem', marginBottom: '6px' }}>{r.icon}</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{r.title}</div>
+                            <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{r.rule}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Row 3: Model Reference + Request Format */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+                      {/* Models */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#ff4d8d', marginBottom: '14px' }}>CLAUDE MODEL REFERENCE</div>
+                        {[
+                          { model: 'claude-opus-4-5',        ctx: '200K', best: 'Complex reasoning, architecture', speed: '🐢' },
+                          { model: 'claude-sonnet-4-5',      ctx: '200K', best: 'Balanced — IMI default brain',   speed: '⚡' },
+                          { model: 'claude-haiku-3-5',       ctx: '200K', best: 'Fast, cheap, high-volume tasks', speed: '🚀' },
+                        ].map(m => (
+                          <div key={m.model} style={{ padding: '10px 12px', marginBottom: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <code style={{ fontSize: '0.7rem', color: '#ff4d8d', fontFamily: 'monospace' }}>{m.model}</code>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{m.best}</div>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '0.6rem' }}>
+                              <div style={{ color: 'rgba(255,255,255,0.5)' }}>{m.ctx} ctx</div>
+                              <div>{m.speed}</div>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(155,77,255,0.08)', borderRadius: '8px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>
+                          All models support: tool use · vision · streaming · prompt caching · 200K context
+                        </div>
+                      </div>
+
+                      {/* Request skeleton */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#9b4dff', marginBottom: '14px' }}>API REQUEST SKELETON</div>
+                        <pre style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '8px' }}>{`POST api.anthropic.com/v1/messages
+x-api-key: YOUR_KEY
+anthropic-version: 2023-06-01
+content-type: application/json
+
+{
+  "model": "claude-sonnet-4-5",
+  "max_tokens": 8096,
+  "stream": true,
+  "system": "You are...",
+  "tools": [ { "name": "...", "input_schema": {...} } ],
+  "messages": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": [...] },
+    { "role": "user", "content": [
+        { "type": "tool_result", ... }
+    ]}
+  ]
+}`}</pre>
+                      </div>
+                    </div>
+
+                    {/* Row 4: Tool Schema format */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00d4ff', marginBottom: '14px' }}>TOOL DEFINITION FORMAT — HOW TO GIVE CLAUDE TOOLS</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div>
+                          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Every tool needs this exact shape:</div>
+                          <pre style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '8px' }}>{`{
+  "name": "read_file",
+  "description": "Reads a file. Use this before editing.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "description": "Absolute path to the file"
+      }
+    },
+    "required": ["path"]
+  }
+}`}</pre>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Best practices for tool definitions:</div>
+                          {[
+                            ['name',        'Short, snake_case, verb+noun — read_file, bash, web_search'],
+                            ['description', 'Tell Claude WHEN to use it, not just what it does'],
+                            ['required',    'Only mark truly required params. Optional = smarter calls'],
+                            ['enum',        'Add enum arrays to constrain string inputs when possible'],
+                            ['description', 'Each property description is context Claude uses to fill it'],
+                          ].map(([field, tip], i) => (
+                            <div key={i} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: '3px solid rgba(0,212,255,0.4)' }}>
+                              <code style={{ fontSize: '0.65rem', color: '#00d4ff' }}>{field}</code>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{tip}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
             </motion.div>
           )}
 
