@@ -697,10 +697,10 @@ class ImpactAnalyzer {
 const styleAnalyzer  = new StyleAnalyzer();
 const impactAnalyzer = new ImpactAnalyzer();
 
-// Auto-analyze style on startup (non-blocking) — capture root immediately
-const _startupRoot = currentProjectRoot;
+// Auto-analyze style on startup (non-blocking)
+// Uses setImmediate so currentProjectRoot is fully initialized before we read it
 setImmediate(() => {
-  try { styleAnalyzer.autoAnalyzeIfNeeded(_startupRoot); }
+  try { styleAnalyzer.autoAnalyzeIfNeeded(currentProjectRoot); }
   catch(e) { console.warn('[StyleAnalyzer] startup analyze failed:', e.message); }
 });
 
