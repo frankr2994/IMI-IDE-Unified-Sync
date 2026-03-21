@@ -245,6 +245,145 @@ class SkillEngine {
 
 const skillEngine = new SkillEngine();
 
+// ── Smart Context Engine — Claude Code-style project awareness ────────────────
+const MEMORY_PATH = path.join(os.homedir(), '.imi', 'memory.json');
+
+class SmartContext {
+  constructor() {
+    this.memory = { recentChanges: [], decisions: [] };
+    this._load();
+  }
+
+  _load() {
+    try {
+      if (fs.existsSync(MEMORY_PATH)) {
+        this.memory = JSON.parse(fs.readFileSync(MEMORY_PATH, 'utf-8'));
+      }
+    } catch(e) { this.memory = { recentChanges: [], decisions: [] }; }
+  }
+
+  _save() {
+    try {
+      const dir = path.dirname(MEMORY_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(MEMORY_PATH, JSON.stringify(this.memory, null, 2));
+    } catch(e) {}
+  }
+
+  recordChange(file, description) {
+    this.memory.recentChanges.unshift({ file, description, when: Date.now() });
+    if (this.memory.recentChanges.length > 20) this.memory.recentChanges = this.memory.recentChanges.slice(0, 20);
+    this._save();
+  }
+
+  getMemorySummary() {
+    if (!this.memory.recentChanges.length) return '';
+    const recent = this.memory.recentChanges.slice(0, 8);
+    return `RECENT CHANGES (what was done recently):\n` + recent.map(c => {
+      const ago = Math.round((Date.now() - c.when) / 60000);
+      const timeStr = ago < 60 ? `${ago}m ago` : `${Math.round(ago/60)}h ago`;
+      return `  • [${c.file}] ${c.description} (${timeStr})`;
+    }).join('\n');
+  }
+
+  // Read only the section of App.tsx relevant to the user's request
+  getRelevantCode(command, projectRoot) {
+    const cmdL = command.toLowerCase();
+    let snippets = [];
+
+    try {
+      const cssPath = path.join(projectRoot, 'src', 'index.css');
+      const appPath = path.join(projectRoot, 'src', 'App.tsx');
+
+      const needsCSS = /color|font|size|spacing|padding|margin|background|border|shadow|appearance|style|theme|look|css|design/.test(cmdL);
+      const needsSidebar = /sidebar|nav|navigation|logo|menu/.test(cmdL);
+      const needsCommand = /command center|chat|message|input|send|bubble/.test(cmdL);
+      const needsSettings = /setting|config|appearance|api|key|sync/.test(cmdL);
+      const needsDashboard = /dashboard|stats|card|quick/.test(cmdL);
+      const needsSkills = /skill|optimizer/.test(cmdL);
+      const needsDevHub = /dev hub|devhub|tool|model|ollama/.test(cmdL);
+
+      // Always include CSS variables (small, always useful)
+      if (fs.existsSync(cssPath)) {
+        const css = fs.readFileSync(cssPath, 'utf-8');
+        const rootMatch = css.match(/:root\s*\{[^}]+\}/s);
+        if (rootMatch) snippets.push(`CSS Variables (src/index.css):\n\`\`\`css\n${rootMatch[0]}\n\`\`\``);
+
+        // Full CSS only if directly asked
+        if (needsCSS && !needsSidebar && !needsCommand) {
+          snippets.push(`Full src/index.css:\n\`\`\`css\n${css.slice(0, 4000)}\n\`\`\``);
+        }
+      }
+
+      if (fs.existsSync(appPath)) {
+        const app = fs.readFileSync(appPath, 'utf-8');
+        const lines = app.split('\n');
+
+        // Helper: extract lines around a keyword match
+        const extractAround = (keyword, contextLines = 60) => {
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].toLowerCase().includes(keyword)) {
+              const start = Math.max(0, i - 5);
+              const end = Math.min(lines.length, i + contextLines);
+              return lines.slice(start, end).join('\n');
+            }
+          }
+          return '';
+        };
+
+        if (needsSidebar) {
+          const s = extractAround('className="sidebar"', 80);
+          if (s) snippets.push(`Sidebar code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+        if (needsCommand) {
+          const s = extractAround("activeTab === 'command'", 100);
+          if (s) snippets.push(`Command Center code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+        if (needsSettings) {
+          const s = extractAround("activeTab === 'settings'", 80);
+          if (s) snippets.push(`Settings code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+        if (needsDashboard) {
+          const s = extractAround("activeTab === 'dashboard'", 80);
+          if (s) snippets.push(`Dashboard code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+        if (needsSkills) {
+          const s = extractAround("activeTab === 'skills'", 80);
+          if (s) snippets.push(`Skills code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+        if (needsDevHub) {
+          const s = extractAround("activeTab === 'devhub'", 80);
+          if (s) snippets.push(`Dev Hub code (src/App.tsx):\n\`\`\`tsx\n${s}\n\`\`\``);
+        }
+
+        // If nothing specific matched, give a compact project map instead
+        if (snippets.length <= 1) {
+          const stateLines = lines.slice(0, 120).join('\n'); // useState declarations = project map
+          snippets.push(`App.tsx state & structure:\n\`\`\`tsx\n${stateLines}\n\`\`\``);
+        }
+      }
+    } catch(e) {}
+
+    return snippets.join('\n\n');
+  }
+
+  // Compact project map — structure without full code (always included, very small)
+  getProjectMap(projectRoot) {
+    try {
+      const appPath = path.join(projectRoot, 'src', 'App.tsx');
+      if (!fs.existsSync(appPath)) return '';
+      const app = fs.readFileSync(appPath, 'utf-8');
+      // Extract tab names, state variable names, component structure
+      const tabs = [...app.matchAll(/activeTab === '([^']+)'/g)].map(m => m[1]);
+      const uniqueTabs = [...new Set(tabs)];
+      const states = [...app.matchAll(/const \[(\w+),/g)].map(m => m[1]).slice(0, 30);
+      return `PROJECT MAP:\n- Tabs: ${uniqueTabs.join(', ')}\n- Key state: ${states.join(', ')}`;
+    } catch(e) { return ''; }
+  }
+}
+
+const smartContext = new SmartContext();
+
 const sterilizePath = (inputPath) => {
   if (!inputPath) return '';
   return inputPath.split(path.delimiter).filter(p => {
