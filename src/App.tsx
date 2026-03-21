@@ -1933,9 +1933,9 @@ const App = () => {
                                               <span style={{ fontSize: '1rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
                                               <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontWeight: 800, fontSize: '0.82rem' }}>{shortModelName(m.name)}</div>
-                                                <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', fontFamily: 'monospace', opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '1px' }}>{m.modified}</div>
                                               </div>
-                                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size}</span>
+                                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size ? `${m.size}` : ''}</span>
                                               <span style={{ fontSize: '0.58rem', padding: '2px 7px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800, whiteSpace: 'nowrap' }}>{m.tooLarge ? "Can't Run" : '✅ Ready'}</span>
                                               <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer', fontSize: '0.65rem', padding: '3px 8px', flexShrink: 0 }} title="Remove model">✕ Remove</button>
                                             </div>

@@ -2955,7 +2955,18 @@ ipcMain.handle('ollama-list', async () => {
     const lines = String(raw).split('\n').slice(1).filter(Boolean);
     return { success: true, models: lines.map(l => {
       const parts = l.trim().split(/\s+/);
-      return { name: parts[0], id: parts[1] || '', size: parts[2] || '', modified: parts.slice(3).join(' ') || '' };
+      // ollama list columns: NAME  ID  SIZE_NUM  SIZE_UNIT  MODIFIED...
+      // e.g. "hf.co/Qwen/...:tag  abc123  2.9  GB  5 minutes ago"
+      const sizeUnits = ['gb','mb','kb','b'];
+      let size = '', modStart = 2;
+      if (parts[2] && parts[3] && sizeUnits.includes(parts[3].toLowerCase())) {
+        size = `${parts[2]} ${parts[3]}`;
+        modStart = 4;
+      } else if (parts[2]) {
+        size = parts[2];
+        modStart = 3;
+      }
+      return { name: parts[0], id: parts[1] || '', size, modified: parts.slice(modStart).join(' ') || '' };
     })};
   } catch(e) { return { success: false, models: [], error: e.message }; }
 });
