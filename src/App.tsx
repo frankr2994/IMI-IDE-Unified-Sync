@@ -1301,20 +1301,21 @@ const App = () => {
                                     tooLarge: m.tooLarge,
                                     vramGB: m.vramGB,
                                   })),
-                                ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string }[])
+                                ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string; tooLarge?: boolean; vramGB?: number }[])
                                 .filter(opt => opt.always || (opt.key && opt.key.trim()))
                                  .map(opt => (
-                                  <div key={opt.id} onClick={() => { setActiveEngine(opt.id); setIsCoderDropdownOpen(false); addLog('system', `Coder set to ${opt.name}`); saveConfig({ activeCoder: opt.id }); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeEngine === opt.id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeEngine === opt.id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeEngine === opt.id ? 900 : 400 }}
-                                    onMouseEnter={e => { if (activeEngine !== opt.id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                  <div key={opt.id}
+                                    onClick={() => { if (opt.tooLarge) { alert(`⚠️ "${opt.name}" can't run on your GPU (${opt.vramGB?.toFixed(0)}GB VRAM).\n\nDelete it in Dev Hub → AI Models and pull a smaller model.`); return; } setActiveEngine(opt.id); setIsCoderDropdownOpen(false); addLog('system', `Coder set to ${opt.name}`); saveConfig({ activeCoder: opt.id }); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: opt.tooLarge ? '#ff416c' : activeEngine === opt.id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: opt.tooLarge ? 'not-allowed' : 'pointer', background: activeEngine === opt.id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeEngine === opt.id ? 900 : 400, opacity: opt.tooLarge ? 0.7 : 1 }}
+                                    onMouseEnter={e => { if (activeEngine !== opt.id && !opt.tooLarge) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                                     onMouseLeave={e => { if (activeEngine !== opt.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                   >
                                     {opt.icon}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div>{opt.name}</div>
-                                      {opt.desc && <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: '1px' }}>{opt.desc}</div>}
+                                      {opt.desc && <div style={{ fontSize: '0.58rem', color: opt.tooLarge ? '#ff416c' : 'var(--text-dim)', marginTop: '1px' }}>{opt.desc}</div>}
                                     </div>
-                                    {activeEngine === opt.id && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
+                                    {activeEngine === opt.id && !opt.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                   </div>
                                 ))}
                                 {ollamaModels.length === 0 && (
