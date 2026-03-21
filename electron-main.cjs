@@ -1768,8 +1768,10 @@ User message: `;
     req.end();
     return;
   } else if (director === 'custom' || director === 'llama') {
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'story', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
-    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const isCodingAction = (
+      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
+      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
+    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
 
     if (!CUSTOM_API_URL) { event.sender.send('command-error', { messageId, error: "Custom Endpoint URL missing in Settings." }); return; }
@@ -1926,8 +1928,10 @@ User message: `;
   // ── Claude (Anthropic) Brain ──────────────────────────────────────────────
   if (director === 'claude') {
     if (!CLAUDE_KEY) { event.sender.send('command-error', { messageId, error: 'Claude API key missing. Add it in Settings → APIs.' }); return; }
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit', 'look'];
-    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const isCodingAction = (
+      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
+      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
+    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
     req.setHeader('Content-Type', 'application/json');
