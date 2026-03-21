@@ -48,7 +48,7 @@ if (typeof window !== 'undefined') {
 }
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('bob');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [quota, setQuota] = useState(65);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Idle');
