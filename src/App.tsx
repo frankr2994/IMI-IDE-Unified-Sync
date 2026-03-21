@@ -3427,105 +3427,64 @@ const App = () => {
 
                   {/* Run Optimizer + Last Result */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <button
-                      onClick={async () => {
-                        setOptimizerRunning(true);
-                        const result = await (ipc as any).invoke('skills-optimize');
-                        const h = await (ipc as any).invoke('skills-get-history');
-                        if (result) setOptimizerLastResult(result);
-                        if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
-                        setOptimizerLastRun(Date.now());
-                        setOptimizerRunning(false);
-                        fetchStats();
-                      }}
-                      disabled={optimizerRunning}
-                      className="btn-premium"
-                      style={{ padding: '10px 20px', fontSize: '0.65rem', opacity: optimizerRunning ? 0.6 : 1 }}
-                    >
-                      {optimizerRunning ? '⏳ Running…' : '▶ Run Optimizer Now'}
-                    </button>
-                    {optimizerLastRun && (
-                      <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>
-                        Last run: {Math.round((Date.now() - optimizerLastRun) / 1000)}s ago
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Last optimization result */}
-                  {optimizerLastResult && (
-                    <div style={{ padding: '12px 14px', background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px', marginBottom: '16px', fontSize: '0.65rem' }}>
-                      <span style={{ color: '#00ff88', fontWeight: 900 }}>✓ Optimization complete</span>
-                      <span style={{ color: 'var(--text-dim)', marginLeft: '10px' }}>
-                        Efficiency: <b style={{ color: 'white' }}>{optimizerLastResult.efficiency}%</b>
-                        {optimizerLastResult.removed > 0 && <span style={{ marginLeft: '8px', color: '#ff416c' }}>· Removed {optimizerLastResult.removed} weak skill{optimizerLastResult.removed !== 1 ? 's' : ''}</span>}
-                        {optimizerLastResult.removed === 0 && <span style={{ marginLeft: '8px', color: 'var(--text-dim)' }}>· No weak skills found</span>}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Miss Log — learning from AI calls */}
-                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em' }}>LEARNING FROM AI CALLS</div>
-                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>Last {optimizerHistory.length} queries that fell through to AI</span>
-                    </div>
-                    {optimizerHistory.length === 0 ? (
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center', padding: '20px' }}>
-                        No history yet — start using the Command Center and the engine will learn your patterns
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '220px', overflowY: 'auto' }}>
-                        {[...optimizerHistory].reverse().map((entry: any, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '7px', fontSize: '0.6rem' }}>
-                            <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span style={{ flex: 1, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{entry.command}"</span>
-                            <span style={{ fontSize: '0.5rem', padding: '1px 7px', background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.2)', borderRadius: '4px', color: '#ffa500', flexShrink: 0 }}>→ AI</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{ marginTop: '10px', fontSize: '0.55rem', color: 'var(--text-dim)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                      💡 When the same pattern appears <b style={{ color: 'white' }}>3+ times</b>, the engine automatically creates a skill to intercept it — reducing future AI calls to zero.
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
               {/* BENCHMARKS SUB-TAB */}
               {skillsSubTab === 'benchmarks' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+                  {/* Header row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>📊 PER-MODEL PERFORMANCE METRICS</div>
+                    <div>
+                      <div style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: '3px' }}>MODEL BENCHMARKS</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Per-model request count, response time, and success rate</div>
+                    </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <button onClick={async () => { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }} style={{ padding: '6px 14px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900 }}>🔄 REFRESH</button>
-                      <button onClick={() => { (ipc as any).send('reset-benchmarks'); setBenchmarkData({}); }} style={{ padding: '6px 14px', background: 'rgba(255,65,108,0.08)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '7px', color: '#ff416c', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900 }}>🗑 RESET</button>
+                      <button onClick={async () => { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }} style={{ height: '30px', padding: '0 12px', background: 'rgba(155,77,255,0.08)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em' }}>REFRESH</button>
+                      <button onClick={() => { (ipc as any).send('reset-benchmarks'); setBenchmarkData({}); }} style={{ height: '30px', padding: '0 12px', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em' }}>RESET</button>
                     </div>
                   </div>
+
                   {Object.keys(benchmarkData).length === 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '60px 0', opacity: 0.4 }}>
-                      <span style={{ fontSize: '3rem' }}>📊</span>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>No benchmark data yet.<br/>Click REFRESH to load, or send AI requests to start tracking.</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '60px 0', opacity: 0.35 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>No data yet — send AI requests to start tracking</div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {Object.entries(benchmarkData).map(([model, data]: [string, any]) => {
-                        const avgMs = data.requests > 0 ? Math.round(data.totalMs / data.requests) : 0;
-                        const successRate = data.requests > 0 ? Math.round((data.successes / data.requests) * 100) : 0;
-                        return (
-                          <div key={model} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'white', marginBottom: '10px', fontFamily: 'monospace' }}>{model}</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                              {[
-                                { label: 'REQUESTS', value: data.requests, color: '#4facfe' },
-                                { label: 'AVG RESPONSE', value: `${avgMs}ms`, color: '#00ff88' },
-                                { label: 'SUCCESS RATE', value: `${successRate}%`, color: successRate >= 90 ? '#00ff88' : successRate >= 60 ? '#ffa500' : '#ff416c' },
-                              ].map(s => (
-                                <div key={s.label} style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '7px' }}>
-                                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color }}>{s.value}</div>
-                                  <div style={{ fontSize: '0.48rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.08em', marginTop: '2px' }}>{s.label}</div>
+                    <>
+                      {/* Table header */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px 90px', gap: '8px', padding: '6px 14px', marginBottom: '4px' }}>
+                        {['MODEL', 'REQUESTS', 'AVG TIME', 'SUCCESS'].map(h => (
+                          <div key={h} style={{ fontSize: '0.48rem', fontWeight: 900, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.12em' }}>{h}</div>
+                        ))}
+                      </div>
+                      {/* Table rows */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {Object.entries(benchmarkData).sort(([,a]: any, [,b]: any) => b.requests - a.requests).map(([model, data]: [string, any]) => {
+                          const avgMs = data.requests > 0 ? Math.round(data.totalMs / data.requests) : 0;
+                          const successRate = data.requests > 0 ? Math.round((data.successes / data.requests) * 100) : 0;
+                          const label = model.startsWith('ollama:') ? model.slice(7) : model;
+                          return (
+                            <div key={model} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px 90px', gap: '8px', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '7px', alignItems: 'center', border: '1px solid rgba(255,255,255,0.04)' }}>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#4facfe', fontFamily: 'monospace' }}>{data.requests}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: avgMs < 2000 ? '#00ff88' : avgMs < 5000 ? '#ffa500' : '#ff416c', fontFamily: 'monospace' }}>{avgMs < 1000 ? `${avgMs}ms` : `${(avgMs/1000).toFixed(1)}s`}</span>
+                              </div>
+                              <div style={{ display: 'flex', align: 'center', gap: '6px' }}>
+                                <div style={{ height: '3px', flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden', alignSelf: 'center' }}>
+                                  <div style={{ height: '100%', width: `${successRate}%`, background: successRate >= 90 ? '#00ff88' : successRate >= 60 ? '#ffa500' : '#ff416c', borderRadius: '2px' }} />
                                 </div>
-                              ))}
+                                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: successRate >= 90 ? '#00ff88' : successRate >= 60 ? '#ffa500' : '#ff416c', fontFamily: 'monospace', flexShrink: 0 }}>{successRate}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              {false && (
+                <div>
+                  {[].map((s: any) => (
+                    <div key={s.label}>
                             </div>
                           </div>
                         );
