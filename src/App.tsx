@@ -3718,107 +3718,6 @@ const App = () => {
                 </div>
               )}
 
-              {/* SKILL LIBRARY tab */}
-              {skillsSubTab === 'library' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
-                  {/* Search bar */}
-                  <div style={{ position: 'relative', marginBottom: '16px' }}>
-                    <Search size={13} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
-                    <input
-                      value={skillLibSearch}
-                      onChange={e => setSkillLibSearch(e.target.value)}
-                      placeholder="Search 67 skills... (e.g. spotify, git, ai, deploy)"
-                      className="chat-input"
-                      style={{ paddingLeft: '34px', fontSize: '0.75rem', width: '100%' }}
-                    />
-                    {skillLibSearch && (
-                      <button onClick={() => setSkillLibSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '4px', fontSize: '0.8rem' }}>✕</button>
-                    )}
-                  </div>
-
-                  {/* No search + no category selected → show category browser */}
-                  {!skillLibSearch.trim() && (
-                    <>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '12px' }}>BROWSE BY CATEGORY</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', marginBottom: '24px' }}>
-                        {[...new Set(SKILL_LIBRARY.map(s => s.category))].map(cat => {
-                          const catSkills = SKILL_LIBRARY.filter(s => s.category === cat);
-                          const installedCount = catSkills.filter(s => installedSkillIds.has(s.id)).length;
-                          const catIcon = catSkills[0]?.icon || '⚡';
-                          return (
-                            <button key={cat} onClick={() => setSkillLibSearch(cat.replace(/^[^\s]+\s/, ''))} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '14px 16px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.08)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.25)'; }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; }}
-                            >
-                              <div style={{ fontSize: '1.4rem', marginBottom: '8px' }}>{cat.split(' ')[0]}</div>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'white', marginBottom: '4px' }}>{cat.replace(/^[^\s]+\s/, '')}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{catSkills.length} skills</span>
-                                {installedCount > 0 && <span style={{ fontSize: '0.5rem', padding: '1px 6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '4px', color: '#00ff88' }}>{installedCount} added</span>}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Search results OR category drill-down */}
-                  {(() => {
-                    const q = skillLibSearch.trim().toLowerCase();
-                    if (!q) return null;
-                    const filtered = SKILL_LIBRARY.filter(s =>
-                      s.name.toLowerCase().includes(q) ||
-                      s.desc.toLowerCase().includes(q) ||
-                      s.pattern.toLowerCase().includes(q) ||
-                      s.category.toLowerCase().includes(q)
-                    );
-                    if (filtered.length === 0) return (
-                      <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔍</div>
-                        <div style={{ fontSize: '0.75rem', color: 'white', marginBottom: '6px' }}>No skills found for "{skillLibSearch}"</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Try: web, git, ai, deploy, gaming, system</div>
-                      </div>
-                    );
-                    return (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                          <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em' }}>{filtered.length} RESULT{filtered.length !== 1 ? 'S' : ''}</div>
-                          <button onClick={() => setSkillLibSearch('')} style={{ fontSize: '0.55rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Back to categories</button>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
-                          {filtered.map(skill => {
-                            const installed = installedSkillIds.has(skill.id);
-                            return (
-                              <div key={skill.id} style={{ background: installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: '10px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                                  <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>{skill.icon}</span>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: '0.68rem', fontWeight: 900, color: 'white', marginBottom: '2px' }}>{skill.name}</div>
-                                    <div style={{ fontSize: '0.57rem', color: 'var(--text-dim)', marginBottom: '2px' }}>{skill.desc}</div>
-                                    <div style={{ fontSize: '0.5rem', color: 'rgba(155,77,255,0.6)' }}>{skill.category}</div>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                                  <code style={{ fontSize: '0.54rem', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: '4px', color: '#4facfe', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{skill.pattern}"</code>
-                                  {installed ? (
-                                    <span style={{ fontSize: '0.55rem', padding: '3px 10px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '6px', color: '#00ff88', whiteSpace: 'nowrap', flexShrink: 0 }}>✓ Added</span>
-                                  ) : (
-                                    <button onClick={async () => {
-                                      await (ipc as any).invoke('skills-add', { id: skill.id, name: skill.name, pattern: skill.pattern, type: skill.response ? 'cached' : 'passthrough', cachedResponse: skill.response || null, desc: skill.desc });
-                                      fetchStats();
-                                    }} style={{ fontSize: '0.55rem', padding: '3px 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 900 }}>+ Add</button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
 
               {/* ── COMMUNITY ── */}
               {skillsSubTab === 'community' && (
@@ -3858,18 +3757,18 @@ const App = () => {
                     </div>
                     {/* Category filter */}
                     <select value={communityCategory} onChange={e => setCommunityCategory(e.target.value)}
-                      style={{ height: '32px', padding: '0 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '130px' }}>
-                      <option value="all">All Categories</option>
+                      style={{ height: '32px', padding: '0 8px', background: '#1a1025', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '7px', color: 'rgba(255,255,255,0.85)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '130px' }}>
+                      <option value="all" style={{ background: '#1a1025', color: 'rgba(255,255,255,0.85)' }}>All Categories</option>
                       {[...new Set(communitySkills.map(s => s.category))].map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat} style={{ background: '#1a1025', color: 'rgba(255,255,255,0.85)' }}>{cat}</option>
                       ))}
                     </select>
                     {/* Sort */}
                     <select value={communitySort} onChange={e => setCommunitySort(e.target.value as any)}
-                      style={{ height: '32px', padding: '0 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.7)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '110px' }}>
-                      <option value="installs">Most Installed</option>
-                      <option value="rating">Top Rated</option>
-                      <option value="newest">Newest</option>
+                      style={{ height: '32px', padding: '0 8px', background: '#1a1025', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '7px', color: 'rgba(255,255,255,0.85)', fontSize: '0.65rem', cursor: 'pointer', minWidth: '110px' }}>
+                      <option value="installs" style={{ background: '#1a1025', color: 'rgba(255,255,255,0.85)' }}>Most Installed</option>
+                      <option value="rating"   style={{ background: '#1a1025', color: 'rgba(255,255,255,0.85)' }}>Top Rated</option>
+                      <option value="newest"   style={{ background: '#1a1025', color: 'rgba(255,255,255,0.85)' }}>Newest</option>
                     </select>
                   </div>
 
