@@ -1654,8 +1654,12 @@ User message: `;
       }
     }
 
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
-    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    // isCodingAction = true ONLY when the user is explicitly asking to change IMI's own code/UI.
+    // Must reference IMI-specific things AND have an action verb — NOT just any mention of "make" or "build".
+    const isCodingAction = (
+      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
+      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
+    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     console.log(`[ROUTE] → Gemini stream (isCodingAction=${isCodingAction})`);
     const hostname = 'generativelanguage.googleapis.com';
@@ -2619,12 +2623,17 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
     baseName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, '_') : null;
   }
   if (!baseName) {
-    // Smart extraction: "make a html pong game" → "pong_game", "create a calculator" → "calculator"
+    // Smart extraction: "make a html pong game" → "pong_game", "can u make a pong game out of html" → "pong_game"
     const smartMatch = command.match(
-      /\b(?:make|create|build|write|generate)\b\s+(?:a\s+|an\s+)?(?:(?:html|css|js|python|javascript|typescript|simple|basic|small|fun|cool)\s+)?([a-zA-Z][a-zA-Z0-9 ]{1,30}?)(?=\s+(?:and|put|on|in|for|from|that|using|with|then|after|open)\b|\s*$)/i
+      /\b(?:make|create|build|write|generate)\b\s+(?:u\s+)?(?:a\s+|an\s+)?(?:(?:html|css|js|python|javascript|typescript|simple|basic|small|fun|cool)\s+)?([a-zA-Z][a-zA-Z0-9 ]{1,40}?)(?=\s+(?:and|put|on|in|for|from|that|using|with|then|after|open|out\s+of|using)\b|\s*$)/i
     );
     if (smartMatch) {
-      baseName = smartMatch[1].trim().split(/\s+/).slice(0, 3).join('_').toLowerCase();
+      // Strip non-descriptive filler words from the extracted name
+      const FILLER = new Set(['out','of','in','from','using','via','with','made','built','written','created','a','an','the','html','css','js','py','python','javascript','typescript','bash','shell']);
+      const words = smartMatch[1].trim().split(/\s+/)
+        .filter(w => !FILLER.has(w.toLowerCase()))
+        .slice(0, 3);
+      if (words.length > 0) baseName = words.join('_').toLowerCase();
     }
   }
   if (!baseName) {
