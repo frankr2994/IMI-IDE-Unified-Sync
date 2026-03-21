@@ -1480,9 +1480,12 @@ User message: `;
     req.setHeader('Content-Type', 'application/json');
     if (CUSTOM_API_KEY) req.setHeader('Authorization', `Bearer ${CUSTOM_API_KEY}`);
     
-    req.write(JSON.stringify({ 
+    const customMessages = [{ role: 'system', content: activePrefix }];
+    for (const h of history) customMessages.push({ role: h.role, content: h.text });
+    customMessages.push({ role: 'user', content: command });
+    req.write(JSON.stringify({
       model: apiModel,
-      messages: [{ role: 'system', content: activePrefix }, { role: 'user', content: command }],
+      messages: customMessages,
       stream: true,
       temperature: BRAIN_TEMPERATURE
     }));
@@ -1552,20 +1555,18 @@ User message: `;
       const sizeHint = modelSizeGB >= 15 ? ` This model is ${modelSizeGB.toFixed(0)}GB — it needs a GPU to run at usable speed.` : '';
       event.sender.send('command-error', { messageId, error: `⏱️ Ollama timed out after ${timeoutMs/1000}s.${sizeHint}\n\n💡 Try switching to **qwen2.5-coder:7b** (4.7GB) — it runs fast on CPU.` });
     }, timeoutMs);
+    // Build conversation history for Ollama (OpenAI format)
+    const ollamaMessages = [{ role: 'system', content: activePrefix }];
+    for (const h of history) ollamaMessages.push({ role: h.role, content: h.text });
+    ollamaMessages.push({
+      role: 'user',
+      content: imageBase64 && imageMimeType
+        ? [{ type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } }, { type: 'text', text: command }]
+        : command
+    });
     const body = JSON.stringify({
       model: ollamaModel,
-      messages: [
-        { role: 'system', content: activePrefix },
-        {
-          role: 'user',
-          content: imageBase64 && imageMimeType
-            ? [
-                { type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } },
-                { type: 'text', text: command }
-              ]
-            : command
-        }
-      ],
+      messages: ollamaMessages,
       stream: true,
       temperature: 0.7,
     });
@@ -1615,20 +1616,21 @@ User message: `;
     req.setHeader('x-api-key', CLAUDE_KEY.trim());
     req.setHeader('anthropic-version', '2023-06-01');
     req.setHeader('anthropic-beta', 'prompt-caching-2024-07-31');
+    // Build message history for Claude
+    const claudeMessages = history.map(h => ({ role: h.role, content: h.text }));
+    // Add current message (with optional image)
+    claudeMessages.push({
+      role: 'user',
+      content: imageBase64 && imageMimeType
+        ? [{ type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } }, { type: 'text', text: command }]
+        : command
+    });
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: 8096,
       stream: true,
       system: activePrefix,
-      messages: [{
-        role: 'user',
-        content: imageBase64 && imageMimeType
-          ? [
-              { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
-              { type: 'text', text: command }
-            ]
-          : command
-      }],
+      messages: claudeMessages,
     });
     req.write(body);
     let fullText = '';
