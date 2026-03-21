@@ -1441,12 +1441,14 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   // ── DESKTOP / FILE CREATION — director-agnostic, always runs before AI routing ──
   // These always use Gemini's API for content generation regardless of which brain is selected.
+  // Desktop typo tolerance: "destop", "dekstop", "desktp", "desctop", "destktop" etc.
+  const _hasDesktop = /\b(desktop|my desktop|des[ck]?t?k?o?p|deskt?o?p|destop|dekstop|desctop)\b/i.test(command);
   {
     const _deskL = command.toLowerCase();
     // Create folder on desktop
-    const _isDesktopOp = (
-      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
-      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
+    const _isDesktopOp = _hasDesktop && (
+      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
+      || /\b(folder|directory)\b.{0,25}\b(create|make|new|add|build|on|for)\b/i.test(command)
     );
     if (_isDesktopOp) {
       console.log(`[ROUTE] → triggerDesktopTask (folder+file on desktop)`);
@@ -1454,11 +1456,12 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       return;
     }
     // Create a program/script/file on desktop (no folder needed)
-    const _isCreateProgram = (
-      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
-      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
+    const _isCreateProgram = _hasDesktop && (
+      /\b(create|make|build|write|generate|want|need|give me|put)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility|file)\b/i.test(command)
+      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b/i.test(command)
       || /\b(html|python|javascript)\b.{0,30}\b(pong|snake|tetris|calculator|todo|game|app|tool)\b/i.test(command)
-    ) && /\b(desktop|my desktop)\b/i.test(command);
+      || /\b(make|create|build|put|give|i want|i need|can you|can u)\b.{0,30}\b(file|new one|new file|something|game|app|script|program|tool|calculator)\b/i.test(command)
+    );
     if (_isCreateProgram) {
       console.log(`[ROUTE] → triggerAutoCreateFile (desktop file)`);
       triggerAutoCreateFile(event, command, messageId);
@@ -1469,12 +1472,11 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   // ── SMART INTENT CLASSIFIER — AI-powered fallback for anything that didn't match regexes ──
   // Catches typos, vague descriptions, indirect phrasing, missing "desktop" keyword, etc.
-  // Triggers when command looks like it could be a creation/desktop task but regex didn't catch it.
   const _looksLikeCreationTask = !_isCodeCtx && (
-    // Has "desktop" + any action/object vibe
-    (/\b(desktop|my desktop)\b/i.test(command) && /\b(make|create|build|write|generate|want|need|give|put|place|can you|could you|a |an )\b/i.test(command))
-    // OR sounds like wanting a specific game/app/tool without saying desktop (default to desktop)
-    || /\b(make|create|build|write|give me|i want|i need|can you make|put)\b.{0,70}\b(game|pong|snake|tetris|chess|calculator|todo|timer|clock|stopwatch|quiz|app|program|tool|website|chatbot|utility)\b/i.test(command)
+    // Has desktop (or typo) + any action/object vibe
+    (_hasDesktop && /\b(make|create|build|write|generate|want|need|give|put|place|can|could|file|new)\b/i.test(command))
+    // OR sounds like wanting a specific game/app/tool (default to desktop even without the word)
+    || /\b(make|create|build|write|give me|i want|i need|can you make|can u make|put)\b.{0,70}\b(game|pong|snake|tetris|chess|calculator|todo|timer|clock|stopwatch|quiz|app|program|tool|website|chatbot|utility|file)\b/i.test(command)
   );
   if (_looksLikeCreationTask) {
     console.log(`[ROUTE] → classifyCommandIntent (ambiguous creation task)`);
@@ -2600,27 +2602,41 @@ Rules:
 - confidence: how sure you are (0-100)
 - IGNORE spelling mistakes, understand intent despite typos`;
 
-    const data = await new Promise((resolve, reject) => {
+    const rawBody = await new Promise((resolve, reject) => {
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       }, res => {
         let raw = '';
         res.on('data', d => raw += d);
-        res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
+        res.on('end', () => resolve(raw));
       });
       req.on('error', reject);
       req.write(JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 200, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0, maxOutputTokens: 300 }
       }));
       req.end();
     });
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Parse the API response
+    const apiResp = JSON.parse(rawBody);
+    if (apiResp.error) { console.warn('[classifyIntent] API error:', apiResp.error.message); return null; }
+    const text = apiResp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('[classifyIntent] raw text:', text.slice(0, 200));
+    // Extract JSON from response — handle code fences, plain JSON, etc.
     const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-    const result = JSON.parse(cleaned);
+    // Try parsing, with fallback to find first { ... } block
+    let result;
+    try { result = JSON.parse(cleaned); } catch(_) {
+      const jsonStart = cleaned.indexOf('{');
+      const jsonEnd = cleaned.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        result = JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+      }
+    }
+    if (!result) { console.warn('[classifyIntent] could not parse JSON'); return null; }
     console.log('[classifyIntent]', JSON.stringify(result));
     return result;
   } catch(e) {
