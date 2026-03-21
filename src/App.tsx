@@ -1349,10 +1349,74 @@ const App = () => {
                     <button type="submit" className="btn-premium" style={{ height: '48px', padding: '0 24px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                       {ghSearching ? '⏳ SEARCHING...' : '🔍 SEARCH GITHUB'}
                     </button>
-                    {ghResults.length > 0 && <button type="button" onClick={() => { setGhResults([]); setGhQuery(''); }} style={{ height: '48px', padding: '0 14px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '12px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem' }}>CLEAR</button>}
+                    {(ghResults.length > 0 || ghUrlPreview) && <button type="button" onClick={() => { setGhResults([]); setGhQuery(''); setGhUrlPreview(null); }} style={{ height: '48px', padding: '0 14px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '12px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem' }}>CLEAR</button>}
                   </form>
 
                   {ghError && <p style={{ fontSize: '0.7rem', color: '#ff416c', marginBottom: '12px' }}>⚠ {ghError}{ghError.includes('rate limit') ? ' — Add a GitHub token in Settings to increase the limit.' : ''}</p>}
+
+                  {/* ── GitHub URL Preview Card ── */}
+                  {ghUrlPreview && (() => {
+                    const { type, data } = ghUrlPreview;
+                    const stateColor = data.state === 'open' ? '#3fb950' : data.merged ? '#a371f7' : '#f85149';
+                    const stateLabel = data.merged ? '✅ Merged' : data.draft ? '🔲 Draft' : data.state === 'open' ? '🟢 Open' : '🔴 Closed';
+                    const timeAgoStr = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000); return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`; };
+                    return (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(155,77,255,0.35)', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
+                        {/* Type badge + repo name */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '3px 10px', borderRadius: '6px', background: type === 'pr' ? 'rgba(163,113,247,0.2)' : type === 'issue' ? 'rgba(248,81,73,0.2)' : 'rgba(79,172,254,0.2)', color: type === 'pr' ? '#a371f7' : type === 'issue' ? '#f85149' : '#4facfe', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{type === 'pr' ? '⎇ Pull Request' : type === 'issue' ? '🐞 Issue' : '📦 Repository'}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 700 }}>{data.repoName || data.name}</span>
+                          {(type === 'pr' || type === 'issue') && <span style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 800, color: stateColor }}>{stateLabel}</span>}
+                        </div>
+                        {/* Title */}
+                        <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '10px', lineHeight: 1.4 }}>
+                          {(type === 'pr' || type === 'issue') ? `#${data.number} — ${data.title}` : data.description || data.name}
+                        </div>
+                        {/* Author + date */}
+                        {data.author && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                            {data.authorAvatar && <img src={data.authorAvatar} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />}
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>by <b style={{ color: 'white' }}>{data.author}</b> · opened {timeAgoStr(data.createdAt)}{data.updatedAt !== data.createdAt ? ` · updated ${timeAgoStr(data.updatedAt)}` : ''}</span>
+                          </div>
+                        )}
+                        {/* Labels */}
+                        {data.labels?.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '12px' }}>
+                            {data.labels.map((l: any) => <span key={l.name} style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: '12px', background: `#${l.color}22`, border: `1px solid #${l.color}55`, color: `#${l.color}` }}>{l.name}</span>)}
+                          </div>
+                        )}
+                        {/* PR stats */}
+                        {type === 'pr' && (
+                          <div style={{ display: 'flex', gap: '18px', fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '12px', flexWrap: 'wrap' }}>
+                            {data.additions != null && <span style={{ color: '#3fb950' }}>+{data.additions?.toLocaleString()}</span>}
+                            {data.deletions != null && <span style={{ color: '#f85149' }}>−{data.deletions?.toLocaleString()}</span>}
+                            {data.changedFiles != null && <span>📄 {data.changedFiles} files</span>}
+                            {data.commits != null && <span>📦 {data.commits} commits</span>}
+                            {data.comments != null && <span>💬 {data.comments} comments</span>}
+                            {data.baseBranch && <span>⎇ {data.headBranch} → {data.baseBranch}</span>}
+                          </div>
+                        )}
+                        {/* Repo stats */}
+                        {type === 'repo' && (
+                          <div style={{ display: 'flex', gap: '18px', fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '12px', flexWrap: 'wrap' }}>
+                            <span>⭐ {data.stars?.toLocaleString()}</span>
+                            <span>🍴 {data.forks?.toLocaleString()}</span>
+                            {data.language && <span>💻 {data.language}</span>}
+                            {data.openIssues != null && <span>🐞 {data.openIssues} issues</span>}
+                            {data.license && <span>📜 {data.license}</span>}
+                          </div>
+                        )}
+                        {/* Body preview */}
+                        {data.body && <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '14px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>{data.body}</p>}
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => (ipc as any).send('open-external-url', data.htmlUrl)} style={{ height: '34px', padding: '0 16px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.4)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>🐙 Open on GitHub</button>
+                          {type === 'repo' && <button onClick={async () => { const r = await (ipc as any).invoke('github-clone', data.cloneUrl, data.name?.split('/')[1]); if (r.success) alert(`Cloned to:\n${r.path}`); else alert(`Clone failed: ${r.error}`); }} style={{ height: '34px', padding: '0 16px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', color: '#4facfe', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>⬇ Clone Repo</button>}
+                          <button onClick={() => { setGhUrlPreview(null); setGhQuery(''); }} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>✕ Close</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {ghResults.length > 0 && (
                     <div>
