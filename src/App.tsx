@@ -74,6 +74,7 @@ const App = () => {
   const [planMode, setPlanMode] = useState(false);
   const [yoloMode, setYoloMode] = useState(false);
   const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
+  const planPhaseResolvers = React.useRef<Map<number, () => void>>(new Map());
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -970,7 +971,6 @@ const App = () => {
         const updated = prev.map(m =>
           m.id === data.messageId ? { ...m, isStreaming: false } : m
         );
-        // Persist completed AI message to store
         const finished = updated.find(m => m.id === data.messageId);
         if (finished) {
           (ipc as any).invoke('store-append-message', storeProjectKey, finished).catch(() => {});
@@ -979,13 +979,19 @@ const App = () => {
       });
       setIsSyncing(false);
       fetchStats();
+      // Resolve any waiting plan phase
+      const resolve = planPhaseResolvers.current.get(data.messageId);
+      if (resolve) { planPhaseResolvers.current.delete(data.messageId); resolve(); }
     };
 
     const onError = (event: any, data: any) => {
-      setMessages(prev => prev.map(m => 
+      setMessages(prev => prev.map(m =>
         m.id === data.messageId ? { ...m, text: m.text + '\n[ERROR] ' + data.error, isStreaming: false } : m
       ));
       setIsSyncing(false);
+      // Resolve plan phase on error too so it doesn't hang
+      const resolve = planPhaseResolvers.current.get(data.messageId);
+      if (resolve) { planPhaseResolvers.current.delete(data.messageId); resolve(); }
     };
 
     ipc.on('command-chunk', onChunk);
