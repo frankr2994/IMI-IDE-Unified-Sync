@@ -681,7 +681,7 @@ START NOW — use search_code or read_file first, never write_patch as your firs
     return new Promise((resolve, reject) => {
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       }, res => {
@@ -2708,7 +2708,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
     const https = require('https');
     const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096 } });
     const data = await new Promise((resolve, reject) => {
-      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
         res.on('data', d => raw += d);
         res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
@@ -2833,7 +2833,7 @@ Return the COMPLETE updated file content in a code block. Apply ONLY the changes
     const https = require('https');
     const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } });
     const data = await new Promise((resolve, reject) => {
-      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
         res.on('data', d => raw += d);
         res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
