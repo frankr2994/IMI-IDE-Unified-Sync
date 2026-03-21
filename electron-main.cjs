@@ -609,7 +609,30 @@ ${memoryLog}
 
 TASK: ${command}
 
-Start by reading the relevant file(s). Then make changes. Then run the build to verify. Fix any errors. When done, call the done tool.`;
+━━━ HOW TO WORK (SEARCH-FIRST APPROACH) ━━━
+Follow these steps exactly — this is what makes the difference between fast accurate fixes and slow broken ones:
+
+STEP 1 — SEARCH BEFORE YOU TOUCH
+• Use search_code to find the EXACT function, variable or block you need to change
+• Use read_file with offset+limit to read ONLY the relevant section (not the whole file)
+• Never assume what code looks like — always verify first
+• If you get a line number from an error, read that exact area
+
+STEP 2 — UNDERSTAND THE ROOT CAUSE
+• Trace errors back to their source — stack traces give you the exact file:line
+• Look for what's MISSING or WRONG, not just what the error message says
+• Check if the issue is in the frontend (App.tsx), backend (electron-main.cjs), or styles (index.css)
+
+STEP 3 — MAKE THE SMALLEST POSSIBLE CHANGE
+• One targeted patch beats a full rewrite every time
+• Use write_patch with the EXACT text from your read_file result as the search string
+• If your search string doesn't match exactly, search_code again to get the real text
+
+STEP 4 — VERIFY
+• Run run_build after patching — if it fails, read the error and fix it
+• Never call done until the build passes or the task is confirmed working
+
+START NOW — use search_code or read_file first, never write_patch as your first action.`;
 
   const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
   const MAX_STEPS = 15;
