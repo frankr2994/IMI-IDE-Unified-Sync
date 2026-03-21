@@ -1654,9 +1654,37 @@ const App = () => {
                         <input value={ollamaSearch} onChange={e => setOllamaSearch(e.target.value)} placeholder="Search any model… 'llama', 'mistral', 'coder', 'vision'…" style={{ width: '100%', height: '42px', paddingLeft: '38px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
                       </div>
                       <button type="submit" className="btn-premium" style={{ height: '42px', padding: '0 20px', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{hfSearching ? '⏳' : '🔍 Search'}</button>
-                      {hfResults.length > 0 && <button type="button" onClick={() => { setHfResults([]); setOllamaSearch(''); }} style={{ height: '42px', padding: '0 12px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', fontSize: '0.72rem' }}>Clear</button>}
+                      {(hfResults.length > 0 || hfUrlPreview) && <button type="button" onClick={() => { setHfResults([]); setOllamaSearch(''); setHfUrlPreview(null); }} style={{ height: '42px', padding: '0 12px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', fontSize: '0.72rem' }}>Clear</button>}
                     </form>
                     {hfError && <p style={{ fontSize: '0.7rem', color: '#ff416c', marginBottom: '10px' }}>⚠ {hfError}</p>}
+
+                    {/* HuggingFace URL Preview */}
+                    {hfUrlPreview && (() => {
+                      const { data } = hfUrlPreview;
+                      const isPulling = ollamaPulling === data.ollamaCmd;
+                      const isInstalled = ollamaModels.some(m => m.name.includes((data.name||'').split('/').pop()||''));
+                      return (
+                        <div style={{ background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(255,170,0,0.35)'}`, borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '3px 10px', borderRadius: '6px', background: 'rgba(255,170,0,0.15)', color: '#ffaa00', letterSpacing: '0.1em' }}>🤗 HUGGINGFACE MODEL</span>
+                            {isInstalled && <span style={{ fontSize: '0.6rem', color: '#00ff88', fontWeight: 700 }}>✅ Installed</span>}
+                            {data.sizeLabel && <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: 'var(--text-dim)' }}>💾 {data.sizeLabel}{data.ggufCount > 1 ? ` (${data.ggufCount} files)` : ''}</span>}
+                          </div>
+                          <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '8px', wordBreak: 'break-word' }}>{data.name}</div>
+                          <div style={{ display: 'flex', gap: '14px', fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '12px', flexWrap: 'wrap' }}>
+                            <span>⬇ {formatNum(data.downloads)}</span>
+                            <span>❤️ {formatNum(data.likes)}</span>
+                            <span style={{ padding: '1px 8px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '4px', color: 'var(--primary)', fontSize: '0.6rem' }}>{data.pipeline}</span>
+                          </div>
+                          {data.tags?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>{data.tags.slice(0,6).map((t: string) => <span key={t} style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{t}</span>)}</div>}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => (ipc as any).send('open-external-url', data.hfUrl)} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>🤗 HF ↗</button>
+                            <button disabled={isPulling || isInstalled} onClick={async () => { if (isPulling || isInstalled) return; setOllamaPulling(data.ollamaCmd); const r = await (ipc as any).invoke('ollama-pull', data.ollamaCmd); setOllamaPulling(''); if (r.success) { loadOllamaModels(); } }} style={{ flex: 1, height: '34px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(155,77,255,0.2)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.4)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>{isInstalled ? '✅ Installed' : isPulling ? '⏳ Pulling…' : '⬇ Pull Model'}</button>
+                            <button onClick={() => { setHfUrlPreview(null); setOllamaSearch(''); }} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>✕</button>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* HF live results */}
                     {hfResults.length > 0 && (
