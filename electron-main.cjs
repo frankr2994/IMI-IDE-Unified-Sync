@@ -391,6 +391,28 @@ ipcMain.handle('browse-multi', async (_e, mode) => {
   return [];
 });
 
+// ── File System IPC handlers (safe read/write/list for AI file ops) ──────────
+ipcMain.handle('fs-read',   (_e, filePath) => {
+  try { return { content: fs.readFileSync(filePath, 'utf-8'), success: true }; }
+  catch(e) { return { error: e.message, success: false }; }
+});
+ipcMain.handle('fs-write',  (_e, filePath, content) => {
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return { success: true };
+  } catch(e) { return { error: e.message, success: false }; }
+});
+ipcMain.handle('fs-list',   (_e, dirPath) => {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    return { success: true, files: entries.map(e => ({ name: e.name, isDir: e.isDirectory(), path: path.join(dirPath, e.name) })) };
+  } catch(e) { return { error: e.message, success: false }; }
+});
+ipcMain.handle('fs-exists',  (_e, filePath) => {
+  return { exists: fs.existsSync(filePath) };
+});
+
 // ── Skill Engine IPC handlers ────────────────────────────────────────────────
 ipcMain.handle('skills-get-all',    ()          => ({ skills: skillEngine.getAll(), stats: skillEngine.stats, efficiency: skillEngine.getEfficiency() }));
 ipcMain.handle('skills-add',        (_e, skill) => skillEngine.addSkill(skill));
