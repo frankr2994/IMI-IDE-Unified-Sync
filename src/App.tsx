@@ -69,6 +69,7 @@ const App = () => {
   const [linkedServicesExpanded, setLinkedServicesExpanded] = useState(false);
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
+  const [attachedImage, setAttachedImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -781,10 +782,29 @@ const App = () => {
     }
   };
 
+  const handleImageAttach = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const [header, base64] = dataUrl.split(',');
+        const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+        setAttachedImage({ base64, mimeType, previewUrl: dataUrl });
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     const messageId = Date.now();
-    const newUserMsg = { id: messageId, type: 'user', text: chatInput };
+    const newUserMsg = { id: messageId, type: 'user', text: chatInput, imageUrl: attachedImage?.previewUrl };
     setMessages(prev => [...prev, newUserMsg]);
     // Persist user message immediately
     (ipc as any).invoke('store-append-message', storeProjectKey, newUserMsg).catch(() => {});
@@ -812,12 +832,15 @@ const App = () => {
       });
     }
 
-    (ipc as any).send('execute-command-stream', { 
-      command: newUserMsg.text, 
+    (ipc as any).send('execute-command-stream', {
+      command: newUserMsg.text,
       director: activeDirector,
       engine: activeEngine,
-      messageId: aiId
+      messageId: aiId,
+      imageBase64: attachedImage?.base64,
+      imageMimeType: attachedImage?.mimeType,
     });
+    setAttachedImage(null); // clear after sending
   };
 
   useEffect(() => {
@@ -1266,6 +1289,9 @@ const App = () => {
                           </div>
                         )}
                         <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
+                          {(m as any).type === 'user' && (m as any).imageUrl && (
+                            <img src={(m as any).imageUrl} alt="attached" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', marginBottom: '8px', display: 'block', objectFit: 'contain' }} />
+                          )}
                           {m.isStreaming && m.text === '' ? (
                             <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>⏳</motion.span>

@@ -1015,7 +1015,7 @@ async function triggerGitSync() {
 }
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
-  const { command, director, messageId } = payload;
+  const { command, director, messageId, imageBase64, imageMimeType } = payload;
   const cmdLower = command.toLowerCase().trim();
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
@@ -1383,8 +1383,13 @@ User message: `;
     console.log('[IMI Brain] Model:', BRAIN_MODEL, '| Temp:', BRAIN_TEMPERATURE, '| MaxTokens:', BRAIN_MAX_TOKENS);
     const req = net.request({ method: 'POST', protocol: 'https:', hostname, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    req.write(JSON.stringify({ 
-      contents: [{ parts: [{ text: activePrefix + command }] }],
+    const parts = [];
+    if (imageBase64 && imageMimeType) {
+      parts.push({ inlineData: { mimeType: imageMimeType, data: imageBase64 } });
+    }
+    parts.push({ text: activePrefix + command });
+    req.write(JSON.stringify({
+      contents: [{ parts }],
       tools: [{ googleSearch: {} }],
       generationConfig: { temperature: BRAIN_TEMPERATURE, maxOutputTokens: BRAIN_MAX_TOKENS }
     }));
@@ -1540,7 +1545,15 @@ User message: `;
       model: ollamaModel,
       messages: [
         { role: 'system', content: activePrefix },
-        { role: 'user', content: command }
+        {
+          role: 'user',
+          content: imageBase64 && imageMimeType
+            ? [
+                { type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } },
+                { type: 'text', text: command }
+              ]
+            : command
+        }
       ],
       stream: true,
       temperature: 0.7,
@@ -1596,7 +1609,15 @@ User message: `;
       max_tokens: 8096,
       stream: true,
       system: activePrefix,
-      messages: [{ role: 'user', content: command }],
+      messages: [{
+        role: 'user',
+        content: imageBase64 && imageMimeType
+          ? [
+              { type: 'image', source: { type: 'base64', media_type: imageMimeType, data: imageBase64 } },
+              { type: 'text', text: command }
+            ]
+          : command
+      }],
     });
     req.write(body);
     let fullText = '';
