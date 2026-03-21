@@ -1062,8 +1062,9 @@ Project structure:\n${projectMap}
 
 Relevant code:\n${relevantCode}
 
-The user wants to make a change. Generate a detailed phased implementation plan.
-Respond with ONLY valid JSON — no markdown, no prose, no code fences — matching exactly:
+The user wants to make a change. Generate a concise phased implementation plan.
+Keep phase "prompt" fields under 200 words each. Keep "description" under 50 words.
+Respond with ONLY valid JSON matching exactly:
 {
   "title": "short title (max 60 chars)",
   "summary": "2-3 sentence overview of what will be built",
@@ -1087,7 +1088,7 @@ Respond with ONLY valid JSON — no markdown, no prose, no code fences — match
     req.write(JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: `User request: ${command}` }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: 'application/json' }
     }));
     let body = '';
     req.on('response', res => {
@@ -1097,7 +1098,20 @@ Respond with ONLY valid JSON — no markdown, no prose, no code fences — match
           const raw = JSON.parse(body);
           const text = raw?.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
-          resolve(JSON.parse(cleaned));
+          // Try direct parse first; if truncated, attempt to extract the largest valid JSON object
+          let parsed;
+          try { parsed = JSON.parse(cleaned); }
+          catch(_) {
+            const start = cleaned.indexOf('{');
+            if (start === -1) throw new Error('No JSON object found');
+            // Walk backwards from end to find a valid closing brace
+            let sub = cleaned.slice(start);
+            for (let i = sub.length; i > 0; i--) {
+              try { parsed = JSON.parse(sub.slice(0, i)); break; } catch(_) {}
+            }
+            if (!parsed) throw new Error('JSON truncated and could not be repaired');
+          }
+          resolve(parsed);
         } catch(e) { reject(new Error('Plan parse failed: ' + e.message + '\nRaw: ' + body.slice(0, 300))); }
       });
     });
