@@ -1014,7 +1014,7 @@ const App = () => {
                         <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED QUOTA</div>
                       </div>
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeDirector.toUpperCase()} ACTIVE</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase()} ACTIVE</div>
                  </div>
                  <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
