@@ -1593,6 +1593,7 @@ User message: `;
         .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
       const allUrls = [...new Set([...urls, ...siteNames])];
       if (allUrls.length > 0) {
+        console.log(`[ROUTE] → isSimpleOpen (shell.openExternal) urls=${allUrls.join(',')}`);
         allUrls.forEach(u => shell.openExternal(u));
         event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `🌐 Opening: ${u}`).join('\n') });
         event.sender.send('command-end', { messageId, code: 0 });
@@ -1603,6 +1604,7 @@ User message: `;
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'chanage', 'look', 'poem', 'build', 'implement', 'fix', 'refactor', 'setup', 'settings', 'better', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+    console.log(`[ROUTE] → Gemini stream (isCodingAction=${isCodingAction})`);
     const hostname = 'generativelanguage.googleapis.com';
     // Use user-configured model (from System > Brain Configuration)
     const apiPath = `/v1beta/models/${BRAIN_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_KEY}`;
