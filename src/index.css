@@ -53,6 +53,12 @@ body {
 
 #root {
   min-height: 100vh;
+  /* Override App.css Vite boilerplate that caps root at 1280px */
+  max-width: 100vw !important;
+  width: 100% !important;
+  text-align: left !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .dashboard-container {
