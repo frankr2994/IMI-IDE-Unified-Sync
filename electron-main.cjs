@@ -384,6 +384,281 @@ class SmartContext {
 
 const smartContext = new SmartContext();
 
+// ── IMI Agent Tools — used by the agentic loop ───────────────────────────────
+const AGENT_TOOLS_DESC = `
+You are an AI coding agent inside IMI. You can use these tools to read, search, edit, and verify code.
+
+AVAILABLE TOOLS:
+1. read_file {"path": "relative/path"} — Read a file (relative to project root)
+2. search_code {"pattern": "regex", "path": "src/"} — Search for pattern in files
+3. list_dir {"path": "."} — List files in a directory
+4. write_patch {"file": "path", "search": "exact text to find", "replace": "new text"} — Apply surgical patch
+5. run_build {} — Run npm run build and return any errors
+6. read_error {"file": "path", "line": 392} — Read lines around a specific error
+7. done {"message": "summary of what was done"} — Signal completion
+
+RULES:
+- Always read a file before patching it
+- After patching, always run_build to verify no errors
+- If build fails, read the error location and fix it
+- Maximum 12 tool steps per task
+- Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
+- When finished: TOOL_CALL: {"tool": "done", "args": {"message": "..."}}
+`;
+
+async function executeAgentTool(toolName, args, projectRoot) {
+  const safePath = (p) => {
+    const resolved = path.resolve(projectRoot, p.replace(/^\//, ''));
+    // Safety: only allow access within project root or desktop
+    const desktop = path.join(os.homedir(), 'Desktop');
+    if (!resolved.startsWith(projectRoot) && !resolved.startsWith(desktop)) {
+      return { error: 'Access denied — path outside project' };
+    }
+    return { path: resolved };
+  };
+
+  try {
+    switch (toolName) {
+      case 'read_file': {
+        const { path: fp, error } = safePath(args.path || '');
+        if (error) return error;
+        if (!fs.existsSync(fp)) return `File not found: ${args.path}`;
+        const content = fs.readFileSync(fp, 'utf-8');
+        const lines = content.split('\n');
+        // If file is large, return a summary + key sections
+        if (lines.length > 200) {
+          return `File: ${args.path} (${lines.length} lines)\n\nLines 1-80:\n${lines.slice(0, 80).join('\n')}\n\n... (${lines.length - 80} more lines. Use search_code to find specific sections.)`;
+        }
+        return `File: ${args.path}\n\`\`\`\n${content}\n\`\`\``;
+      }
+
+      case 'search_code': {
+        const pattern = args.pattern || '';
+        const searchPath = path.resolve(projectRoot, args.path || 'src');
+        return new Promise(resolve => {
+          exec(`npx --yes grep-cli "${pattern}" "${searchPath}" 2>nul || findstr /s /n /i "${pattern}" "${searchPath}\\*"`,
+            { timeout: 8000, cwd: projectRoot },
+            (err, stdout) => {
+              // Fallback: manual grep using Node
+              try {
+                const results = [];
+                const walkDir = (dir) => {
+                  if (!fs.existsSync(dir)) return;
+                  const entries = fs.readdirSync(dir, { withFileTypes: true });
+                  for (const e of entries) {
+                    const full = path.join(dir, e.name);
+                    if (e.isDirectory() && !['node_modules', '.git', 'dist'].includes(e.name)) walkDir(full);
+                    else if (e.isFile() && /\.(tsx?|js|css|json)$/.test(e.name)) {
+                      try {
+                        const lines = fs.readFileSync(full, 'utf-8').split('\n');
+                        const regex = new RegExp(pattern, 'i');
+                        lines.forEach((line, i) => {
+                          if (regex.test(line)) {
+                            results.push(`${path.relative(projectRoot, full)}:${i+1}: ${line.trim()}`);
+                          }
+                        });
+                      } catch(e) {}
+                    }
+                  }
+                };
+                walkDir(searchPath);
+                resolve(results.length ? `Search results for "${pattern}":\n${results.slice(0, 30).join('\n')}` : `No matches found for "${pattern}"`);
+              } catch(e) { resolve(`Search error: ${e.message}`); }
+            }
+          );
+        });
+      }
+
+      case 'list_dir': {
+        const { path: dp, error } = safePath(args.path || '.');
+        if (error) return error;
+        if (!fs.existsSync(dp)) return `Directory not found: ${args.path}`;
+        const entries = fs.readdirSync(dp, { withFileTypes: true })
+          .filter(e => !['node_modules', '.git', 'dist'].includes(e.name))
+          .map(e => `${e.isDirectory() ? '[DIR]' : '[FILE]'} ${e.name}`);
+        return `Contents of ${args.path}:\n${entries.join('\n')}`;
+      }
+
+      case 'write_patch': {
+        const { path: fp, error } = safePath(args.file || '');
+        if (error) return error;
+        if (!fs.existsSync(fp)) return `File not found: ${args.file}`;
+        const original = fs.readFileSync(fp, 'utf-8');
+        if (!original.includes(args.search)) {
+          // Try to find approximate match
+          const lines = original.split('\n');
+          const firstLine = (args.search || '').split('\n')[0].trim();
+          const approxLine = lines.findIndex(l => l.trim().includes(firstLine.slice(0, 40)));
+          if (approxLine >= 0) {
+            return `Patch FAILED: Exact match not found in ${args.file}.\nFound similar content at line ${approxLine + 1}:\n${lines.slice(Math.max(0,approxLine-2), approxLine+5).join('\n')}\n\nPlease read the file first and use exact text.`;
+          }
+          return `Patch FAILED: Could not find the search text in ${args.file}. Read the file first to get exact content.`;
+        }
+        // Backup and apply
+        fs.writeFileSync(fp + '.bak', original, 'utf-8');
+        const patched = original.replace(args.search, args.replace);
+        fs.writeFileSync(fp, patched, 'utf-8');
+        smartContext.recordChange(args.file, (args.search || '').slice(0, 80).replace(/\s+/g, ' '));
+        return `Patch applied to ${args.file} successfully.`;
+      }
+
+      case 'run_build': {
+        return new Promise(resolve => {
+          exec('npm run build 2>&1', { cwd: projectRoot, timeout: 60000 }, (err, stdout, stderr) => {
+            const output = (stdout + stderr).trim();
+            if (err || output.includes('error TS') || output.includes('ERROR')) {
+              // Extract just the errors
+              const errorLines = output.split('\n').filter(l =>
+                l.includes('error') || l.includes('ERROR') || l.includes('Error')
+              ).slice(0, 20);
+              resolve(`BUILD FAILED:\n${errorLines.join('\n')}\n\nFull output tail:\n${output.slice(-500)}`);
+            } else {
+              resolve(`BUILD SUCCESS:\n${output.slice(-300)}`);
+            }
+          });
+        });
+      }
+
+      case 'read_error': {
+        const { path: fp, error } = safePath(args.file || '');
+        if (error) return error;
+        if (!fs.existsSync(fp)) return `File not found: ${args.file}`;
+        const lines = fs.readFileSync(fp, 'utf-8').split('\n');
+        const lineNum = parseInt(args.line) || 1;
+        const start = Math.max(0, lineNum - 10);
+        const end = Math.min(lines.length, lineNum + 10);
+        const section = lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join('\n');
+        return `${args.file} lines ${start+1}-${end}:\n\`\`\`\n${section}\n\`\`\``;
+      }
+
+      default:
+        return `Unknown tool: ${toolName}`;
+    }
+  } catch(e) {
+    return `Tool error: ${e.message}`;
+  }
+}
+
+// ── Agentic Loop — multi-step reasoning like Claude Code ─────────────────────
+async function runAgentLoop(event, command, projectRoot, messageId) {
+  if (!GEMINI_KEY) {
+    event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  const projectMap = smartContext.getProjectMap(projectRoot);
+  const memoryLog = smartContext.getMemorySummary();
+
+  const systemPrompt = `${AGENT_TOOLS_DESC}
+
+PROJECT: IMI (Integrated Merge Interface) — Electron + React/TypeScript app
+Root: ${projectRoot}
+${projectMap}
+${memoryLog}
+
+TASK: ${command}
+
+Start by reading the relevant file(s). Then make changes. Then run the build to verify. Fix any errors. When done, call the done tool.`;
+
+  const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
+  const MAX_STEPS = 12;
+  let step = 0;
+
+  event.sender.send('command-chunk', { messageId, chunk: `🤖 **Agent Mode** — reasoning through your request...\n\n` });
+
+  const callGemini = async (history) => {
+    const body = JSON.stringify({
+      contents: history,
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+    });
+    return new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }, res => {
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => {
+          try { resolve(JSON.parse(raw)); } catch(e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  };
+
+  while (step < MAX_STEPS) {
+    step++;
+    let response;
+    try {
+      response = await callGemini(conversationHistory);
+    } catch(e) {
+      event.sender.send('command-chunk', { messageId, chunk: `\n❌ Agent error: ${e.message}` });
+      break;
+    }
+
+    const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) break;
+
+    // Add assistant response to history
+    conversationHistory.push({ role: 'model', parts: [{ text }] });
+
+    // Parse tool call
+    const toolMatch = text.match(/TOOL_CALL:\s*(\{[\s\S]*?\})/);
+    if (!toolMatch) {
+      // No tool call — final answer
+      event.sender.send('command-chunk', { messageId, chunk: text });
+      break;
+    }
+
+    let toolCall;
+    try { toolCall = JSON.parse(toolMatch[1]); } catch(e) {
+      event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ Could not parse tool call: ${toolMatch[1]}` });
+      break;
+    }
+
+    const { tool, args } = toolCall;
+
+    // Done tool = finish
+    if (tool === 'done') {
+      event.sender.send('command-chunk', { messageId, chunk: `\n✅ **Done!** ${args?.message || ''}` });
+      break;
+    }
+
+    // Show what the agent is doing
+    const toolEmoji = { read_file: '📖', search_code: '🔍', list_dir: '📁', write_patch: '✏️', run_build: '🔨', read_error: '🔎' };
+    const toolLabel = { read_file: `Reading \`${args?.path}\``, search_code: `Searching for \`${args?.pattern}\``, list_dir: `Listing \`${args?.path}\``, write_patch: `Patching \`${args?.file}\``, run_build: `Running build...`, read_error: `Reading error at \`${args?.file}:${args?.line}\`` };
+    event.sender.send('command-chunk', { messageId, chunk: `\n${toolEmoji[tool] || '⚙️'} ${toolLabel[tool] || tool}...\n` });
+
+    // Execute tool
+    const result = await executeAgentTool(tool, args || {}, projectRoot);
+
+    // Show result summary (not full output for large files)
+    const resultStr = String(result);
+    const preview = resultStr.length > 400 ? resultStr.slice(0, 400) + `\n... (${resultStr.length - 400} more chars)` : resultStr;
+    event.sender.send('command-chunk', { messageId, chunk: `\`\`\`\n${preview}\n\`\`\`\n` });
+
+    // Add tool result to conversation
+    conversationHistory.push({
+      role: 'user',
+      parts: [{ text: `Tool result for ${tool}:\n${resultStr}` }]
+    });
+
+    // Small delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  if (step >= MAX_STEPS) {
+    event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ Reached maximum steps (${MAX_STEPS}). Task may be incomplete.` });
+  }
+
+  event.sender.send('command-end', { messageId, code: 0 });
+}
+
 const sterilizePath = (inputPath) => {
   if (!inputPath) return '';
   return inputPath.split(path.delimiter).filter(p => {
@@ -831,6 +1106,17 @@ User message: `;
       || /\b(screen|desktop|window|monitor)\b.{0,30}\b(look|see|view|check|analyze|read)\b/i.test(command);
     if (needsVision) {
       triggerDesktopVision(event, command, messageId);
+      return;
+    }
+
+    // Agent mode — complex multi-step coding tasks that need read→edit→verify loop
+    const isAgentTask = (
+      /\b(fix|debug|find.*error|why.*not working|broken|refactor|rewrite|add.*feature|implement|build.*feature)\b/i.test(command)
+      && /\b(imi|app|code|file|component|function|screen|page|ui|css|style)\b/i.test(command)
+    ) || /\bagent mode\b/i.test(command);
+
+    if (isAgentTask && payload.engine === 'imi-core') {
+      runAgentLoop(event, command, currentProjectRoot, messageId);
       return;
     }
 
