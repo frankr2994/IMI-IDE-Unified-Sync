@@ -492,8 +492,7 @@ const App = () => {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillPattern, setNewSkillPattern] = useState('');
   const [newSkillResponse, setNewSkillResponse] = useState('');
-  const [skillLibSearch, setSkillLibSearch] = useState('');
-  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'|'benchmarks'|'community'>('mine');
+  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'optimizer'|'benchmarks'|'community'>('mine');
   const [installedSkillIds, setInstalledSkillIds] = useState<Set<string>>(new Set());
   const [communitySkills, setCommunitySkills] = useState<any[]>([]);
   const [communityLoading, setCommunityLoading] = useState(false);
