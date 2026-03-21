@@ -1088,8 +1088,9 @@ const App = () => {
                             {activeDirector === 'perplexity' && <Search size={12} />}
                             {activeDirector === 'deepseek' && <Terminal size={12} />}
                             {activeDirector === 'custom' && <Wifi size={12} />}
+                            {activeDirector.startsWith('ollama:') && <Database size={12} style={{ color: '#00ff88' }} />}
                             <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {activeDirector === 'antigravity' ? 'AG AI' : activeDirector.toUpperCase()}
+                              {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector === 'antigravity' ? 'AG AI' : activeDirector.toUpperCase()}
                             </span>
                             <ChevronRight size={12} style={{ transform: isDropdownOpen ? 'rotate(-90deg)' : 'rotate(90deg)' }} />
                           </div>
