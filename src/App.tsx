@@ -71,6 +71,9 @@ const App = () => {
   const [newServer, setNewServer] = useState({ name: '', command: '', args: '', env: {} });
   const [chatInput, setChatInput] = useState('');
   const [attachedImage, setAttachedImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
+  const [planMode, setPlanMode] = useState(false);
+  const [yoloMode, setYoloMode] = useState(false);
+  const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -836,8 +839,63 @@ const App = () => {
     input.click();
   };
 
+  const runPlanPhase = async (plan: any, phaseIdx: number, planMsgId: number) => {
+    const phase = plan.phases[phaseIdx];
+    const phaseMessageId = Date.now();
+    setMessages(prev => [...prev, { id: phaseMessageId, type: 'ai', director: activeDirector, text: '', isStreaming: true }]);
+    setActivePlan(prev => prev ? { ...prev, currentPhaseIdx: phaseIdx, running: true } : prev);
+    (ipc as any).send('execute-plan-phase', { prompt: phase.prompt, director: activeDirector, engine: activeEngine, messageId: phaseMessageId });
+    await new Promise<void>(resolve => {
+      const onDone = (_: any, data: any) => {
+        if (data?.messageId !== phaseMessageId) return;
+        (ipc as any).removeListener('command-end', onDone);
+        (ipc as any).removeListener('command-error', onDone);
+        setActivePlan(prev => {
+          if (!prev) return null;
+          const completed = new Set(prev.completedPhases);
+          completed.add(phaseIdx);
+          return { ...prev, completedPhases: completed, running: false };
+        });
+        resolve();
+      };
+      (ipc as any).on('command-end', onDone);
+      (ipc as any).on('command-error', onDone);
+    });
+  };
+
+  const runFullPlan = async (plan: any, planMsgId: number) => {
+    for (let i = 0; i < plan.phases.length; i++) {
+      await runPlanPhase(plan, i, planMsgId);
+    }
+    setActivePlan(prev => prev ? { ...prev, running: false } : null);
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
+
+    // ── PLAN MODE ────────────────────────────────────────────────────────────
+    if (planMode) {
+      const userText = chatInput;
+      const messageId = Date.now();
+      setMessages(prev => [...prev, { id: messageId, type: 'user', text: userText }]);
+      setChatInput('');
+      setIsSyncing(true);
+      const planMsgId = messageId + 1;
+      setMessages(prev => [...prev, { id: planMsgId, type: 'ai', director: activeDirector, text: '', isStreaming: true }]);
+      try {
+        const plan = await (ipc as any).invoke('generate-plan', { command: userText });
+        setMessages(prev => prev.map(m => m.id === planMsgId ? { id: planMsgId, type: 'plan', plan, planId: planMsgId } : m));
+        const newAP = { messageId: planMsgId, plan, currentPhaseIdx: -1, completedPhases: new Set<number>(), running: false };
+        setActivePlan(newAP);
+        if (yoloMode) setTimeout(() => runFullPlan(plan, planMsgId), 500);
+      } catch(e: any) {
+        setMessages(prev => prev.map(m => m.id === planMsgId ? { ...m, text: `❌ Plan failed: ${e.message}`, isStreaming: false } : m));
+      }
+      setIsSyncing(false);
+      return;
+    }
+    // ── END PLAN MODE ────────────────────────────────────────────────────────
+
     const messageId = Date.now();
     const newUserMsg = { id: messageId, type: 'user', text: chatInput, imageUrl: attachedImage?.previewUrl };
     setMessages(prev => [...prev, newUserMsg]);
@@ -1315,9 +1373,66 @@ const App = () => {
                 <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {messages.map(m => (
                     <div key={m.id} style={{ display: 'flex', gap: '12px', justifyContent: m.type==='user'?'flex-end':'flex-start', flexDirection: 'row', alignItems: 'flex-start' }}>
-                      {m.type !== 'user' && <div style={{ width: '28px', height: '28px', background: m.type==='system'?'#333':'var(--primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>{m.type==='ai'?<Cpu size={14}/>:<Terminal size={14}/>}</div>}
-                      <div style={{ 
-                        maxWidth: '85%', padding: '10px 16px', borderRadius: '12px', 
+                      {m.type !== 'user' && <div style={{ width: '28px', height: '28px', background: m.type==='plan'?'rgba(155,77,255,0.5)':m.type==='system'?'#333':'var(--primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', fontSize: '0.85rem', flexShrink: 0 }}>{m.type==='plan'?'📋':m.type==='ai'?<Cpu size={14}/>:<Terminal size={14}/>}</div>}
+
+                      {/* Plan card */}
+                      {m.type === 'plan' && (() => {
+                        const ap = activePlan?.messageId === m.planId ? activePlan : null;
+                        const allDone = ap && ap.completedPhases.size === m.plan.phases.length;
+                        return (
+                          <div style={{ maxWidth: '85%', background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '14px', padding: '18px 20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.14em', marginBottom: '4px' }}>📋 IMPLEMENTATION PLAN</div>
+                                <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{m.plan.title}</div>
+                              </div>
+                              <span style={{ fontSize: '0.6rem', padding: '3px 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)', flexShrink: 0, marginLeft: '10px' }}>{(m.plan.complexity || 'medium').toUpperCase()}</span>
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: '14px', lineHeight: 1.5 }}>{m.plan.summary}</div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                              {m.plan.phases.map((phase: any, idx: number) => {
+                                const isDone = ap?.completedPhases.has(idx);
+                                const isCurrent = ap?.currentPhaseIdx === idx && ap?.running;
+                                return (
+                                  <div key={phase.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : 'var(--glass-border)'}`, transition: 'all 0.3s' }}>
+                                    <span style={{ fontSize: '1rem', marginTop: '1px', flexShrink: 0 }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
+                                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
+                                      {phase.files?.length > 0 && <div style={{ fontSize: '0.55rem', color: 'rgba(155,77,255,0.7)', marginTop: '4px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                    </div>
+                                    {!isDone && !isCurrent && ap && !ap.running && (
+                                      <button onClick={() => runPlanPhase(m.plan, idx, m.planId)} style={{ fontSize: '0.55rem', padding: '3px 9px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>▶ Run</button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {ap && !ap.running && !allDone && (
+                              <button onClick={() => runFullPlan(m.plan, m.planId)} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg,rgba(155,77,255,0.3),rgba(79,172,254,0.2))', border: '1px solid rgba(155,77,255,0.5)', borderRadius: '9px', color: 'white', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', letterSpacing: '0.05em' }}>
+                                ▶ RUN FULL PLAN ({m.plan.phases.length - ap.completedPhases.size} phases remaining)
+                              </button>
+                            )}
+                            {ap?.running && (
+                              <div style={{ textAlign: 'center', padding: '10px', fontSize: '0.72rem', color: '#00ff88', fontWeight: 700 }}>
+                                ⚙ Executing phase {(ap.currentPhaseIdx + 1)} of {m.plan.phases.length}…
+                              </div>
+                            )}
+                            {allDone && <div style={{ textAlign: 'center', padding: '10px', fontSize: '0.78rem', color: '#00ff88', fontWeight: 800 }}>✅ All {m.plan.phases.length} phases complete!</div>}
+
+                            {m.plan.risks?.length > 0 && (
+                              <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(255,180,0,0.05)', border: '1px solid rgba(255,180,0,0.2)', borderRadius: '7px', fontSize: '0.62rem', color: 'rgba(255,180,0,0.8)', lineHeight: 1.5 }}>
+                                ⚠ {m.plan.risks.join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {/* Normal chat bubble — skip for plan cards */}
+                      {m.type !== 'plan' && <div style={{
+                        maxWidth: '85%', padding: '10px 16px', borderRadius: '12px',
                         background: m.type==='user'?'var(--primary)':'rgba(255,255,255,0.05)',
                         border: m.type==='user'?'none':'1px solid var(--glass-border)',
                         boxShadow: m.type==='user'?'0 4px 15px var(--primary-glow)':'none'
@@ -1362,7 +1477,7 @@ const App = () => {
                             </div>
                           </div>
                         )}
-                      </div>
+                      </div>}
                     </div>
                   ))}
                 </div>
@@ -1557,6 +1672,8 @@ const App = () => {
                         </div>
                       </div>
                       <button type="button" onClick={handleImageAttach} title="Attach image" style={{ height: '44px', width: '44px', background: attachedImage ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${attachedImage ? 'rgba(155,77,255,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: attachedImage ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
+                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — generate a phased plan before executing'} style={{ height: '44px', width: '44px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.05)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '10px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
+                      {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title={yoloMode ? 'YOLO ON — auto-runs all phases' : 'YOLO — auto-run all phases without confirmation'} style={{ height: '44px', padding: '0 10px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', flexShrink: 0 }}>YOLO</button>}
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
                       <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
                     </form>
@@ -1574,7 +1691,10 @@ const App = () => {
                         </div>
                       )}
                     </div>
-                    <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ color: '#00ff88' }}>● BRIDGE ACTIVE</span>
+                      <button onClick={() => (ipc as any).invoke('open-log-file')} title="Open log file" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.5rem', padding: '2px 7px', fontWeight: 700 }}>📄 LOG</button>
+                    </div>
                  </div>
 
                  {coderStatus !== 'Idle' && (

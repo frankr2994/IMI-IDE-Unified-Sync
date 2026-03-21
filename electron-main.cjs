@@ -5,6 +5,30 @@ const os = require('os');
 const https = require('https');
 const { exec, spawn, execSync } = require('child_process');
 
+// ── File logger — writes to ~/.imi/imi.log, rotates at 2MB ─────────────────
+const IMI_LOG_PATH = path.join(os.homedir(), '.imi', 'imi.log');
+const _logStream = (() => {
+  try {
+    fs.mkdirSync(path.join(os.homedir(), '.imi'), { recursive: true });
+    // Rotate if over 2MB
+    try { if (fs.statSync(IMI_LOG_PATH).size > 2 * 1024 * 1024) fs.renameSync(IMI_LOG_PATH, IMI_LOG_PATH + '.old'); } catch {}
+    return fs.createWriteStream(IMI_LOG_PATH, { flags: 'a' });
+  } catch { return null; }
+})();
+const imiLog = (level, ...args) => {
+  const line = `[${new Date().toISOString()}] [${level}] ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}\n`;
+  process.stdout.write(line);
+  try { _logStream?.write(line); } catch {}
+};
+// Capture uncaught errors to log
+process.on('uncaughtException', (err) => imiLog('ERROR', 'Uncaught:', err.message, err.stack));
+process.on('unhandledRejection', (reason) => imiLog('ERROR', 'Unhandled rejection:', reason));
+// Patch console methods
+const _origLog = console.log, _origErr = console.error, _origWarn = console.warn;
+console.log   = (...a) => { _origLog(...a);  imiLog('INFO',  ...a); };
+console.error = (...a) => { _origErr(...a);  imiLog('ERROR', ...a); };
+console.warn  = (...a) => { _origWarn(...a); imiLog('WARN',  ...a); };
+
 const shellEscape = (str) => {
   if (!str) return '""';
   const escaped = str.replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
@@ -1027,6 +1051,71 @@ async function triggerGitSync() {
   } catch(e) {}
   if (mainWindow) mainWindow.webContents.send('sync-end');
 }
+
+// ── PLAN MODE — generate a phased implementation spec ─────────────────────
+ipcMain.handle('generate-plan', async (_e, { command }) => {
+  if (!GEMINI_KEY) throw new Error('Gemini key missing — add it in Settings → APIs');
+  const projectMap = smartContext.getProjectMap(currentProjectRoot);
+  const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
+  const systemPrompt = `You are a senior software architect planning changes to this project.
+Project structure:\n${projectMap}
+
+Relevant code:\n${relevantCode}
+
+The user wants to make a change. Generate a detailed phased implementation plan.
+Respond with ONLY valid JSON — no markdown, no prose, no code fences — matching exactly:
+{
+  "title": "short title (max 60 chars)",
+  "summary": "2-3 sentence overview of what will be built",
+  "phases": [
+    {
+      "id": "1",
+      "name": "Phase name",
+      "description": "What this phase does and why",
+      "files": ["list of files to modify or create"],
+      "prompt": "Self-contained instruction for the AI coder to execute this phase. Include specific details about what to add/change."
+    }
+  ],
+  "risks": ["potential issues or things to watch out for"],
+  "complexity": "low or medium or high"
+}`;
+
+  return new Promise((resolve, reject) => {
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+    req.setHeader('Content-Type', 'application/json');
+    req.write(JSON.stringify({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: `User request: ${command}` }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+    }));
+    let body = '';
+    req.on('response', res => {
+      res.on('data', d => body += d.toString());
+      res.on('end', () => {
+        try {
+          const raw = JSON.parse(body);
+          const text = raw?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+          resolve(JSON.parse(cleaned));
+        } catch(e) { reject(new Error('Plan parse failed: ' + e.message + '\nRaw: ' + body.slice(0, 300))); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+});
+
+// Execute a single plan phase by re-using the main stream handler
+ipcMain.on('execute-plan-phase', (event, payload) => {
+  ipcMain.emit('execute-command-stream', event, {
+    command: payload.prompt,
+    director: payload.director,
+    engine: payload.engine,
+    messageId: payload.messageId,
+    history: [],
+  });
+});
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
@@ -2992,6 +3081,13 @@ ipcMain.handle('check-tools', async () => {
 });
 
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
+ipcMain.handle('get-log', (_e, lines = 200) => {
+  try {
+    const content = fs.readFileSync(IMI_LOG_PATH, 'utf-8');
+    return content.split('\n').filter(Boolean).slice(-lines).join('\n');
+  } catch { return '(No log file yet — restart IMI to start logging)'; }
+});
+ipcMain.handle('open-log-file', () => { shell.openPath(IMI_LOG_PATH); });
 
 ipcMain.handle('ollama-update', async (event) => {
   // Try winget first
