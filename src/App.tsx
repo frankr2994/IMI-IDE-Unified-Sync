@@ -1862,7 +1862,22 @@ const App = () => {
                                 <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{tool.desc}</p>
                               </div>
                               {!tool.installed && (
-                                <button onClick={() => (ipc as any).send('open-external-url', tool.installUrl)} style={{ flexShrink: 0, height: '28px', padding: '0 12px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>Install ↗</button>
+                                depInstalling[tool.id] ? (
+                                  <div style={{ minWidth: '140px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                      <span style={{ fontSize: '0.58rem', color: '#00ff88' }}>
+                                        {depInstalling[tool.id].status === 'downloading' ? `⬇ ${depInstalling[tool.id].percent}%` :
+                                         depInstalling[tool.id].status === 'installing' ? '⚙️ Installing…' :
+                                         depInstalling[tool.id].status === 'done' ? '✅ Done!' : '❌ Failed'}
+                                      </span>
+                                    </div>
+                                    <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', width: `${depInstalling[tool.id].percent}%`, background: depInstalling[tool.id].status === 'done' ? '#00ff88' : 'var(--primary)', borderRadius: '3px', transition: 'width 0.3s' }} />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button onClick={async () => { await (ipc as any).invoke('install-dep', tool.id); setTimeout(loadTools, 2000); }} style={{ flexShrink: 0, height: '28px', padding: '0 12px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>⬇ Install</button>
+                                )
                               )}
                             </div>
                           ))}
