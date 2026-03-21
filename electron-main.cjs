@@ -2953,7 +2953,14 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   }
   // Ensure it has extension
   const fileName = baseName.includes('.') ? baseName : `${baseName}.${ext}`;
-  const filePath = path.join(DESKTOP, fileName);
+
+  // If the command contains an explicit absolute Windows path, use it directly
+  // e.g. "create ... at C:\Users\nikol\Desktop\pong game\pong_game.html"
+  const explicitPathMatch = command.match(/[A-Za-z]:\\[^\n"']+\.(?:html?|pdf|txt|png|jpe?g|gif|js|ts|css|py|json|md|csv|xml|svg)/i);
+  const filePath = explicitPathMatch ? explicitPathMatch[0].trim() : path.join(DESKTOP, fileName);
+
+  // Ensure the directory exists (handles paths like Desktop\pong game\pong_game.html)
+  try { fs.mkdirSync(path.dirname(filePath), { recursive: true }); } catch(_) {}
 
   event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${fileName}\`...` });
 
@@ -2971,7 +2978,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   let generatedContent = '';
   try {
     const https = require('https');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 32000 } });
     const data = await new Promise((resolve, reject) => {
       const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
@@ -3149,10 +3156,14 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
     return;
   }
 
-  // Step 2: detect if user wants a file generated inside the folder
-  // Broad match — catches "make a pong game from html", "put an html file", "create a game", etc.
-  const wantsFile = /\b(html|css|js|javascript|python|game|script|file|code|app|program|website|calculator|tool)\b/i.test(cmdL)
-    || /\b(make|create|build|put|add|generate)\b.{0,50}\b(game|file|script|app|code|program)\b/i.test(cmdL);
+  // Step 2: detect if user wants a file generated inside the folder.
+  // IMPORTANT: strip the folder name before checking — "create a folder called 'pong game'"
+  // should NOT generate a file just because "game" appears in the folder name.
+  const cmdLWithoutFolderName = folderName !== 'New Folder'
+    ? cmdL.replace(folderName.toLowerCase(), '')
+    : cmdL;
+  const wantsFile = /\b(html|css|js|javascript|python|game|script|file|code|app|program|website|calculator|tool)\b/i.test(cmdLWithoutFolderName)
+    && /\b(make|create|build|put|add|generate|write|with|include|and\s+(?:a|an|the))\b/i.test(cmdLWithoutFolderName);
 
   if (!wantsFile) {
     event.sender.send('command-end', { messageId, code: 0 });
