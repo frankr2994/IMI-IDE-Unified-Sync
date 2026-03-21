@@ -2814,15 +2814,16 @@ ipcMain.handle('ollama-update', async (event) => {
   });
   if (wingetResult.success) return wingetResult;
 
-  // Fallback: download latest OllamaSetup.exe and run silently (same as fresh install — Ollama auto-updates)
+  // Fallback: download latest OllamaSetup.exe and run silently
   try {
-    const installerPath = path.join(require('os').tmpdir(), 'imi-ollama-update.exe');
+    // Unique filename each run to avoid EBUSY locked file errors
+    const installerPath = path.join(require('os').tmpdir(), `imi-ollama-update-${Date.now()}.exe`);
     const fakeEvent = { sender: { send: () => {} } };
     await downloadFile(fakeEvent, 'ollama', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
     await new Promise((resolve, reject) => {
       exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP-`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
     });
-    require('fs').unlink(installerPath, () => {});
+    try { require('fs').unlinkSync(installerPath); } catch {}
     return { success: true, upToDate: false };
   } catch(e) {
     return { success: false, message: e.message };
