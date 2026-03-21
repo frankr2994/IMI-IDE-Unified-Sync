@@ -627,12 +627,34 @@ User message: `;
   if (director === 'gemini') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini Key missing." }); return; }
 
-    // ── Desktop operations ──────────────────────────────────────────────────
+    // ── Desktop / file operations ────────────────────────────────────────────
     const cmdL = command.toLowerCase();
+
+    // 1. Edit an existing file on desktop
+    const isEditOp = (
+      /\b(edit|modify|update|fix|improve|rewrite|change)\b.{0,60}(\.[a-z]{2,6}|\.txt|\.py|\.js|\.html|\.css|\.json|\.ts|\.md)\b/i.test(command)
+      || (/\b(desktop|my desktop|folder)\b/i.test(command) && /\b(edit|modify|update|fix|improve|rewrite)\b/i.test(command) && /\b(file|\.)\b/i.test(command))
+    );
+    if (isEditOp) {
+      triggerFileEdit(event, command, messageId);
+      return;
+    }
+
+    // 2. Create a program/script/app/file on desktop with AI-generated content
+    const isCreateProgram = (
+      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
+      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
+    ) && /\b(desktop|my desktop)\b/i.test(command);
+    if (isCreateProgram) {
+      triggerAutoCreateFile(event, command, messageId);
+      return;
+    }
+
+    // 3. Create folder on desktop
     // Require create/make/new/add to be CLOSE to folder (within 25 chars), not just anywhere in sentence
     const isDesktopOp = (
-      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory|file)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
-      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory|file)\b/i.test(command)
+      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
+      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
     );
     if (isDesktopOp) {
       triggerDesktopTask(event, command, cmdL, messageId);
@@ -1214,6 +1236,182 @@ RULES:
     // First check after 30s (Jules needs time to start)
     setTimeout(poll, 30000);
   });
+}
+
+// ── Auto-create any file/program on desktop using AI ─────────────────────────
+async function triggerAutoCreateFile(event, command, messageId) {
+  const DESKTOP = path.join(os.homedir(), 'Desktop');
+
+  // Detect file type from command
+  const extMap = { python: 'py', py: 'py', javascript: 'js', js: 'js', html: 'html', css: 'css',
+    typescript: 'ts', ts: 'ts', json: 'json', markdown: 'md', md: 'md', bash: 'sh', shell: 'sh',
+    text: 'txt', txt: 'txt', react: 'tsx', node: 'js', script: 'py', program: 'py', app: 'html' };
+  const cmdL = command.toLowerCase();
+  let ext = 'txt';
+  for (const [key, val] of Object.entries(extMap)) {
+    if (cmdL.includes(key)) { ext = val; break; }
+  }
+
+  // Extract file name — look for "called X" / "named X" / "X.ext" pattern
+  const nameMatch = command.match(/(?:called?|named?)\s+["']?([a-zA-Z0-9_\- ]{2,40})["']?/i)
+    || command.match(/["']([a-zA-Z0-9_\-\.]{2,40})["']/);
+  let baseName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, '_') : null;
+  if (!baseName) {
+    // Generate name from purpose
+    const purposeMatch = command.match(/(?:that|which|to|for)\s+([a-zA-Z\s]{4,30})/i);
+    baseName = purposeMatch ? purposeMatch[1].trim().replace(/\s+/g, '_').slice(0, 20) : 'new_file';
+  }
+  // Ensure it has extension
+  const fileName = baseName.includes('.') ? baseName : `${baseName}.${ext}`;
+  const filePath = path.join(DESKTOP, fileName);
+
+  event.sender.send('command-chunk', { messageId, chunk: `🤖 **Creating** \`${fileName}\` on your Desktop...\n\n` });
+
+  // Ask Gemini to generate the file content
+  if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
+  const prompt = `The user asked: "${command}"
+Generate the COMPLETE content for a file named "${fileName}". Only output the file content inside a code block — nothing else. Make it fully functional and well-commented.`;
+
+  let generatedContent = '';
+  try {
+    const https = require('https');
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096 } });
+    const data = await new Promise((resolve, reject) => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ AI generation failed: ${e.message}` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  // Extract code block content
+  const codeMatch = generatedContent.match(/```(?:[a-z]*\n)?([\s\S]+?)```/);
+  const finalContent = codeMatch ? codeMatch[1].trim() : generatedContent.trim();
+
+  // Write file
+  try {
+    fs.writeFileSync(filePath, finalContent, 'utf-8');
+    event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` on Desktop!\n📂 Path: \`${filePath}\`\n\n` });
+    event.sender.send('command-chunk', { messageId, chunk: `**Preview:**\n\`\`\`${ext}\n${finalContent.slice(0, 600)}${finalContent.length > 600 ? '\n...' : ''}\n\`\`\`` });
+    // Try to open in VS Code
+    exec(`code "${filePath}"`, () => {});
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ Write failed: ${e.message}` });
+  }
+  event.sender.send('command-end', { messageId, code: 0 });
+}
+
+// ── Edit an existing file on desktop using AI ─────────────────────────────────
+async function triggerFileEdit(event, command, messageId) {
+  const DESKTOP = path.join(os.homedir(), 'Desktop');
+
+  // Extract file or folder name from command
+  const pathMatch = command.match(/["']([^"']+\.[a-zA-Z]{1,6})["']/i)              // quoted "file.ext"
+    || command.match(/\b([a-zA-Z0-9_\-]+\.[a-zA-Z]{2,6})\b/i)                      // bare file.ext
+    || command.match(/(?:in|inside|the|file|folder|directory)\s+["']?([a-zA-Z0-9_\-\. ]{2,40})["']?(?:\s|$)/i); // "in X folder"
+
+  let targetPath = null;
+  let targetName = null;
+
+  if (pathMatch) {
+    targetName = pathMatch[1].trim();
+    // Try desktop first, then project root
+    const desktopTry = path.join(DESKTOP, targetName);
+    const projectTry = path.join(currentProjectRoot, targetName);
+    if (fs.existsSync(desktopTry)) targetPath = desktopTry;
+    else if (fs.existsSync(projectTry)) targetPath = projectTry;
+  }
+
+  if (!targetPath) {
+    // List desktop so AI can pick the right file
+    let desktopFiles = [];
+    try { desktopFiles = fs.readdirSync(DESKTOP).slice(0, 20); } catch(e) {}
+    event.sender.send('command-chunk', { messageId, chunk: `🗂 **Desktop contents:**\n${desktopFiles.map(f => `  • ${f}`).join('\n')}\n\n⚠️ I couldn't find a specific file to edit. Please tell me the exact filename, e.g. *"edit notes.txt on my desktop"*` });
+    event.sender.send('command-end', { messageId, code: 0 });
+    return;
+  }
+
+  // Check if it's a directory
+  const stat = fs.statSync(targetPath);
+  if (stat.isDirectory()) {
+    const entries = fs.readdirSync(targetPath).slice(0, 30);
+    event.sender.send('command-chunk', { messageId, chunk: `📁 **${targetName}** is a folder. Contents:\n${entries.map(f => `  • ${f}`).join('\n')}\n\n💡 Tell me which specific file inside to edit, e.g. *"edit the index.html inside ${targetName}"*` });
+    event.sender.send('command-end', { messageId, code: 0 });
+    return;
+  }
+
+  // Read the file
+  let currentContent = '';
+  try {
+    currentContent = fs.readFileSync(targetPath, 'utf-8');
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ Couldn't read \`${targetPath}\`: ${e.message}` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  event.sender.send('command-chunk', { messageId, chunk: `📖 **Reading** \`${targetName}\` (${currentContent.length} chars)...\n🤖 Applying your changes...\n\n` });
+
+  if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
+
+  const ext = path.extname(targetPath).slice(1) || 'txt';
+  const prompt = `The user wants to edit this file: "${targetName}"
+
+User instruction: "${command}"
+
+Current file content:
+\`\`\`${ext}
+${currentContent.slice(0, 8000)}
+\`\`\`
+
+Return the COMPLETE updated file content in a code block. Apply ONLY the changes the user requested. Keep everything else exactly the same.`;
+
+  let aiResponse = '';
+  try {
+    const https = require('https');
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } });
+    const data = await new Promise((resolve, reject) => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    aiResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ AI edit failed: ${e.message}` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+
+  // Extract the updated content
+  const codeMatch = aiResponse.match(/```(?:[a-z]*\n)?([\s\S]+?)```/);
+  const updatedContent = codeMatch ? codeMatch[1].trim() : aiResponse.trim();
+
+  // Write back
+  try {
+    // Backup original
+    fs.writeFileSync(targetPath + '.bak', currentContent, 'utf-8');
+    fs.writeFileSync(targetPath, updatedContent, 'utf-8');
+    event.sender.send('command-chunk', { messageId, chunk: `✅ **Updated** \`${targetName}\` on Desktop!\n💾 Original backed up as \`${targetName}.bak\`\n\n` });
+    event.sender.send('command-chunk', { messageId, chunk: `**Updated content preview:**\n\`\`\`${ext}\n${updatedContent.slice(0, 500)}${updatedContent.length > 500 ? '\n...' : ''}\n\`\`\`` });
+    exec(`code "${targetPath}"`, () => {});
+  } catch(e) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ Write failed: ${e.message}` });
+  }
+  event.sender.send('command-end', { messageId, code: 0 });
 }
 
 async function triggerDesktopTask(event, command, cmdL, messageId) {
