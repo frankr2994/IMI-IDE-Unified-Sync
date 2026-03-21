@@ -1417,6 +1417,56 @@ User message: `;
     return;
   }
 
+  // ── Local Ollama Brain (ollama:<model>) ──────────────────────────────────
+  if (director && director.startsWith('ollama:')) {
+    const ollamaModel = director.slice(7); // strip "ollama:"
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'look', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit'];
+    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+    const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
+    req.setHeader('Content-Type', 'application/json');
+    const body = JSON.stringify({
+      model: ollamaModel,
+      messages: [
+        { role: 'system', content: activePrefix },
+        { role: 'user', content: command }
+      ],
+      stream: true,
+      temperature: 0.7,
+    });
+    req.write(body);
+    let fullText = '';
+    req.on('response', (res) => {
+      let buf = '';
+      res.on('data', (chunk) => {
+        buf += chunk.toString();
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const json = line.slice(5).trim();
+          if (json === '[DONE]') continue;
+          try {
+            const delta = JSON.parse(json)?.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullText += delta;
+              event.sender.send('command-chunk', { messageId, chunk: delta });
+            }
+          } catch {}
+        }
+      });
+      res.on('end', () => {
+        event.sender.send('command-done', { messageId, fullText });
+        tokenStats['ollama'] = (tokenStats['ollama'] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
+      });
+    });
+    req.on('error', (err) => event.sender.send('command-error', { messageId, error: `Ollama error: ${err.message}. Make sure Ollama is running.` }));
+    req.end();
+    return;
+  }
+
+
   const commandName = director === 'geminicli' ? 'gemini' : director;
   let binPath = await checkCommand(commandName);
   if (!binPath && process.platform === 'win32') binPath = await checkCommand(`${commandName}.cmd`);

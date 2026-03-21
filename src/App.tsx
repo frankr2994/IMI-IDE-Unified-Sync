@@ -199,6 +199,14 @@ const App = () => {
     setGhSearching(false);
   };
 
+  // Shorten raw Ollama model names for display
+  const shortModelName = (raw: string) => {
+    let s = raw.replace(/^hf\.co\/[^/]+\//i, '').replace(/:latest$/i, '').replace(/-GGUF$/i, '');
+    // e.g. "Qwen3.5-35B-A3B" → "Qwen 3.5 35B"
+    s = s.replace(/([A-Za-z])(\d)/g, '$1 $2').replace(/(\d)([A-Za-z])/g, '$1 $2').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+    return s.length > 22 ? s.slice(0, 20) + '…' : s;
+  };
+
   const formatStars = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
   const timeAgo = (iso: string) => {
     const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -1113,6 +1121,28 @@ const App = () => {
                                     {activeDirector === opt.id && <span style={{ marginLeft: 'auto', fontSize: '0.5rem', color: 'var(--primary)' }}>●</span>}
                                   </div>
                                 ))}
+                                {/* Local Ollama models as Brain */}
+                                {ollamaModels.length > 0 && <>
+                                  <div style={{ padding: '5px 14px 3px', fontSize: '0.5rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em', borderTop: '1px solid var(--glass-border)', opacity: 0.7 }}>LOCAL MODELS</div>
+                                  {ollamaModels.map(m => {
+                                    const id = `ollama:${m.name}`;
+                                    const label = shortModelName(m.name);
+                                    return (
+                                      <div key={id} onClick={() => { setActiveDirector(id); setIsDropdownOpen(false); addLog('system', `Brain set to ${label} (local)`); saveConfig({ activeBrain: id }); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeDirector === id ? 900 : 400 }}
+                                        onMouseEnter={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                        onMouseLeave={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                      >
+                                        <Database size={12} style={{ color: '#00ff88', flexShrink: 0 }} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+                                          <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Local · Ollama</div>
+                                        </div>
+                                        {activeDirector === id && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </>}
                                 <div style={{ padding: '8px 14px', fontSize: '0.58rem', color: 'var(--text-dim)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer' }}
                                   onClick={() => { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); }}>
                                   + Add model keys in Settings →
@@ -1141,8 +1171,8 @@ const App = () => {
                                   { id: 'jules',    name: 'Jules',       desc: 'GitHub PR-based agent', icon: <Layers size={12}/>, always: false, key: julesApiKey || githubToken },
                                   { id: 'antigravity', name: 'AG AI',   desc: 'Antigravity engine',    icon: <Cpu size={12}/>,    always: false, key: customApiKey },
                                   // Ollama local models — show if any are installed
-                                  ...ollamaModels.slice(0, 3).map(m => ({
-                                    id: `ollama:${m.name}`, name: m.name, desc: 'Local · Ollama', icon: <Database size={12}/>, always: true, key: ''
+                                  ...ollamaModels.slice(0, 5).map(m => ({
+                                    id: `ollama:${m.name}`, name: shortModelName(m.name), desc: 'Local · Ollama', icon: <Database size={12}/>, always: true, key: ''
                                   })),
                                 ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string }[])
                                 .filter(opt => opt.always || (opt.key && opt.key.trim()))
