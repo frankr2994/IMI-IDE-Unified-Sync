@@ -1156,7 +1156,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       // Instant cached response — 0 tokens
       event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n\n${matchedSkill.cachedResponse}` });
       event.sender.send('command-end', { messageId, code: 0 });
-      skillEngine.recordHit(matchedSkill.id, 600);
+      skillEngine.recordHit(matchedSkill.id, 600, director);
       return;
     }
     if (matchedSkill.type === 'direct') {
@@ -1180,7 +1180,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           shell.openExternal(url);
           event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
           event.sender.send('command-end', { messageId, code: 0 });
-          skillEngine.recordHit(matchedSkill.id, 400);
+          skillEngine.recordHit(matchedSkill.id, 400, director);
           return;
         }
       }
@@ -1188,7 +1188,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         const reply = `⚡ [Skill: ${matchedSkill.name}]\n📊 Project: ${currentProjectRoot}\n🧠 Brain: ${ACTIVE_BRAIN} | Coder: ${ACTIVE_CODER}\n⚡ Skill efficiency: ${skillEngine.getEfficiency()}% | Tokens saved: ${skillEngine.stats.tokensSaved.toLocaleString()}\n💾 Free RAM: ${(os.freemem()/1024/1024/1024).toFixed(2)}GB`;
         event.sender.send('command-chunk', { messageId, chunk: reply });
         event.sender.send('command-end', { messageId, code: 0 });
-        skillEngine.recordHit(matchedSkill.id, 400);
+        skillEngine.recordHit(matchedSkill.id, 400, director);
         return;
       }
       if (matchedSkill.handler === 'installed-models') {
@@ -1218,7 +1218,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           const reply = `⚡ [Skill: List Installed AI Models]\n\n${ollamaSection}\n\n${cliSection}\n\n💡 Tip: Pull more local models in **Dev Hub → AI Models**.`;
           event.sender.send('command-chunk', { messageId, chunk: reply });
           event.sender.send('command-end', { messageId, code: 0 });
-          skillEngine.recordHit(matchedSkill.id, 600);
+          skillEngine.recordHit(matchedSkill.id, 600, director);
           return;
         } catch(e) {
           // Fall through to AI if something goes wrong
@@ -1227,7 +1227,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       // desktop handler falls through to existing triggerDesktopTask below
     }
     // passthrough: skill matched but still needs API — track as partial hit
-    skillEngine.recordHit(matchedSkill.id, 100);
+    skillEngine.recordHit(matchedSkill.id, 100, director);
   } else {
     // No skill matched — record miss for pattern analysis + auto-skill creation
     skillEngine.recordMiss(command, 600);

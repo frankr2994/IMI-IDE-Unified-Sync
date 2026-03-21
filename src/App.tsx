@@ -2362,6 +2362,32 @@ const App = () => {
               {/* MY SKILLS tab */}
               {skillsSubTab === 'mine' && (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px' }}>
+                  {/* Per-model savings leaderboard */}
+                  {skillStats?.modelSavings && Object.keys(skillStats.modelSavings).length > 0 && (() => {
+                    const entries = Object.entries(skillStats.modelSavings as Record<string,number>).sort(([,a],[,b]) => b - a);
+                    const medals = ['🥇','🥈','🥉'];
+                    return (
+                      <div style={{ marginBottom: '14px', padding: '12px 14px', background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.18)', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', marginBottom: '8px' }}>🏆 MODEL TOKEN SAVINGS LEADERBOARD</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                          {entries.map(([model, saved], i) => {
+                            const label = model.startsWith('ollama:') ? (model.slice(7).split(':').pop() || model.slice(7)) : model;
+                            const pct = Math.round((saved / entries[0][1]) * 100);
+                            return (
+                              <div key={model} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.65rem', width: '18px' }}>{medals[i] || `${i+1}.`}</span>
+                                <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 700, minWidth: '90px' }}>{label}</span>
+                                <div style={{ flex: 1, height: '5px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${pct}%`, height: '100%', background: i === 0 ? 'linear-gradient(90deg,#9b4dff,#4facfe)' : 'rgba(155,77,255,0.4)', borderRadius: '3px', transition: 'width 0.4s' }} />
+                                </div>
+                                <span style={{ fontSize: '0.55rem', color: '#9b4dff', minWidth: '60px', textAlign: 'right' }}>{(saved as number).toLocaleString()} tkns</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {skills.map(skill => (
                       <div key={skill.id} style={{ background: skill.active ? 'rgba(155,77,255,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${skill.active ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.06)'}`, borderRadius: '10px', padding: '12px 15px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2372,11 +2398,25 @@ const App = () => {
                             <span style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{skill.type}</span>
                           </div>
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '6px' }}>{skill.desc}</div>
-                          <div style={{ display: 'flex', gap: '15px' }}>
+                          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Uses: <b style={{ color: 'white' }}>{skill.uses}</b></span>
                             <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Saved: <b style={{ color: '#9b4dff' }}>{skill.tokensSaved?.toLocaleString()} tkns</b></span>
                             <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Score: <b style={{ color: skill.score >= 70 ? '#00ff88' : skill.score >= 40 ? '#ffa500' : '#ff416c' }}>{skill.score}%</b></span>
                           </div>
+                          {skill.modelUsage && Object.keys(skill.modelUsage).length > 0 && (
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '5px' }}>
+                              {Object.entries(skill.modelUsage as Record<string,number>)
+                                .sort(([,a],[,b]) => b - a)
+                                .map(([model, count]) => {
+                                  const label = model.startsWith('ollama:') ? model.slice(7).split(':').pop() || model.slice(7) : model;
+                                  return (
+                                    <span key={model} style={{ fontSize: '0.5rem', padding: '1px 6px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '10px', color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                                      {label} × {count}
+                                    </span>
+                                  );
+                                })}
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                           <button onClick={async () => { await (ipc as any).invoke('skills-toggle', skill.id); fetchStats(); }} style={{ padding: '4px 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: skill.active ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer' }}>{skill.active ? 'ON' : 'OFF'}</button>
