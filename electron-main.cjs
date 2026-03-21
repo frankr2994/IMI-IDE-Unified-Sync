@@ -758,6 +758,7 @@ let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'i
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
 let GITHUB_USER = ''; let GITHUB_REPO = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
+let GROQ_KEY = ''; let GROK_KEY = ''; let COHERE_KEY = '';
 let CUSTOM_API_KEY = ''; let CUSTOM_API_URL = ''; let CUSTOM_API_MODEL = ''; 
 let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
 let ACTIVE_BRAIN = 'gemini'; let ACTIVE_CODER = 'imi-core'; let THEME = 'glass'; let LOG_RETENTION = 15;
@@ -795,6 +796,7 @@ try {
       OPENAI_KEY = state.config.openaiKey || ''; CLAUDE_KEY = state.config.claudeKey || '';
       DEEPSEEK_KEY = state.config.deepseekKey || ''; MISTRAL_KEY = state.config.mistralKey || '';
       LLAMA_KEY = state.config.llamaKey || ''; PERPLEXITY_KEY = state.config.perplexityKey || '';
+      GROQ_KEY = state.config.groqKey || ''; GROK_KEY = state.config.grokKey || ''; COHERE_KEY = state.config.cohereKey || '';
       CUSTOM_API_KEY = state.config.customApiKey || ''; 
       CUSTOM_API_URL = state.config.customApiUrl || '';
       CUSTOM_API_MODEL = state.config.customApiModel || '';
