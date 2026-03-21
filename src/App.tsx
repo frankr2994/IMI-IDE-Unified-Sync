@@ -1231,7 +1231,6 @@ const App = () => {
 
     // ── Rich markdown-style rendering ──────────────────────────────────────
     const renderInline = (raw: string): React.ReactNode[] => {
-      // Split on `code`, **bold**, and →
       const parts = raw.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
       return parts.map((part, j) => {
         if (part.startsWith('`') && part.endsWith('`')) {
@@ -1240,64 +1239,112 @@ const App = () => {
         if (part.startsWith('**') && part.endsWith('**')) {
           return <strong key={j} style={{ color: 'white', fontWeight: 800 }}>{part.slice(2,-2)}</strong>;
         }
-        // Highlight → arrows
         return <span key={j}>{part.split('→').map((seg, k, arr) => k < arr.length - 1 ? [seg, <span key={k} style={{ color: 'var(--primary)', fontWeight: 700, margin: '0 3px' }}>→</span>] : seg)}</span>;
       });
     };
 
-    const lines = text.split('\n');
-    const nodes: React.ReactNode[] = [];
-    let i = 0;
-    while (i < lines.length) {
-      const line = lines[i];
-      const trimmed = line.trim();
-
-      // Blank line → spacer
-      if (!trimmed) { nodes.push(<div key={i} style={{ height: '0.5rem' }} />); i++; continue; }
-
-      // ## Heading or line ending with : (section header)
-      if (/^#{1,3}\s/.test(trimmed) || /^[A-Z][^a-z\n]{2,}:$/.test(trimmed)) {
-        const label = trimmed.replace(/^#{1,3}\s+/, '').replace(/:$/, '');
-        nodes.push(<div key={i} style={{ fontWeight: 900, fontSize: '0.82rem', color: 'var(--primary)', letterSpacing: '0.05em', marginTop: '0.9rem', marginBottom: '0.3rem', borderBottom: '1px solid rgba(155,77,255,0.2)', paddingBottom: '3px' }}>{label}</div>);
-        i++; continue;
-      }
-
-      // Bold header pattern: **Title** or "Title:" at start of line
-      if (/^\*\*[^*]+\*\*[:.]?$/.test(trimmed) || /^[A-Z][A-Za-z0-9 ]{2,40}:$/.test(trimmed)) {
-        const label = trimmed.replace(/^\*\*|\*\*$/g, '').replace(/:$/, '');
-        nodes.push(<div key={i} style={{ fontWeight: 800, fontSize: '0.83rem', color: 'white', marginTop: '0.8rem', marginBottom: '0.25rem' }}>{label}</div>);
-        i++; continue;
-      }
-
-      // Bullet: - or * or • → render as dot
-      if (/^[-*•]\s+/.test(trimmed)) {
-        const content = trimmed.replace(/^[-*•]\s+/, '');
-        nodes.push(
-          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
-            <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '1px', fontSize: '1em' }}>•</span>
-            <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(content)}</span>
-          </div>
-        );
-        i++; continue;
-      }
-
-      // Numbered list: 1. 2. etc
-      if (/^\d+\.\s+/.test(trimmed)) {
-        const num = trimmed.match(/^(\d+)\./)?.[1];
-        const content = trimmed.replace(/^\d+\.\s+/, '');
-        nodes.push(
-          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
-            <span style={{ color: 'var(--primary)', flexShrink: 0, fontWeight: 700, minWidth: '16px', textAlign: 'right' }}>{num}.</span>
-            <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(content)}</span>
-          </div>
-        );
-        i++; continue;
-      }
-
-      // Normal paragraph
-      nodes.push(<p key={i} style={{ marginBottom: '0.45rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>{renderInline(trimmed)}</p>);
-      i++;
+    // ── Split text into code-block and plain-text segments ──────────────────
+    type Segment = { type: 'text'; content: string } | { type: 'code'; lang: string; content: string };
+    const segments: Segment[] = [];
+    const codeBlockRe = /```(\w*)\n?([\s\S]*?)```/g;
+    let lastIdx = 0, cbMatch: RegExpExecArray | null;
+    while ((cbMatch = codeBlockRe.exec(text)) !== null) {
+      if (cbMatch.index > lastIdx) segments.push({ type: 'text', content: text.slice(lastIdx, cbMatch.index) });
+      segments.push({ type: 'code', lang: cbMatch[1] || '', content: cbMatch[2] });
+      lastIdx = cbMatch.index + cbMatch[0].length;
     }
+    if (lastIdx < text.length) segments.push({ type: 'text', content: text.slice(lastIdx) });
+
+    const nodes: React.ReactNode[] = [];
+    let nodeKey = 0;
+
+    const processTextSegment = (raw: string) => {
+      const lines = raw.split('\n');
+      let i = 0;
+      while (i < lines.length) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        const k = nodeKey++;
+
+        // Blank line → tiny spacer
+        if (!trimmed) { nodes.push(<div key={k} style={{ height: '0.4rem' }} />); i++; continue; }
+
+        // --- separator or [IMI CORE] / [IMI ORCHESTRATOR] status → dim small italic
+        if (/^-{3,}/.test(trimmed) || /^\[IMI /.test(trimmed)) {
+          const label = trimmed.replace(/^-+\s*|\s*-+$/g, '').trim();
+          if (label) nodes.push(
+            <div key={k} style={{ fontSize: '0.6rem', color: 'rgba(155,77,255,0.45)', fontStyle: 'italic', marginBottom: '2px', letterSpacing: '0.03em' }}>{label}</div>
+          );
+          i++; continue;
+        }
+
+        // ## Heading
+        if (/^#{1,3}\s/.test(trimmed)) {
+          const label = trimmed.replace(/^#{1,3}\s+/, '');
+          nodes.push(<div key={k} style={{ fontWeight: 900, fontSize: '0.82rem', color: 'var(--primary)', letterSpacing: '0.05em', marginTop: '0.9rem', marginBottom: '0.3rem', borderBottom: '1px solid rgba(155,77,255,0.2)', paddingBottom: '3px' }}>{label}</div>);
+          i++; continue;
+        }
+
+        // Bold-only line or SECTION: header
+        if (/^\*\*[^*]+\*\*[:.]?$/.test(trimmed) || /^[A-Z][A-Za-z0-9 ]{2,40}:$/.test(trimmed)) {
+          const label = trimmed.replace(/^\*\*|\*\*$/g, '').replace(/:$/, '');
+          nodes.push(<div key={k} style={{ fontWeight: 800, fontSize: '0.83rem', color: 'white', marginTop: '0.8rem', marginBottom: '0.25rem' }}>{label}</div>);
+          i++; continue;
+        }
+
+        // Bullet
+        if (/^[-*•]\s+/.test(trimmed)) {
+          nodes.push(
+            <div key={k} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '1px' }}>•</span>
+              <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(trimmed.replace(/^[-*•]\s+/, ''))}</span>
+            </div>
+          );
+          i++; continue;
+        }
+
+        // Numbered list
+        if (/^\d+\.\s+/.test(trimmed)) {
+          const num = trimmed.match(/^(\d+)\./)?.[1];
+          nodes.push(
+            <div key={k} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--primary)', flexShrink: 0, fontWeight: 700, minWidth: '16px', textAlign: 'right' }}>{num}.</span>
+              <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(trimmed.replace(/^\d+\.\s+/, ''))}</span>
+            </div>
+          );
+          i++; continue;
+        }
+
+        nodes.push(<p key={k} style={{ marginBottom: '0.45rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>{renderInline(trimmed)}</p>);
+        i++;
+      }
+    };
+
+    segments.forEach((seg, si) => {
+      if (seg.type === 'text') {
+        processTextSegment(seg.content);
+      } else {
+        // IMI-CORE patch block (json with "file"/"method"/"code") → collapse to a chip
+        const isImiPatch = (seg.lang === 'json' || !seg.lang) &&
+          (seg.content.includes('"file"') || seg.content.includes('"method"') || seg.content.includes('"function_name"'));
+        if (isImiPatch) {
+          nodes.push(
+            <div key={nodeKey++} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', background: 'rgba(0,255,136,0.07)', border: '1px solid rgba(0,255,136,0.18)', borderRadius: '6px', fontSize: '0.62rem', color: '#00ff88', margin: '4px 0', letterSpacing: '0.03em' }}>
+              ⚙ patch ready
+            </div>
+          );
+        } else {
+          // Regular code block — show in scrollable pre
+          nodes.push(
+            <pre key={nodeKey++} style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '10px 14px', overflowX: 'auto', overflowY: 'auto', maxHeight: '240px', fontSize: '0.72rem', fontFamily: 'monospace', lineHeight: 1.5, color: '#e2e8f0', margin: '6px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {seg.lang && <span style={{ display: 'block', color: 'rgba(155,77,255,0.6)', fontSize: '0.58rem', marginBottom: '6px', fontFamily: 'sans-serif', fontStyle: 'italic' }}>{seg.lang}</span>}
+              {seg.content.trim()}
+            </pre>
+          );
+        }
+      }
+    });
+
     return <div>{nodes}</div>;
   };
 
