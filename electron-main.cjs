@@ -2962,7 +2962,8 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   // Ensure the directory exists (handles paths like Desktop\pong game\pong_game.html)
   try { fs.mkdirSync(path.dirname(filePath), { recursive: true }); } catch(_) {}
 
-  event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${fileName}\`...` });
+  const displayName = path.basename(filePath);
+  event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${displayName}\`...` });
 
   // Ask Gemini to generate the file content
   if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
@@ -3020,15 +3021,17 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   // Write file
   try {
     fs.writeFileSync(filePath, finalContent, 'utf-8');
-    // Open in browser if html or if user said open/launch/play
-    const willOpen = ext === 'html' || /\b(open|launch|run|start|play|show)\b/i.test(command);
+    // If the command had an explicit absolute path (plan phase), skip auto-open —
+    // the plan's "open" phase will handle it. Otherwise, open automatically.
+    const wasExplicitPath = !!explicitPathMatch;
+    const willOpen = !wasExplicitPath && (ext === 'html' || /\b(open|launch|run|start|play|show)\b/i.test(command));
     if (willOpen) {
       shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
-    } else {
+    } else if (!wasExplicitPath) {
       exec(`code "${filePath}"`, () => {});
     }
-    const openNote = willOpen ? `\n🚀 Opening in browser...` : `\n📝 Opened in editor.`;
-    event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` on your Desktop!${openNote}` });
+    const openNote = willOpen ? `\n🚀 Opening in browser...` : '';
+    event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${displayName}\`!${openNote}` });
   } catch(e) {
     event.sender.send('command-chunk', { messageId, chunk: `❌ Write failed: ${e.message}` });
   }
@@ -3199,7 +3202,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${fileExt.toUpperCase()} f
     path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
   req.setHeader('Content-Type', 'application/json');
   req.write(JSON.stringify({ contents: [{ parts: [{ text: codePrompt }] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 8192 } }));
+    generationConfig: { temperature: 0.2, maxOutputTokens: 32000 } }));
   let raw = '';
   req.on('response', res => {
     res.on('data', d => raw += d.toString());
