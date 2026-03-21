@@ -827,10 +827,93 @@ async function executeAgentTool(toolName, args, projectRoot) {
         const { path: dp, error } = safePath(args.path || '.');
         if (error) return error;
         if (!fs.existsSync(dp)) return `Directory not found: ${args.path}`;
-        const entries = fs.readdirSync(dp, { withFileTypes: true })
-          .filter(e => !['node_modules', '.git', 'dist'].includes(e.name))
-          .map(e => `${e.isDirectory() ? '[DIR]' : '[FILE]'} ${e.name}`);
-        return `Contents of ${args.path}:\n${entries.join('\n')}`;
+        const maxDepth = Math.min(3, Math.max(1, parseInt(args.depth) || 1));
+        const lines = [];
+        const SKIP = new Set(['node_modules', '.git', 'dist', '.next', 'build', 'coverage', '.cache']);
+        const walk = (dir, depth, prefix) => {
+          if (depth > maxDepth) return;
+          let entries;
+          try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+          entries
+            .filter(e => !SKIP.has(e.name))
+            .sort((a, b) => (b.isDirectory() ? 1 : 0) - (a.isDirectory() ? 1 : 0) || a.name.localeCompare(b.name))
+            .forEach((e, idx, arr) => {
+              const isLast = idx === arr.length - 1;
+              const connector = isLast ? '└── ' : '├── ';
+              const icon = e.isDirectory() ? '📁' : '📄';
+              lines.push(`${prefix}${connector}${icon} ${e.name}`);
+              if (e.isDirectory() && depth < maxDepth) {
+                walk(path.join(dir, e.name), depth + 1, prefix + (isLast ? '    ' : '│   '));
+              }
+            });
+        };
+        lines.push(`📁 ${args.path || '.'}`);
+        walk(dp, 1, '');
+        if (lines.length > 80) { lines.splice(80); lines.push('... (use a more specific path or increase depth)'); }
+        return lines.join('\n');
+      }
+
+      case 'write_file': {
+        const filePath = args.file || args.path || '';
+        const { path: fp, error } = safePath(filePath);
+        if (error) return error;
+        const content = typeof args.content === 'string' ? args.content : '';
+        try {
+          fs.mkdirSync(path.dirname(fp), { recursive: true });
+          fs.writeFileSync(fp, content, 'utf-8');
+          smartContext.recordChange(filePath, 'write_file');
+          const lineCount = content.split('\n').length;
+          return `✅ Wrote ${filePath} (${lineCount} lines, ${Math.round(content.length / 1024 * 10) / 10}KB)`;
+        } catch(e) { return `Write failed: ${e.message}`; }
+      }
+
+      case 'glob': {
+        const globPattern = args.pattern || '**/*';
+        const { path: searchRoot, error } = safePath(args.path || '.');
+        if (error) return error;
+        const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.next', 'build', 'coverage', '.cache']);
+        // Convert glob to regex
+        let regexStr = globPattern
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')   // escape regex special chars (not * or ?)
+          .replace(/\\\*\\\*/g, '{{DS}}')           // mark **
+          .replace(/\\\*/g, '[^/]*')                // * → any char except /
+          .replace(/\?/g, '[^/]')                   // ? → single non-slash
+          .replace(/\{\{DS\}\}/g, '.*');             // ** → anything including /
+        let globRegex;
+        try { globRegex = new RegExp(`(^|/)${regexStr}$`, 'i'); } catch { return `Invalid glob pattern: ${globPattern}`; }
+        const results = [];
+        const walkDir = (dir) => {
+          let entries;
+          try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+          for (const e of entries) {
+            if (SKIP_DIRS.has(e.name)) continue;
+            const full = path.join(dir, e.name);
+            const rel = path.relative(projectRoot, full).replace(/\\/g, '/');
+            if (e.isDirectory()) walkDir(full);
+            else if (globRegex.test(rel)) results.push(rel);
+          }
+        };
+        walkDir(searchRoot);
+        if (!results.length) return `No files matching "${globPattern}"`;
+        results.sort();
+        const cap = 60;
+        const extra = results.length > cap ? `\n... and ${results.length - cap} more` : '';
+        return `Files matching "${globPattern}" (${results.length}):\n${results.slice(0, cap).join('\n')}${extra}`;
+      }
+
+      case 'get_file_info': {
+        const { path: fp, error } = safePath(args.path || '');
+        if (error) return error;
+        if (!fs.existsSync(fp)) return `Not found: ${args.path}`;
+        const stat = fs.statSync(fp);
+        if (stat.isDirectory()) {
+          let entries = 0;
+          try { entries = fs.readdirSync(fp).length; } catch {}
+          return `Directory: ${args.path}\nEntries: ${entries}\nModified: ${stat.mtime.toISOString()}\nCreated: ${stat.birthtime.toISOString()}`;
+        }
+        let lineCount = 0;
+        try { lineCount = fs.readFileSync(fp, 'utf-8').split('\n').length; } catch {}
+        return `File: ${args.path}\nSize: ${(stat.size / 1024).toFixed(1)}KB (${stat.size} bytes)\nLines: ${lineCount}\nModified: ${stat.mtime.toISOString()}\nCreated: ${stat.birthtime.toISOString()}`;
       }
 
       case 'write_patch': {
@@ -1198,7 +1281,7 @@ START NOW — use search_code or read_file first, never write_patch as your firs
   };
 
   const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
-  const MAX_STEPS = 15;
+  const MAX_STEPS = 20;
   let step = 0;
   const runSteps = [];
 
@@ -1248,15 +1331,23 @@ START NOW — use search_code or read_file first, never write_patch as your firs
     if (tool in agentStats.toolsUsed) agentStats.toolsUsed[tool]++;
     runSteps.push({ tool, args, step });
 
-    const toolEmoji = { read_file: '📖', search_code: '🔍', list_dir: '📁', write_patch: '✏️', run_build: '🔨', read_error: '🔎', run_command: '⚡', take_screenshot: '📸', open_browser: '🌐' };
+    const toolEmoji = {
+      read_file: '📖', write_file: '📝', write_patch: '✏️',
+      search_code: '🔍', glob: '🗂️', list_dir: '📁',
+      get_file_info: 'ℹ️', run_build: '🔨', read_error: '🔎',
+      run_command: '⚡', take_screenshot: '📸', open_browser: '🌐'
+    };
     const toolLabel = {
-      read_file: `Reading \`${args?.path}\``,
-      search_code: `Searching for \`${args?.pattern}\``,
-      list_dir: `Listing \`${args?.path}\``,
-      write_patch: `Patching \`${args?.file}\``,
-      run_build: `Running build...`,
-      read_error: `Reading error at \`${args?.file}:${args?.line}\``,
-      run_command: `Running: ${args?.cmd}`,
+      read_file:    `Reading \`${args?.path}\`${args?.offset !== undefined ? ` (offset:${args?.offset})` : ''}`,
+      write_file:   `Writing \`${args?.file || args?.path}\``,
+      write_patch:  `Patching \`${args?.file}\``,
+      search_code:  `Searching \`${args?.pattern}\`${args?.file_type ? ` in *.${args?.file_type}` : ''}`,
+      glob:         `Glob \`${args?.pattern}\``,
+      list_dir:     `Listing \`${args?.path}\``,
+      get_file_info:`Info on \`${args?.path}\``,
+      run_build:    `Running build...`,
+      read_error:   `Reading error at \`${args?.file}:${args?.line}\``,
+      run_command:  `Running: ${args?.cmd}`,
       take_screenshot: `Taking screenshot...`,
       open_browser: `Opening ${args?.url}`
     };
@@ -1311,7 +1402,7 @@ let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'i
 let agentStats = {
   totalRuns: 0,
   totalSteps: 0,
-  toolsUsed: { read_file: 0, search_code: 0, list_dir: 0, write_patch: 0, run_build: 0, run_command: 0, take_screenshot: 0 },
+  toolsUsed: { read_file: 0, write_file: 0, write_patch: 0, search_code: 0, glob: 0, list_dir: 0, get_file_info: 0, run_build: 0, read_error: 0, run_command: 0, take_screenshot: 0, open_browser: 0 },
   lastRun: null,
   lastRunSteps: []
 };
