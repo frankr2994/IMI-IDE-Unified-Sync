@@ -2802,6 +2802,18 @@ ipcMain.handle('check-tools', async () => {
 
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 
+ipcMain.handle('ollama-update', async () => {
+  return new Promise((resolve) => {
+    // Try winget upgrade first — fully silent
+    exec(`winget upgrade --id Ollama.Ollama --silent --accept-package-agreements --accept-source-agreements`, { timeout: 180000, windowsHide: true }, (err, stdout) => {
+      if (!err) { resolve({ success: true, message: stdout }); return; }
+      // Already latest version is not a failure
+      if (stdout && stdout.includes('No applicable update')) { resolve({ success: true, message: 'Already up to date' }); return; }
+      resolve({ success: false, message: stdout || err.message });
+    });
+  });
+});
+
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
 // ── Universal Install Manifest ─────────────────────────────────────────────
 // Each entry: cmd=version check, winExe=silent installer URL, winArgs=silent flags, npm=npm package name
