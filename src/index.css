@@ -149,40 +149,16 @@ body {
 /* Sub-tab buttons, stat bar labels */
 .skills-panel button { font-size: max(0.78rem, 1em); }
 
-/* General Button Styling */
+/* Safe global button reset — only sets cursor and transition, NOT color/background
+   Individual button classes (.btn-premium, .control-btn, etc.) handle their own styles */
 button {
-  background-color: var(--primary);
-  color: var(--text-main);
-  border: none;
-  border-radius: 8px;
-  padding: 0.6rem 1.2rem;
-  font-size: var(--text-base);
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 500;
-  text-decoration: none;
-  line-height: 1;
+  font-family: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
-
-button:hover {
-  background-color: #8a3dff;
-  transform: translateY(-1px);
-}
-
-button:active {
-  background-color: #7b2dff;
-  transform: translateY(0);
-}
-
 button:disabled {
-  background-color: rgba(155, 77, 255, 0.4);
-  color: var(--text-dim);
   cursor: not-allowed;
-  transform: none;
+  opacity: 0.5;
 }
 /* Catch anything else that falls below the floor */
 .skills-panel span,
