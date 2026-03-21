@@ -1502,24 +1502,23 @@ User message: `;
       return;
     }
 
-    // 2. Create a program/script/app/file on desktop with AI-generated content
-    const isCreateProgram = (
-      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
-      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
-    ) && /\b(desktop|my desktop)\b/i.test(command);
-    if (isCreateProgram) {
-      triggerAutoCreateFile(event, command, messageId);
-      return;
-    }
-
-    // 3. Create folder on desktop
-    // Require create/make/new/add to be CLOSE to folder (within 25 chars), not just anywhere in sentence
+    // 2. Create folder on desktop — check BEFORE isCreateProgram so "create folder + game inside" routes correctly
     const isDesktopOp = (
       /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
       || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
     );
     if (isDesktopOp) {
       triggerDesktopTask(event, command, cmdL, messageId);
+      return;
+    }
+
+    // 3. Create a program/script/app/file on desktop with AI-generated content
+    const isCreateProgram = (
+      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
+      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
+    ) && /\b(desktop|my desktop)\b/i.test(command);
+    if (isCreateProgram) {
+      triggerAutoCreateFile(event, command, messageId);
       return;
     }
 
@@ -2637,11 +2636,10 @@ Return the COMPLETE updated file content in a code block. Apply ONLY the changes
 }
 
 async function triggerDesktopTask(event, command, cmdL, messageId) {
-  // Extract folder name — must appear immediately after "called/named" or be quoted
-  // Strictly: stop at "and", "then", punctuation, or after max 40 chars
+  // Extract folder name — stop at natural transition words so "called pong game inside the folder" → "pong game"
   const folderMatch = command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+["']([^"']+)["']/i)   // quoted: called "My Folder"
-    || command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+([\w\s-]{2,40?})(?=[.,]|\bthen\b|\band\b|\bwith\b|$)/i); // unquoted: called My Folder
-  const folderName = (folderMatch?.[1] || '').trim().replace(/\s+/g, ' ') || 'New Folder';
+    || command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+((?:(?!\b(?:inside|in\s+the|make|create|put|add|open|launch|from|that|with|then|and\s)\b)\w+[\s-]?){1,5})/i);
+  const folderName = (folderMatch?.[1] || '').trim().replace(/\s+/g, ' ').replace(/\s*(inside|in the|make|create|and|then|open|from).*$/i, '') || 'New Folder';
   const desktopPath = path.join(os.homedir(), 'Desktop', folderName);
 
   // Step 1: create folder
@@ -2654,23 +2652,22 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
     return;
   }
 
-  // Step 2: if command mentions creating a file with code, generate it with Gemini
-  const fileRequest = command.match(/(?:make|create|build|put|add)\s+(?:a\s+)?([a-z0-9]+(?:\.[a-z]+)?)\s+file\s+(?:with|containing|that has|inside)?\s*(.+?)(?:\s+and\s+(?:open|launch|run)|\s*$)/i);
-  if (!fileRequest && !/\b(html|css|js|file|game|code|script)\b/.test(cmdL)) {
+  // Step 2: detect if user wants a file generated inside the folder
+  // Broad match — catches "make a pong game from html", "put an html file", "create a game", etc.
+  const wantsFile = /\b(html|css|js|javascript|python|game|script|file|code|app|program|website|calculator|tool)\b/i.test(cmdL)
+    || /\b(make|create|build|put|add|generate)\b.{0,50}\b(game|file|script|app|code|program)\b/i.test(cmdL);
+
+  if (!wantsFile) {
     event.sender.send('command-end', { messageId, code: 0 });
     return;
   }
 
-  // Resolve file extension — reject non-extension words like "new", "simple", "code"
+  // Resolve file extension
   const validExts = ['html', 'css', 'js', 'ts', 'jsx', 'tsx', 'py', 'json', 'txt', 'md', 'php', 'java', 'cpp', 'c', 'cs'];
-  let rawExt = (fileRequest?.[1] || '').toLowerCase().replace(/^\./, '');
-  if (!validExts.includes(rawExt)) {
-    const typeMatch = cmdL.match(/\b(html|css|javascript|js|typescript|ts|python|py|json|txt|php|jsx|tsx)\b/);
-    rawExt = typeMatch ? typeMatch[1].replace('javascript','js').replace('typescript','ts').replace('python','py') : 'html';
-  }
-  const fileExt = rawExt;
-  const fileDesc = fileRequest?.[2] || command;
-  const fileName = `${folderName}.${fileExt}`;
+  const typeMatch = cmdL.match(/\b(html|css|javascript|js|typescript|ts|python|py|json|txt|php|jsx|tsx)\b/);
+  const fileExt = typeMatch ? typeMatch[1].replace('javascript','js').replace('typescript','ts').replace('python','py') : 'html';
+  const fileDesc = command;
+  const fileName = `${folderName.replace(/\s+/g, '_')}.${fileExt}`;
   const filePath = path.join(desktopPath, fileName);
 
   if (!GEMINI_KEY) {
@@ -2698,8 +2695,8 @@ Output ONLY the raw file content with no markdown fences, no explanation — jus
         code = code.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
         fs.writeFileSync(filePath, code, 'utf-8');
         event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${fileName} inside "${folderName}".\n` });
-        // Step 3: open the file if requested
-        if (/\b(open|launch|run|start|play|show)\b/.test(cmdL)) {
+        // Step 3: open the file if requested ("open it", "open it up", "open it after", etc.)
+        if (/\b(open|launch|run|start|play|show)\b/i.test(cmdL)) {
           shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
           event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening ${fileName}...\n` });
         }
