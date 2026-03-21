@@ -873,6 +873,25 @@ const App = () => {
     }
   }, [activeTab, mcpHubTab]);
 
+  // ── Live search as you type (debounced 500ms) ──────────────────────────────
+  useEffect(() => {
+    if (!ollamaSearch.trim()) { setHfResults([]); setHfUrlPreview(null); return; }
+    const t = setTimeout(() => searchHF(ollamaSearch), 500);
+    return () => clearTimeout(t);
+  }, [ollamaSearch]);
+
+  useEffect(() => {
+    if (!ghQuery.trim()) { setGhResults([]); setGhUrlPreview(null); return; }
+    const t = setTimeout(() => searchGitHub(ghQuery), 600);
+    return () => clearTimeout(t);
+  }, [ghQuery]);
+
+  useEffect(() => {
+    if (!mcpSearch.trim()) { setNpmResults([]); setNpmUrlPreview(null); return; }
+    const t = setTimeout(() => searchNpm(mcpSearch), 500);
+    return () => clearTimeout(t);
+  }, [mcpSearch]);
+
   const renderContent = (text: string) => {
     if (!text) return null;
 
@@ -1427,7 +1446,7 @@ const App = () => {
                       <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
                       <input
                         value={mcpSearch}
-                        onChange={e => setMcpSearch(e.target.value)}
+                        onChange={e => { setMcpSearch(e.target.value); if (!e.target.value.trim()) { setNpmResults([]); setNpmUrlPreview(null); } }}
                         placeholder="Search any MCP… e.g. 'postgres', 'slack', 'linear', 'stripe'"
                         className="chat-input"
                         style={{ width: '100%', paddingLeft: '45px', height: '48px', fontSize: '0.9rem' }}
@@ -1601,7 +1620,7 @@ const App = () => {
                   <form onSubmit={e => { e.preventDefault(); searchGitHub(ghQuery); }} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
                     <div style={{ position: 'relative', flex: 1 }}>
                       <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-                      <input value={ghQuery} onChange={e => setGhQuery(e.target.value)} placeholder="Search GitHub… e.g. 'mcp server', 'ai agent', 'electron app'" className="chat-input" style={{ width: '100%', paddingLeft: '45px', height: '48px', fontSize: '0.9rem' }} />
+                      <input value={ghQuery} onChange={e => { setGhQuery(e.target.value); if (!e.target.value.trim()) { setGhResults([]); setGhUrlPreview(null); } }} placeholder="Search GitHub… e.g. 'mcp server', 'ai agent', 'electron app'" className="chat-input" style={{ width: '100%', paddingLeft: '45px', height: '48px', fontSize: '0.9rem' }} />
                     </div>
                     <select value={ghSort} onChange={e => setGhSort(e.target.value)} style={{ height: '48px', padding: '0 14px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'white', fontSize: '0.8rem', cursor: 'pointer' }}>
                       <option value="stars">⭐ Most Stars</option>
@@ -1843,7 +1862,7 @@ const App = () => {
                     <form onSubmit={e => { e.preventDefault(); searchHF(ollamaSearch); }} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <Search size={14} style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-                        <input value={ollamaSearch} onChange={e => setOllamaSearch(e.target.value)} placeholder="Search any model… 'llama', 'mistral', 'coder', 'vision'…" style={{ width: '100%', height: '42px', paddingLeft: '38px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
+                        <input value={ollamaSearch} onChange={e => { setOllamaSearch(e.target.value); if (!e.target.value.trim()) { setHfResults([]); setHfUrlPreview(null); } }} placeholder="Search any model… 'llama', 'mistral', 'coder', 'vision'…" style={{ width: '100%', height: '42px', paddingLeft: '38px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'white', fontSize: '0.82rem', outline: 'none' }} />
                       </div>
                       <button type="submit" className="btn-premium" style={{ height: '42px', padding: '0 20px', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>{hfSearching ? '⏳' : '🔍 Search'}</button>
                       {(hfResults.length > 0 || hfUrlPreview) && <button type="button" onClick={() => { setHfResults([]); setOllamaSearch(''); setHfUrlPreview(null); }} style={{ height: '42px', padding: '0 12px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', fontSize: '0.72rem' }}>Clear</button>}
