@@ -1038,6 +1038,7 @@ const App = () => {
 
     // ── DEBATE MODE ──────────────────────────────────────────────────────────
     if (debateMode) {
+      if (debatingActive) return; // prevent double-fire
       const userText = chatInput;
       const messageId = Date.now();
       setMessages(prev => [...prev, { id: messageId, type: 'user', text: userText }]);
@@ -2380,7 +2381,7 @@ const App = () => {
 
                  {/* ⚔ DEBATE PANEL */}
                  {rightPanelTab === 'debate' && (
-                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
+                   <div ref={debatePanelRef} style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
                      {debateRounds.length === 0 && !debatingActive && !debateComplete ? (
                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '14px', opacity: 0.45 }}>
                          <span style={{ fontSize: '2.2rem' }}>⚔</span>
