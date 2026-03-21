@@ -1521,6 +1521,12 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Initializing');
   const prompt = `SURGICAL BUILDER MODE: Implement this plan exactly. Plan: ${brainPlan.trim()}`;
 
+  // Route local Ollama models directly
+  if (engine && engine.startsWith('ollama:')) {
+    await triggerOllamaCoder(event, engine.slice(7), brainPlan, messageId);
+    return;
+  }
+
   if (engine.toLowerCase() === 'imi-core') {
     if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: "Gemini key missing for IMI CORE." }); return; }
 
@@ -1856,6 +1862,107 @@ RULES:
 
     // First check after 30s (Jules needs time to start)
     setTimeout(poll, 30000);
+  });
+}
+
+// ── Ollama local model as Coder ───────────────────────────────────────────────
+async function triggerOllamaCoder(event, modelName, brainPlan, messageId) {
+  if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
+  event.sender.send('command-chunk', { messageId, chunk: `\n\n🤖 [${modelName}] Reading project files...\n` });
+
+  // Read file context
+  const filesToRead = ['electron-main.cjs', 'src/App.tsx', 'src/index.css'];
+  let fileContext = '';
+  for (const f of filesToRead) {
+    const fp = path.join(currentProjectRoot, f);
+    if (fs.existsSync(fp)) {
+      const snippet = fs.readFileSync(fp, 'utf-8').split('\n').slice(0, 120).join('\n');
+      fileContext += `\n\n=== ${f} ===\n${snippet}\n=== end ${f} ===`;
+    }
+  }
+
+  const corePrompt = `You are a surgical code editor for IMI (Electron + React/TypeScript).
+Apply MINIMAL precise changes to implement the plan below.
+
+CURRENT FILE STATE:${fileContext}
+
+PLAN TO IMPLEMENT:
+${brainPlan.trim()}
+
+OUTPUT: A raw JSON array ONLY. No markdown, no explanation.
+Format: [{ "file": "relative/path", "search": "exact existing text", "replace": "replacement text" }]
+To create a new file, set "search" to "".
+If no code change needed, return [].`;
+
+  return new Promise((resolve) => {
+    const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
+    req.setHeader('Content-Type', 'application/json');
+    const body = JSON.stringify({
+      model: modelName, stream: true, temperature: 0.2,
+      messages: [{ role: 'user', content: corePrompt }]
+    });
+    req.write(body);
+    let coreRaw = '';
+    req.on('response', (res) => {
+      let buf = '';
+      res.on('data', chunk => {
+        buf += chunk.toString();
+        const lines = buf.split('\n'); buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const json = line.slice(5).trim();
+          if (json === '[DONE]') continue;
+          try { const delta = JSON.parse(json)?.choices?.[0]?.delta?.content; if (delta) coreRaw += delta; } catch {}
+        }
+      });
+      res.on('end', () => {
+        event.sender.send('command-chunk', { messageId, chunk: `[${modelName}] Applying patches...\n` });
+        try {
+          const jsonStart = coreRaw.indexOf('[');
+          const jsonEnd = coreRaw.lastIndexOf(']') + 1;
+          if (jsonStart === -1) throw new Error('No JSON array found in response');
+          const patches = JSON.parse(coreRaw.slice(jsonStart, jsonEnd));
+          let applied = 0;
+          for (const patch of patches) {
+            const filePath = path.join(currentProjectRoot, patch.file);
+            if (patch.search === '' || patch.search === null) {
+              fs.mkdirSync(path.dirname(filePath), { recursive: true });
+              fs.writeFileSync(filePath, patch.replace, 'utf-8');
+              event.sender.send('command-chunk', { messageId, chunk: `✅ Created: ${patch.file}\n` });
+              applied++;
+            } else {
+              if (!fs.existsSync(filePath)) continue;
+              const content = fs.readFileSync(filePath, 'utf-8');
+              if (!content.includes(patch.search)) {
+                event.sender.send('command-chunk', { messageId, chunk: `⚠️ Could not find patch target in ${patch.file}\n` });
+                continue;
+              }
+              fs.writeFileSync(filePath, content.replace(patch.search, patch.replace), 'utf-8');
+              event.sender.send('command-chunk', { messageId, chunk: `✅ Patched: ${patch.file}\n` });
+              applied++;
+            }
+          }
+          if (applied === 0) {
+            event.sender.send('command-chunk', { messageId, chunk: `ℹ️ No file changes were needed.\n` });
+          } else {
+            event.sender.send('command-chunk', { messageId, chunk: `\n✅ Done — ${applied} patch(es) applied. Run a build to verify.\n` });
+            triggerGitSync();
+          }
+        } catch(e) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ [${modelName}] Parse error: ${e.message}\nRaw output:\n${coreRaw.slice(0,500)}\n` });
+        }
+        event.sender.send('command-end', { messageId, code: 0 });
+        if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+        resolve(undefined);
+      });
+    });
+    req.on('error', err => {
+      event.sender.send('command-chunk', { messageId, chunk: `\n❌ Ollama connection error: ${err.message}\nMake sure Ollama is running.\n` });
+      event.sender.send('command-end', { messageId, code: 1 });
+      if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
+      resolve(undefined);
+    });
+    req.end();
   });
 }
 
