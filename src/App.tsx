@@ -2907,7 +2907,8 @@ const App = () => {
                 return (
                   <button key={f.filename} onClick={async () => {
                     setQuantPicker(null);
-                    const tag = f.quant.toLowerCase();
+                    // Ollama HF tag = full filename without .gguf extension
+                    const tag = f.filename.replace(/\.gguf$/i, '');
                     const cmd = `${quantPicker.model.ollamaCmd}:${tag}`;
                     const ok = await checkHardwareBeforePull(f.size);
                     if (!ok) return;
