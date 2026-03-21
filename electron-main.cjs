@@ -2705,14 +2705,15 @@ Generate the COMPLETE content for a file named "${fileName}". Only output the fi
   // Write file
   try {
     fs.writeFileSync(filePath, finalContent, 'utf-8');
-    event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` on Desktop!\n📂 Path: \`${filePath}\`\n\n` });
-    event.sender.send('command-chunk', { messageId, chunk: `**Preview:**\n\`\`\`${ext}\n${finalContent.slice(0, 600)}${finalContent.length > 600 ? '\n...' : ''}\n\`\`\`` });
     // Open in browser if html or if user said open/launch/play
-    if (/\b(open|launch|run|start|play|show)\b/i.test(command) || ext === 'html') {
+    const willOpen = ext === 'html' || /\b(open|launch|run|start|play|show)\b/i.test(command);
+    if (willOpen) {
       shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
     } else {
       exec(`code "${filePath}"`, () => {});
     }
+    const openNote = willOpen ? `\n🚀 Opening in browser...` : `\n📝 Opened in editor.`;
+    event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` on your Desktop!${openNote}` });
   } catch(e) {
     event.sender.send('command-chunk', { messageId, chunk: `❌ Write failed: ${e.message}` });
   }
