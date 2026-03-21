@@ -28,7 +28,8 @@ import {
   Clock,
   History,
   Mic,
-  Wifi
+  Wifi,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -1292,7 +1293,14 @@ const App = () => {
                             <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                               {m.director ? (m.director.startsWith('ollama:') ? shortModelName(m.director.slice(7)).toUpperCase() : m.director.toUpperCase()) : 'SYSTEM'}
                             </div>
-                            {m.isStreaming && <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>● LIVE</div>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {m.isStreaming && <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>● LIVE</div>}
+                              {!m.isStreaming && m.text && (
+                                <button onClick={() => { navigator.clipboard.writeText(m.text); }} title="Copy message" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', opacity: 0.5, padding: '2px 4px', borderRadius: '4px', display: 'flex', alignItems: 'center', transition: 'opacity 0.15s' }} onMouseEnter={e => (e.currentTarget.style.opacity='1')} onMouseLeave={e => (e.currentTarget.style.opacity='0.5')}>
+                                  <Copy size={11} />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
                         <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
@@ -1475,7 +1483,23 @@ const App = () => {
                           </AnimatePresence>
                         </div>
 
-                        <input data-main value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} />
+                        <input data-main value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} onPaste={e => {
+                          const items = Array.from(e.clipboardData.items);
+                          const imgItem = items.find(i => i.type.startsWith('image/'));
+                          if (imgItem) {
+                            e.preventDefault();
+                            const file = imgItem.getAsFile();
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const dataUrl = reader.result as string;
+                              const [header, base64] = dataUrl.split(',');
+                              const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+                              setAttachedImage({ base64, mimeType, previewUrl: dataUrl });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }} />
                         <div onClick={handleMicClick} style={{ cursor: 'pointer', padding: '0 10px', display: 'flex', alignItems: 'center', opacity: isListening ? 1 : 0.6, color: isListening ? '#ff416c' : '#ffffff' }}>
                            <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
                         </div>
