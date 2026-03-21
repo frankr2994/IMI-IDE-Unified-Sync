@@ -1088,7 +1088,7 @@ Respond with ONLY valid JSON matching exactly:
     req.write(JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: `User request: ${command}` }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, responseMimeType: 'application/json' }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
     }));
     let body = '';
     req.on('response', res => {
