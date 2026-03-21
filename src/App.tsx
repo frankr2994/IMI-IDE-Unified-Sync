@@ -139,7 +139,16 @@ const App = () => {
   ];
   const searchHF = async (q: string) => {
     if (!q.trim()) return;
-    setHfSearching(true); setHfError('');
+    setHfSearching(true); setHfError(''); setHfUrlPreview(null);
+    // Detect HuggingFace URL — fetch model directly
+    if (/huggingface\.co\//i.test(q.trim())) {
+      try {
+        const res = await (ipc as any).invoke('hf-fetch-model', q.trim());
+        if (res.error) setHfError(res.error);
+        else setHfUrlPreview(res);
+      } catch(e: any) { setHfError(e.message); }
+      setHfSearching(false); return;
+    }
     try {
       const res = await (ipc as any).invoke('hf-search-models', q);
       setHfResults(res.results || []);
@@ -147,10 +156,8 @@ const App = () => {
     } catch(e: any) {
       const msg = e.message || '';
       if (msg.includes('No handler registered')) {
-        setHfError('⚠️ Restart the app (Ctrl+C → npm run electron:dev) to activate new features.');
-      } else {
-        setHfError(msg);
-      }
+        setHfError('⚠️ Restart the app to activate new features.');
+      } else { setHfError(msg); }
     }
     setHfSearching(false);
   };
@@ -192,7 +199,25 @@ const App = () => {
 
   const searchNpm = async (q: string) => {
     if (!q.trim()) { setNpmResults([]); setNpmTotal(0); return; }
-    setNpmSearching(true); setNpmError('');
+    setNpmSearching(true); setNpmError(''); setNpmUrlPreview(null);
+    // Detect npm URL
+    if (/npmjs\.com\/package\//i.test(q.trim())) {
+      try {
+        const res = await (ipc as any).invoke('npm-fetch-package', q.trim());
+        if (res.error) setNpmError(res.error);
+        else setNpmUrlPreview(res);
+      } catch(e: any) { setNpmError(e.message); }
+      setNpmSearching(false); return;
+    }
+    // Detect GitHub URL — reuse existing handler
+    if (/^https?:\/\/(www\.)?github\.com\//i.test(q.trim())) {
+      try {
+        const res = await (ipc as any).invoke('github-fetch-url', q.trim());
+        if (res.error) setNpmError(res.error);
+        else setNpmUrlPreview({ ...res, fromGitHub: true });
+      } catch(e: any) { setNpmError(e.message); }
+      setNpmSearching(false); return;
+    }
     try {
       const res = await (ipc as any).invoke('npm-search-mcp', q);
       setNpmResults(res.results || []);
@@ -1221,12 +1246,58 @@ const App = () => {
                     <button type="submit" className="btn-premium" style={{ height: '48px', padding: '0 28px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                       {npmSearching ? '⏳ SEARCHING...' : '🔍 SEARCH NPM'}
                     </button>
-                    {npmResults.length > 0 && (
-                      <button type="button" onClick={() => { setNpmResults([]); setMcpSearch(''); }} style={{ height: '48px', padding: '0 16px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '12px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem' }}>CLEAR</button>
+                    {(npmResults.length > 0 || npmUrlPreview) && (
+                      <button type="button" onClick={() => { setNpmResults([]); setMcpSearch(''); setNpmUrlPreview(null); }} style={{ height: '48px', padding: '0 16px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '12px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem' }}>CLEAR</button>
                     )}
                   </form>
                   {npmError && <p style={{ fontSize: '0.7rem', color: '#ff416c', marginTop: '8px' }}>⚠ {npmError}</p>}
                 </div>
+
+                {/* npm / GitHub URL Preview */}
+                {npmUrlPreview && (() => {
+                  const { type, data } = npmUrlPreview;
+                  if (type === 'npm') return (
+                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(79,172,254,0.35)', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '3px 10px', borderRadius: '6px', background: 'rgba(204,0,0,0.2)', color: '#cc0000', letterSpacing: '0.1em' }}>📦 NPM PACKAGE</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>v{data.version}</span>
+                        {data.license && <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', opacity: 0.6 }}>📜 {data.license}</span>}
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '8px' }}>{data.name}</div>
+                      {data.description && <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, marginBottom: '12px' }}>{data.description}</p>}
+                      {data.author && <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '10px' }}>👤 {data.author}</div>}
+                      {data.keywords?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>{data.keywords.slice(0,6).map((k: string) => <span key={k} style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{k}</span>)}</div>}
+                      {data.readme && <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, marginBottom: '14px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>{data.readme}</p>}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => (ipc as any).send('open-external-url', data.npmUrl)} style={{ height: '34px', padding: '0 16px', background: 'rgba(204,0,0,0.12)', border: '1px solid rgba(204,0,0,0.35)', borderRadius: '8px', color: '#cc0000', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>📦 View on npm</button>
+                        {data.repoUrl && <button onClick={() => (ipc as any).send('open-external-url', data.repoUrl)} style={{ height: '34px', padding: '0 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>🐙 GitHub Repo</button>}
+                        <button onClick={() => { setNpmUrlPreview(null); setMcpSearch(''); }} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>✕ Close</button>
+                      </div>
+                    </div>
+                  );
+                  // GitHub result shown in MCP tab
+                  if (type === 'repo' || type === 'pr' || type === 'issue') {
+                    const stateColor = data.state === 'open' ? '#3fb950' : data.merged ? '#a371f7' : '#f85149';
+                    const stateLabel = data.merged ? '✅ Merged' : data.draft ? '🔲 Draft' : data.state === 'open' ? '🟢 Open' : '🔴 Closed';
+                    const tAgo = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime())/86400000); return d===0?'today':d===1?'yesterday':`${d}d ago`; };
+                    return (
+                      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(155,77,255,0.35)', borderRadius: '16px', padding: '20px', marginBottom: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 900, padding: '3px 10px', borderRadius: '6px', background: type==='pr'?'rgba(163,113,247,0.2)':type==='issue'?'rgba(248,81,73,0.2)':'rgba(79,172,254,0.2)', color: type==='pr'?'#a371f7':type==='issue'?'#f85149':'#4facfe', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{type==='pr'?'⎇ Pull Request':type==='issue'?'🐞 Issue':'📦 Repository'}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 700 }}>{data.repoName||data.name}</span>
+                          {(type==='pr'||type==='issue') && <span style={{ marginLeft:'auto', fontSize:'0.7rem', fontWeight:800, color: stateColor }}>{stateLabel}</span>}
+                        </div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, marginBottom: '10px' }}>{(type==='pr'||type==='issue')?`#${data.number} — ${data.title}`:data.description||data.name}</div>
+                        {data.author && <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px' }}>{data.authorAvatar&&<img src={data.authorAvatar} alt="" style={{ width:'20px', height:'20px', borderRadius:'50%' }}/>}<span style={{ fontSize:'0.7rem', color:'var(--text-dim)' }}>by <b style={{color:'white'}}>{data.author}</b> · {tAgo(data.createdAt)}</span></div>}
+                        <div style={{ display:'flex', gap:'8px' }}>
+                          <button onClick={() => (ipc as any).send('open-external-url', data.htmlUrl||`https://github.com/${data.name}`)} style={{ height:'34px', padding:'0 16px', background:'rgba(155,77,255,0.15)', border:'1px solid rgba(155,77,255,0.4)', borderRadius:'8px', color:'var(--primary)', cursor:'pointer', fontSize:'0.7rem', fontWeight:700 }}>🐙 Open on GitHub</button>
+                          <button onClick={() => { setNpmUrlPreview(null); setMcpSearch(''); }} style={{ height:'34px', padding:'0 14px', background:'rgba(255,255,255,0.03)', border:'1px solid var(--glass-border)', borderRadius:'8px', color:'var(--text-dim)', cursor:'pointer', fontSize:'0.7rem' }}>✕ Close</button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* npm Live Results */}
                 {npmResults.length > 0 && (
