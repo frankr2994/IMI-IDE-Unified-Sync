@@ -1862,7 +1862,7 @@ const App = () => {
                             const isExpanded = expandedTools.has(tool.id);
                             const isUpdating = updatingTool === tool.id;
                             return (
-                              <div key={tool.id} style={{ display: 'flex', flexDirection: 'column', gap: '0', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px', ...(isOllama && isExpanded ? { gridColumn: '1 / -1' } : {}) }}>
+                              <div key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${isOllama && isExpanded ? 'rgba(155,77,255,0.35)' : tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px' }}>
                                 {/* Tool header row */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <span style={{ fontSize: '1.4rem' }}>{tool.icon}</span>
