@@ -1569,16 +1569,39 @@ const App = () => {
                               {m.plan.phases.map((phase: any, idx: number) => {
                                 const isDone = ap?.completedPhases.has(idx);
                                 const isCurrent = ap?.currentPhaseIdx === idx && ap?.running;
+                                const isEditing = editingPhase?.planMsgId === m.planId && editingPhase?.phaseIdx === idx;
+                                const isSuggesting = suggestingPhase?.planMsgId === m.planId && suggestingPhase?.phaseIdx === idx;
                                 return (
-                                  <div key={phase.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : 'var(--glass-border)'}`, transition: 'all 0.3s' }}>
-                                    <span style={{ fontSize: '1rem', marginTop: '1px', flexShrink: 0 }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
-                                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
-                                      {phase.files?.length > 0 && <div style={{ fontSize: '0.55rem', color: 'rgba(155,77,255,0.7)', marginTop: '4px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                  <div key={phase.id} style={{ borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : isEditing ? 'rgba(155,77,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : isEditing ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, transition: 'all 0.3s', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px' }}>
+                                      <span style={{ fontSize: '1rem', marginTop: '1px', flexShrink: 0 }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
+                                        {phase.files?.length > 0 && <div style={{ fontSize: '0.55rem', color: 'rgba(155,77,255,0.7)', marginTop: '4px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                      </div>
+                                      {!isDone && !isCurrent && ap && !ap.running && !isEditing && (
+                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                          <button onClick={() => suggestPhaseEdit(m.planId, idx, phase)} disabled={isSuggesting} title="Ask AI to suggest improvements" style={{ fontSize: '0.52rem', padding: '3px 7px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '5px', color: '#4facfe', cursor: 'pointer', whiteSpace: 'nowrap', opacity: isSuggesting ? 0.5 : 1 }}>{isSuggesting ? '…' : '✨ AI'}</button>
+                                          <button onClick={() => startEditPhase(m.planId, idx, phase)} title="Edit this phase" style={{ fontSize: '0.52rem', padding: '3px 7px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer', whiteSpace: 'nowrap' }}>✏</button>
+                                          <button onClick={() => runPlanPhase(m.plan, idx, m.planId)} style={{ fontSize: '0.52rem', padding: '3px 9px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>▶ Run</button>
+                                        </div>
+                                      )}
                                     </div>
-                                    {!isDone && !isCurrent && ap && !ap.running && (
-                                      <button onClick={() => runPlanPhase(m.plan, idx, m.planId)} style={{ fontSize: '0.55rem', padding: '3px 9px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>▶ Run</button>
+                                    {isEditing && (
+                                      <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <div style={{ height: '1px', background: 'rgba(155,77,255,0.2)', marginBottom: '4px' }} />
+                                        <label style={{ fontSize: '0.55rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>PHASE NAME</label>
+                                        <input value={editPhaseData.name} onChange={e => setEditPhaseData(p => ({ ...p, name: e.target.value }))} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'white', padding: '6px 10px', fontSize: '0.75rem', outline: 'none' }} />
+                                        <label style={{ fontSize: '0.55rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>DESCRIPTION</label>
+                                        <textarea value={editPhaseData.description} onChange={e => setEditPhaseData(p => ({ ...p, description: e.target.value }))} rows={2} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'white', padding: '6px 10px', fontSize: '0.72rem', outline: 'none', resize: 'vertical', lineHeight: 1.4 }} />
+                                        <label style={{ fontSize: '0.55rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>EXECUTION PROMPT</label>
+                                        <textarea value={editPhaseData.prompt} onChange={e => setEditPhaseData(p => ({ ...p, prompt: e.target.value }))} rows={3} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'white', padding: '6px 10px', fontSize: '0.65rem', outline: 'none', resize: 'vertical', lineHeight: 1.4, fontFamily: 'monospace' }} />
+                                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '2px' }}>
+                                          <button onClick={() => setEditingPhase(null)} style={{ fontSize: '0.6rem', padding: '4px 12px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-dim)', cursor: 'pointer' }}>Cancel</button>
+                                          <button onClick={saveEditPhase} style={{ fontSize: '0.6rem', padding: '4px 14px', background: 'rgba(155,77,255,0.25)', border: '1px solid rgba(155,77,255,0.5)', borderRadius: '6px', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Save Changes</button>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 );
@@ -1918,7 +1941,7 @@ const App = () => {
                            </div>
                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', flexShrink: 0 }}>
                              <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)' }}>{(ap.plan.complexity || 'medium').toUpperCase()}</span>
-                             <button onClick={() => { setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); }} title="Delete plan" style={{ background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer', padding: '2px 8px', fontSize: '0.55rem', fontWeight: 700, whiteSpace: 'nowrap' }}>✕ Delete</button>
+                             <button onClick={() => cancelPlan(ap.messageId)} title="Delete plan from chat and panel" style={{ background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer', padding: '2px 8px', fontSize: '0.55rem', fontWeight: 700, whiteSpace: 'nowrap' }}>✕ Delete</button>
                            </div>
                          </div>
 
@@ -1928,16 +1951,39 @@ const App = () => {
                            {ap.plan.phases.map((phase: any, idx: number) => {
                              const isDone = ap.completedPhases.has(idx);
                              const isCurrent = ap.currentPhaseIdx === idx && ap.running;
+                             const isEditing = editingPhase?.planMsgId === ap.messageId && editingPhase?.phaseIdx === idx;
+                             const isSuggesting = suggestingPhase?.planMsgId === ap.messageId && suggestingPhase?.phaseIdx === idx;
                              return (
-                               <div key={phase.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '9px 11px', borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : 'var(--glass-border)'}`, transition: 'all 0.3s' }}>
-                                 <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '1px' }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
-                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                   <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
-                                   <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
-                                   {phase.files?.length > 0 && <div style={{ fontSize: '0.52rem', color: 'rgba(155,77,255,0.7)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                               <div key={phase.id} style={{ borderRadius: '9px', background: isCurrent ? 'rgba(0,255,136,0.07)' : isEditing ? 'rgba(155,77,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isCurrent ? 'rgba(0,255,136,0.3)' : isDone ? 'rgba(0,255,136,0.15)' : isEditing ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, transition: 'all 0.3s', overflow: 'hidden' }}>
+                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '9px 11px' }}>
+                                   <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '1px' }}>{isDone ? '✅' : isCurrent ? '⚙️' : '⬜'}</span>
+                                   <div style={{ flex: 1, minWidth: 0 }}>
+                                     <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
+                                     <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
+                                     {phase.files?.length > 0 && <div style={{ fontSize: '0.52rem', color: 'rgba(155,77,255,0.7)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                   </div>
+                                   {!isDone && !isCurrent && !ap.running && !isEditing && (
+                                     <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
+                                       <button onClick={() => suggestPhaseEdit(ap.messageId, idx, phase)} disabled={isSuggesting} title="AI suggest improvements" style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '4px', color: '#4facfe', cursor: 'pointer', opacity: isSuggesting ? 0.5 : 1 }}>{isSuggesting ? '…' : '✨'}</button>
+                                       <button onClick={() => startEditPhase(ap.messageId, idx, phase)} title="Edit phase" style={{ fontSize: '0.5rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '4px', color: 'var(--text-dim)', cursor: 'pointer' }}>✏</button>
+                                       <button onClick={() => runPlanPhase(ap.plan, idx, ap.messageId)} style={{ fontSize: '0.5rem', padding: '2px 7px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '4px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap' }}>▶</button>
+                                     </div>
+                                   )}
                                  </div>
-                                 {!isDone && !isCurrent && !ap.running && (
-                                   <button onClick={() => runPlanPhase(ap.plan, idx, ap.messageId)} style={{ fontSize: '0.52rem', padding: '3px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>▶ Run</button>
+                                 {isEditing && (
+                                   <div style={{ padding: '0 11px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                     <div style={{ height: '1px', background: 'rgba(155,77,255,0.2)', marginBottom: '3px' }} />
+                                     <label style={{ fontSize: '0.5rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>NAME</label>
+                                     <input value={editPhaseData.name} onChange={e => setEditPhaseData(p => ({ ...p, name: e.target.value }))} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'white', padding: '5px 8px', fontSize: '0.7rem', outline: 'none' }} />
+                                     <label style={{ fontSize: '0.5rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>DESCRIPTION</label>
+                                     <textarea value={editPhaseData.description} onChange={e => setEditPhaseData(p => ({ ...p, description: e.target.value }))} rows={2} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'white', padding: '5px 8px', fontSize: '0.65rem', outline: 'none', resize: 'vertical', lineHeight: 1.4 }} />
+                                     <label style={{ fontSize: '0.5rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.1em' }}>EXECUTION PROMPT</label>
+                                     <textarea value={editPhaseData.prompt} onChange={e => setEditPhaseData(p => ({ ...p, prompt: e.target.value }))} rows={3} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'white', padding: '5px 8px', fontSize: '0.6rem', outline: 'none', resize: 'vertical', lineHeight: 1.4, fontFamily: 'monospace' }} />
+                                     <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end', marginTop: '2px' }}>
+                                       <button onClick={() => setEditingPhase(null)} style={{ fontSize: '0.55rem', padding: '3px 10px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: '5px', color: 'var(--text-dim)', cursor: 'pointer' }}>Cancel</button>
+                                       <button onClick={saveEditPhase} style={{ fontSize: '0.55rem', padding: '3px 12px', background: 'rgba(155,77,255,0.25)', border: '1px solid rgba(155,77,255,0.5)', borderRadius: '5px', color: 'white', cursor: 'pointer', fontWeight: 700 }}>Save</button>
+                                     </div>
+                                   </div>
                                  )}
                                </div>
                              );
