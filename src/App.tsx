@@ -388,9 +388,8 @@ const App = () => {
     if (mcpData.success && mcpData.data) {
       const lines = mcpData.data.split('\n').filter((l: string) => 
         (l.includes('●') || l.includes('○') || l.includes('✗') || l.includes(':')) &&
-        !l.includes('automated checks disabled') 
-        </div>
-  );
+        !l.includes('automated checks disabled')
+        );
       setMcpServers(lines.map((l: string) => ({ 
         name: l.trim(), 
         status: l.includes('●') ? 'online' : 'offline' 
@@ -731,8 +730,7 @@ const App = () => {
       if (status !== 'Idle') addLog('system', `Coder: ${status}`);
     });
 
-    return (
-    <div className="App">) => {
+    return () => {
       clearInterval(statsInterval);
       clearInterval(telemetryInterval);
       ipc.removeAllListeners('command-chunk');
