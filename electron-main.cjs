@@ -2809,62 +2809,52 @@ ipcMain.handle('hf-batch-sizes', async (_e, modelIds) => {
 // HuggingFace model search — Ollama can pull any GGUF model from HF
 ipcMain.handle('hf-search-models', async (_e, query) => {
   if (!query || query.trim().length < 1) return { results: [], total: 0 };
-  return new Promise((resolve) => {
-    // Normalize spaces: "qwen 3" → "qwen3", "deep seek" → "deepseek", "llama 3" → "llama3"
-    const normalized = query.trim()
-      .replace(/\bdeep\s+seek\b/gi, 'deepseek')
-      .replace(/\b(qwen|llama|gemma|mistral|phi|falcon|wizard|stable|code)\s+(\d)/gi, '$1$2');
-    const q = encodeURIComponent(normalized);
-    // full=true returns siblings (file list with sizes) — limit reduced to keep response manageable
-    const req = net.request({
-      method: 'GET', protocol: 'https:', hostname: 'huggingface.co',
-      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=12&full=true&blobs=true`
-    });
-    req.setHeader('Accept', 'application/json');
-    req.setHeader('User-Agent', 'IMI-DevHub/1.0');
+
+  // Normalize spaces: "qwen 3" → "qwen3", "deep seek" → "deepseek", "llama 3" → "llama3"
+  const normalized = query.trim()
+    .replace(/\bdeep\s+seek\b/gi, 'deepseek')
+    .replace(/\b(qwen|llama|gemma|mistral|phi|falcon|wizard|stable|code)\s+(\d)/gi, '$1$2');
+
+  const OFFICIAL_AUTHORS = { qwen:'Qwen', llama:'meta-llama', gemma:'google', mistral:'mistralai', deepseek:'deepseek-ai', phi:'microsoft', falcon:'tiiuae' };
+  const baseWord = normalized.toLowerCase().match(/^([a-z]+)/)?.[1] || '';
+  const officialAuthor = OFFICIAL_AUTHORS[baseWord];
+
+  const fmtBytes = (b) => b >= 1e9 ? `${(b/1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b/1e6).toFixed(0)} MB` : `${b} B`;
+  const parseModel = (m) => {
+    const siblings = m.siblings || [];
+    const getSize = (s) => s.lfs?.size || s.size || 0;
+    const ggufFiles = siblings.filter(s => s.rfilename?.toLowerCase().endsWith('.gguf') && getSize(s) > 0);
+    let sizeLabel = '';
+    if (ggufFiles.length === 1) sizeLabel = fmtBytes(getSize(ggufFiles[0]));
+    else if (ggufFiles.length > 1) {
+      const smallest = Math.min(...ggufFiles.map(f => getSize(f)));
+      const largest  = Math.max(...ggufFiles.map(f => getSize(f)));
+      sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
+    }
+    return { id: m.modelId||m.id, name: m.modelId||m.id, author: (m.modelId||m.id||'').split('/')[0], downloads: m.downloads||0, likes: m.likes||0, tags: m.tags||[], pipeline: m.pipeline_tag||'text-generation', updatedAt: m.lastModified||m.createdAt, hfUrl: `https://huggingface.co/${m.modelId||m.id}`, ollamaCmd: `hf.co/${m.modelId||m.id}`, sizeLabel, ggufCount: ggufFiles.length };
+  };
+
+  const fetchHF = (path) => new Promise((res) => {
+    const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'huggingface.co', path });
+    req.setHeader('Accept', 'application/json'); req.setHeader('User-Agent', 'IMI-DevHub/1.0');
     let raw = '';
-    req.on('response', res => {
-      res.on('data', d => raw += d.toString());
-      res.on('end', () => {
-        try {
-          const models = JSON.parse(raw);
-          const fmtBytes = (b) => b >= 1e9 ? `${(b/1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b/1e6).toFixed(0)} MB` : `${b} B`;
-          const results = (Array.isArray(models) ? models : []).map(m => {
-            // Parse GGUF file sizes from siblings
-            const siblings = m.siblings || [];
-            // HF stores actual file size in lfs.size (LFS pointer), fallback to size field
-            const getSize = (s) => s.lfs?.size || s.size || 0;
-            const ggufFiles = siblings.filter(s => s.rfilename && s.rfilename.toLowerCase().endsWith('.gguf') && getSize(s) > 0);
-            let sizeLabel = '';
-            if (ggufFiles.length === 1) {
-              sizeLabel = fmtBytes(getSize(ggufFiles[0]));
-            } else if (ggufFiles.length > 1) {
-              const smallest = Math.min(...ggufFiles.map(f => getSize(f)));
-              const largest = Math.max(...ggufFiles.map(f => getSize(f)));
-              sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
-            }
-            return {
-              id: m.modelId || m.id,
-              name: m.modelId || m.id,
-              author: (m.modelId || m.id || '').split('/')[0],
-              downloads: m.downloads || 0,
-              likes: m.likes || 0,
-              tags: m.tags || [],
-              pipeline: m.pipeline_tag || 'text-generation',
-              updatedAt: m.lastModified || m.createdAt,
-              hfUrl: `https://huggingface.co/${m.modelId || m.id}`,
-              ollamaCmd: `hf.co/${m.modelId || m.id}`,
-              sizeLabel,
-              ggufCount: ggufFiles.length,
-            };
-          });
-          resolve({ results, total: results.length });
-        } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
-      });
-    });
-    req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
+    req.on('response', r => { r.on('data', d => raw += d.toString()); r.on('end', () => { try { res(JSON.parse(raw)); } catch { res([]); } }); });
+    req.on('error', () => res([]));
     req.end();
   });
+
+  try {
+    const q = encodeURIComponent(normalized);
+    // Fetch main results (24) + official author results in parallel
+    const [mainRaw, officialRaw] = await Promise.all([
+      fetchHF(`/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=24&full=true&blobs=true`),
+      officialAuthor ? fetchHF(`/api/models?author=${encodeURIComponent(officialAuthor)}&search=${q}&filter=gguf&sort=downloads&direction=-1&limit=6&full=true&blobs=true`) : Promise.resolve([]),
+    ]);
+    const seen = new Set();
+    const allModels = [...(Array.isArray(officialRaw) ? officialRaw : []), ...(Array.isArray(mainRaw) ? mainRaw : [])];
+    const results = allModels.map(parseModel).filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
+    return { results, total: results.length };
+  } catch(e) { return { results: [], total: 0, error: e.message }; }
 });
 
 ipcMain.handle('ollama-running', async () => {
