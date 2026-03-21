@@ -2706,9 +2706,10 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   let generatedContent = '';
   try {
     const https = require('https');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 4096 } });
+    const FILE_GEN_MODEL = 'gemini-1.5-flash';
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
     const data = await new Promise((resolve, reject) => {
-      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${FILE_GEN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
         res.on('data', d => raw += d);
         res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
