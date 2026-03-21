@@ -1444,9 +1444,12 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   // ── End universal browser actions ─────────────────────────────────────────
 
   // ── DESKTOP / FILE CREATION — director-agnostic, always runs before AI routing ──
+  // Plan phases skip ALL special routing — they must reach the Brain→IMI-CORE pipeline
+  if (isPlanPhase && !payload.engine) payload.engine = 'imi-core';
+
   // These always use Gemini's API for content generation regardless of which brain is selected.
   // Desktop typo tolerance: "destop", "dekstop", "desktp", "desctop", "destktop" etc.
-  const _hasDesktop = /\b(desktop|my desktop|des[ck]?t?k?o?p|deskt?o?p|destop|dekstop|desctop)\b/i.test(command);
+  const _hasDesktop = !isPlanPhase && /\b(desktop|my desktop|des[ck]?t?k?o?p|deskt?o?p|destop|dekstop|desctop)\b/i.test(command);
   {
     const _deskL = command.toLowerCase();
     // Create folder on desktop
@@ -1615,7 +1618,7 @@ User: `;
       /\b(edit|modify|update|fix|improve|rewrite|change)\b.{0,60}(\.[a-z]{2,6}|\.txt|\.py|\.js|\.html|\.css|\.json|\.ts|\.md)\b/i.test(command)
       || (/\b(desktop|my desktop|folder)\b/i.test(command) && /\b(edit|modify|update|fix|improve|rewrite)\b/i.test(command) && /\b(file|\.)\b/i.test(command))
     );
-    if (isEditOp) {
+    if (isEditOp && !isPlanPhase) {
       console.log(`[ROUTE] → triggerFileEdit`);
       triggerFileEdit(event, command, messageId);
       return;
@@ -1777,7 +1780,7 @@ User: `;
     const _hasAction2 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign)\b/i.test(command);
     const _hasIMITarget2 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isDesktopFile2 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
-    const isCodingAction = ((_hasAction2 && _hasIMITarget2) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile2;
+    const isCodingAction = ((_hasAction2 && _hasIMITarget2) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile2 || isPlanPhase;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
 
     if (!CUSTOM_API_URL) { event.sender.send('command-error', { messageId, error: "Custom Endpoint URL missing in Settings." }); return; }
@@ -1861,7 +1864,7 @@ User: `;
     const _hasAction4 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|better|nicer|polish|redesign)\b/i.test(command);
     const _hasIMITarget4 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isDesktopFile4 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
-    const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4;
+    const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4 || isPlanPhase;
     // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
     const ollamaLightPrefix = chatPrefix;
@@ -1939,7 +1942,7 @@ User: `;
     const _hasAction3 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign)\b/i.test(command);
     const _hasIMITarget3 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isDesktopFile3 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
-    const isCodingAction = ((_hasAction3 && _hasIMITarget3) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile3;
+    const isCodingAction = ((_hasAction3 && _hasIMITarget3) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile3 || isPlanPhase;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
     req.setHeader('Content-Type', 'application/json');
@@ -2017,7 +2020,7 @@ User: `;
     const _hasAction5 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|better|nicer|polish|redesign)\b/i.test(command);
     const _hasIMITarget5 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isDesktopFile5 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
-    const isCodingAction = ((_hasAction5 && _hasIMITarget5) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile5;
+    const isCodingAction = ((_hasAction5 && _hasIMITarget5) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile5 || isPlanPhase;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     // Build messages with full history
     const msgs = [{ role: 'system', content: activePrefix }];
