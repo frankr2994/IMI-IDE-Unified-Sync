@@ -715,24 +715,30 @@ USER IDENTITY (always available — never ask for this):
 - IMI Repo URL: https://github.com/${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
 
 AVAILABLE TOOLS:
-1.  read_file      {"path": "relative/path"} — Read a file
-2.  search_code    {"pattern": "regex", "path": "src/"} — Search files for a pattern
-3.  list_dir       {"path": "."} — List directory contents
-4.  write_patch    {"file": "path", "search": "exact text", "replace": "new text"} — Surgical patch
-5.  run_build      {} — Run npm run build, returns errors
-6.  run_command    {"cmd": "git status"} — Run a terminal command and see output
-7.  take_screenshot {} — Capture the screen, see what the UI currently looks like
-8.  read_error     {"file": "path", "line": 392} — Read lines around an error
-9.  open_browser   {"url": "https://github.com/..."} — Open a URL in the default browser
-10. done           {"message": "what was done"} — Signal completion
+1.  read_file      {"path": "relative/path", "offset": 0, "limit": 100} — Read file with optional line range (line numbers shown)
+2.  write_file     {"file": "relative/path", "content": "full file content"} — Create or overwrite a file
+3.  write_patch    {"file": "path", "search": "exact text", "replace": "new text"} — Surgical find-and-replace patch
+4.  search_code    {"pattern": "regex", "path": "src/", "file_type": "tsx", "context": 2} — Grep files for pattern with optional context lines
+5.  glob           {"pattern": "**/*.tsx", "path": "."} — Find files matching a glob pattern
+6.  list_dir       {"path": ".", "depth": 1} — List directory contents with optional recursion depth
+7.  get_file_info  {"path": "relative/path"} — Get file metadata: size, line count, modified time
+8.  run_build      {} — Run npm run build, returns errors
+9.  run_command    {"cmd": "git status"} — Run a terminal command and see output
+10. take_screenshot {} — Capture the screen, see what the UI currently looks like
+11. read_error     {"file": "path", "line": 392} — Read ±15 lines around a specific line number
+12. open_browser   {"url": "https://github.com/..."} — Open a URL in the default browser
+13. done           {"message": "what was done"} — Signal completion
 
 RULES:
-- Read files before patching. Use exact text in write_patch.
+- Always read_file before write_patch — use exact text for the search argument.
+- For large files use offset+limit to navigate (e.g. offset:100, limit:80 for lines 101-180).
+- Use glob to discover files before reading them. Use search_code to find specific symbols or patterns.
+- Use write_file only to create new files or fully rewrite small files. Prefer write_patch for surgical edits.
 - After every patch run_build to verify. Fix any errors before calling done.
 - Use take_screenshot to see the actual UI before making visual changes.
 - Use run_command for git, npm, node, python — but never destructive commands.
 - NEVER ask the user for their GitHub username — you already have it above.
-- Maximum 15 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
+- Maximum 20 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
 `;
 
 async function executeAgentTool(toolName, args, projectRoot) {
@@ -754,47 +760,66 @@ async function executeAgentTool(toolName, args, projectRoot) {
         if (!fs.existsSync(fp)) return `File not found: ${args.path}`;
         const content = fs.readFileSync(fp, 'utf-8');
         const lines = content.split('\n');
-        // If file is large, return a summary + key sections
-        if (lines.length > 200) {
-          return `File: ${args.path} (${lines.length} lines)\n\nLines 1-80:\n${lines.slice(0, 80).join('\n')}\n\n... (${lines.length - 80} more lines. Use search_code to find specific sections.)`;
+        const offset = Math.max(0, parseInt(args.offset) || 0);
+        // If offset or limit explicitly provided, honour them
+        if (args.offset !== undefined || args.limit !== undefined) {
+          const limit = Math.min(300, Math.max(1, parseInt(args.limit) || 150));
+          const slice = lines.slice(offset, offset + limit);
+          const end = offset + slice.length;
+          const header = `File: ${args.path} (showing lines ${offset + 1}–${end} of ${lines.length})`;
+          const hint = end < lines.length ? `\n\n(${lines.length - end} more lines — use offset:${end} to continue)` : '';
+          return `${header}\n\`\`\`\n${slice.map((l, i) => `${offset + i + 1}: ${l}`).join('\n')}\n\`\`\`${hint}`;
         }
-        return `File: ${args.path}\n\`\`\`\n${content}\n\`\`\``;
+        // Auto-paginate large files
+        if (lines.length > 200) {
+          const slice = lines.slice(0, 150);
+          return `File: ${args.path} (${lines.length} lines — showing 1–150)\n\`\`\`\n${slice.map((l, i) => `${i + 1}: ${l}`).join('\n')}\n\`\`\`\n\n(${lines.length - 150} more lines — use offset:150 to read more, or search_code to find specific sections)`;
+        }
+        return `File: ${args.path} (${lines.length} lines)\n\`\`\`\n${lines.map((l, i) => `${i + 1}: ${l}`).join('\n')}\n\`\`\``;
       }
 
       case 'search_code': {
         const pattern = args.pattern || '';
         const searchPath = path.resolve(projectRoot, args.path || 'src');
+        const contextLines = Math.min(5, Math.max(0, parseInt(args.context) || 0));
+        const fileTypeFilter = args.file_type ? new RegExp(`\\.${args.file_type}$`, 'i') : /\.(tsx?|jsx?|css|json)$/;
         return new Promise(resolve => {
-          exec(`npx --yes grep-cli "${pattern}" "${searchPath}" 2>nul || findstr /s /n /i "${pattern}" "${searchPath}\\*"`,
-            { timeout: 8000, cwd: projectRoot },
-            (err, stdout) => {
-              // Fallback: manual grep using Node
-              try {
-                const results = [];
-                const walkDir = (dir) => {
-                  if (!fs.existsSync(dir)) return;
-                  const entries = fs.readdirSync(dir, { withFileTypes: true });
-                  for (const e of entries) {
-                    const full = path.join(dir, e.name);
-                    if (e.isDirectory() && !['node_modules', '.git', 'dist'].includes(e.name)) walkDir(full);
-                    else if (e.isFile() && /\.(tsx?|js|css|json)$/.test(e.name)) {
-                      try {
-                        const lines = fs.readFileSync(full, 'utf-8').split('\n');
-                        const regex = new RegExp(pattern, 'i');
-                        lines.forEach((line, i) => {
-                          if (regex.test(line)) {
-                            results.push(`${path.relative(projectRoot, full)}:${i+1}: ${line.trim()}`);
-                          }
-                        });
-                      } catch(e) {}
-                    }
-                  }
-                };
-                walkDir(searchPath);
-                resolve(results.length ? `Search results for "${pattern}":\n${results.slice(0, 30).join('\n')}` : `No matches found for "${pattern}"`);
-              } catch(e) { resolve(`Search error: ${e.message}`); }
-            }
-          );
+          try {
+            let regex;
+            try { regex = new RegExp(pattern, 'i'); } catch(e) { resolve(`Invalid regex: ${e.message}`); return; }
+            const results = [];
+            const walkDir = (dir) => {
+              if (!fs.existsSync(dir)) return;
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const e of entries) {
+                const full = path.join(dir, e.name);
+                if (e.isDirectory() && !['node_modules', '.git', 'dist', '.next', 'build', 'coverage'].includes(e.name)) walkDir(full);
+                else if (e.isFile() && fileTypeFilter.test(e.name)) {
+                  try {
+                    const lines = fs.readFileSync(full, 'utf-8').split('\n');
+                    const rel = path.relative(projectRoot, full).replace(/\\/g, '/');
+                    lines.forEach((line, i) => {
+                      if (regex.test(line)) {
+                        if (contextLines > 0) {
+                          const before = lines.slice(Math.max(0, i - contextLines), i).map((l, j) => `${Math.max(1, i - contextLines + j + 1)}-  ${l}`);
+                          const after  = lines.slice(i + 1, i + 1 + contextLines).map((l, j) => `${i + 2 + j}-  ${l}`);
+                          results.push([`${rel}:${i + 1}: ${line.trim()}`, ...before, `${i + 1}:  ${line}`, ...after, '---'].join('\n'));
+                        } else {
+                          results.push(`${rel}:${i + 1}: ${line.trim()}`);
+                        }
+                      }
+                    });
+                  } catch(_) {}
+                }
+              }
+            };
+            walkDir(searchPath);
+            if (!results.length) { resolve(`No matches found for "${pattern}"`); return; }
+            const cap = contextLines > 0 ? 15 : 40;
+            const out = results.slice(0, cap).join('\n');
+            const extra = results.length > cap ? `\n... (${results.length - cap} more matches)` : '';
+            resolve(`Search results for "${pattern}" (${results.length} matches):\n${out}${extra}`);
+          } catch(e) { resolve(`Search error: ${e.message}`); }
         });
       }
 
