@@ -1878,30 +1878,41 @@ const App = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                   {isOllama && tool.installed && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                                      {(() => {
-                                        const upd = depInstalling['ollama-update'];
-                                        const label = updatingTool === 'ollama'
-                                          ? upd?.status === 'downloading' ? `⬇ ${upd.percent}% (${upd.received||0}/${upd.total||0}MB)`
-                                          : upd?.status === 'installing' ? '⚙️ Installing…'
-                                          : '⏳ Connecting…'
-                                          : updateResult['ollama'] || '⬆ Update';
-                                        const color = updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe';
-                                        return (
-                                          <button onClick={async () => {
-                                            setUpdatingTool('ollama');
-                                            setUpdateResult(p => ({ ...p, ollama: '' }));
-                                            const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
-                                            setUpdatingTool(null);
-                                            setUpdateResult(p => ({ ...p, ollama: res?.upToDate ? '✅ Latest' : res?.success ? '✅ Updated!' : '❌ Failed' }));
-                                            if (res?.success && !res?.upToDate) setTimeout(loadTools, 2000);
-                                            setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 4000);
-                                          }} disabled={updatingTool === 'ollama'} style={{ height: '24px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color, cursor: updatingTool === 'ollama' ? 'default' : 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap', minWidth: '80px', textAlign: 'center' }}>
-                                            {label}
-                                          </button>
-                                        );
-                                      })()}
-                                      <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '24px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', minWidth: '110px' }}>
+                                      {updatingTool === 'ollama' ? (
+                                        /* Download/install progress bar */
+                                        <div style={{ width: '100%' }}>
+                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                            <span style={{ fontSize: '0.58rem', color: '#4facfe', fontWeight: 700 }}>
+                                              {depInstalling['ollama-update']?.status === 'installing' ? '⚙️ Installing…' : '⬇ Downloading…'}
+                                            </span>
+                                            <span style={{ fontSize: '0.58rem', color: 'white', fontWeight: 900 }}>
+                                              {depInstalling['ollama-update']?.percent ?? 0}%
+                                            </span>
+                                          </div>
+                                          <div style={{ height: '5px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', width: `${depInstalling['ollama-update']?.percent ?? 0}%`, background: 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: '0 0 8px rgba(79,172,254,0.8)' }} />
+                                          </div>
+                                          {(depInstalling['ollama-update']?.total ?? 0) > 0 && (
+                                            <div style={{ fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '2px', textAlign: 'right' }}>
+                                              {depInstalling['ollama-update']?.received}MB / {depInstalling['ollama-update']?.total}MB
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <button onClick={async () => {
+                                          setUpdatingTool('ollama');
+                                          setUpdateResult(p => ({ ...p, ollama: '' }));
+                                          const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
+                                          setUpdatingTool(null);
+                                          setUpdateResult(p => ({ ...p, ollama: res?.upToDate ? '✅ Latest' : res?.success ? '✅ Updated!' : '❌ Failed' }));
+                                          if (res?.success && !res?.upToDate) setTimeout(loadTools, 2000);
+                                          setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 4000);
+                                        }} style={{ height: '24px', padding: '0 8px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '6px', color: updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', width: '100%' }}>
+                                          {updateResult['ollama'] || '⬆ Update'}
+                                        </button>
+                                      )}
+                                      <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '24px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap', width: '100%' }}>
                                         {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
                                       </button>
                                     </div>
@@ -1912,8 +1923,8 @@ const App = () => {
                                         <div style={{ fontSize: '0.58rem', color: '#00ff88', marginBottom: '3px' }}>
                                           {depInstalling[tool.id].status === 'downloading' ? `⬇ ${depInstalling[tool.id].percent}%` : depInstalling[tool.id].status === 'installing' ? '⚙️ Installing…' : depInstalling[tool.id].status === 'done' ? '✅ Done!' : '❌ Failed'}
                                         </div>
-                                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                                          <div style={{ height: '100%', width: `${depInstalling[tool.id].percent}%`, background: depInstalling[tool.id].status === 'done' ? '#00ff88' : 'var(--primary)', borderRadius: '3px', transition: 'width 0.3s' }} />
+                                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.15)', borderRadius: '3px', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', width: `${depInstalling[tool.id].percent}%`, background: depInstalling[tool.id].status === 'done' ? '#00ff88' : 'var(--primary)', borderRadius: '3px', transition: 'width 0.3s', boxShadow: '0 0 6px rgba(155,77,255,0.5)' }} />
                                         </div>
                                       </div>
                                     ) : (
@@ -2153,8 +2164,8 @@ const App = () => {
                                     <span style={{ fontSize: '0.65rem', color: '#00ff88', fontWeight: 700 }}>{p?.status === 'Complete!' ? '✅ Done!' : p?.status || 'Connecting…'}</span>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'white' }}>{pct}%</span>
                                   </div>
-                                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: pct > 0 ? '0 0 8px rgba(155,77,255,0.5)' : 'none' }} />
+                                  <div style={{ height: '8px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#00ff88' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: pct > 0 ? '0 0 8px rgba(155,77,255,0.7)' : 'none' }} />
                                   </div>
                                   {p?.downloaded && p?.total ? (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
