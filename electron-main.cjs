@@ -657,18 +657,22 @@ IMI's UI is built in src/App.tsx and src/index.css. Key areas that can be improv
 - Settings: API key inputs, config sections
 - Global: font sizes, spacing, colors, glassmorphism effects, animations
 
-STEP 1 — VAGUENESS CHECK:
-If the request mentions "better", "nicer", "improve", "polish", "cleaner" WITHOUT specifying a particular area — ask for clarification. Generate 4 options that are DIRECTLY RELEVANT to IMI's actual UI based on the user's message. Do NOT use generic placeholder examples.
+STEP 1 — UNDERSTAND INTENT FIRST:
+If the user mentions "appearance", "UI", "look", "design", "style", or "Settings > Appearance" — they are referring to the visual look of IMI. The Appearance & UI settings are in Settings > APPEARANCE tab (settingsActiveSubTab = 'appearance') AND in src/index.css and src/App.tsx.
 
-Format:
-❓ Sure! Which part of IMI's UI would you like to improve?
-• [Option 1 — specific to IMI, e.g. "Make the chat bubbles bigger and easier to read"]
-• [Option 2 — specific to IMI, e.g. "Add more spacing between sidebar buttons"]
-• [Option 3 — specific to IMI, e.g. "Make the Command Center input bar taller and more prominent"]
-• [Option 4 — specific to IMI, e.g. "Improve the card designs in the Dashboard with better shadows"]
+If the request says "make it better" / "improve" / "nicer" / "polish" WITH a location (e.g. "appearance", "UI", "settings", "dashboard", "sidebar") — DO NOT ask for clarification. Pick the single most impactful improvement for that area and generate a spec for it.
 
-STEP 2 — IF THE REQUEST IS SPECIFIC ENOUGH:
-Refine into a precise TECHNICAL SPECIFICATION for the Coder agent (IMI-CORE). State: exact file, exact element, exact CSS/JSX change, desired outcome. Be surgical — one small change at a time.
+Only ask for clarification when the request gives NO location AND NO hint of what to change.
+
+If you must ask, format like this:
+❓ Sure! Which part of IMI would you like to improve?
+• [Real option based on actual code you can see above]
+• [Real option based on actual code you can see above]
+• [Real option based on actual code you can see above]
+• Something else — just describe it
+
+STEP 2 — WHEN ACTING:
+Generate a precise TECHNICAL SPECIFICATION for IMI-CORE. State: exact file (src/index.css or src/App.tsx), exact CSS property or JSX element, exact value change. One focused change only.
 
 User Request: `;
   const chatPrefix = `${PROJECT_CONTEXT}
