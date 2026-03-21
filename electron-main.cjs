@@ -1081,15 +1081,14 @@ Respond with ONLY valid JSON matching exactly:
   "complexity": "low or medium or high"
 }`;
 
-  const PLAN_MODEL = 'gemini-1.5-flash';
   return new Promise((resolve, reject) => {
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/${PLAN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: `User request: ${command}` }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
     }));
     let body = '';
     req.on('response', res => {
@@ -2184,16 +2183,15 @@ CRITICAL RULES:
 - Multiple patches allowed, one per logical change
 - If no code change is needed (e.g. plan is just analysis), return []`;
 
-    const CORE_MODEL = 'gemini-1.5-flash';
     const coreReq = net.request({
       method: 'POST', protocol: 'https:',
       hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/${CORE_MODEL}:generateContent?key=${GEMINI_KEY}`
+      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`
     });
     coreReq.setHeader('Content-Type', 'application/json');
     coreReq.write(JSON.stringify({
       contents: [{ parts: [{ text: corePrompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+      generationConfig: { temperature: 0.1, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
     }));
 
     let coreRaw = '';
@@ -2715,10 +2713,9 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   let generatedContent = '';
   try {
     const https = require('https');
-    const FILE_GEN_MODEL = 'gemini-1.5-flash';
-    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } });
     const data = await new Promise((resolve, reject) => {
-      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${FILE_GEN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
+      const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
         res.on('data', d => raw += d);
         res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
