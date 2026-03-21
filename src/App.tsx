@@ -1806,8 +1806,9 @@ const App = () => {
                       <button onClick={loadOllamaModels} style={{ height: '28px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.65rem' }}>🔄 Refresh</button>
                     </div>
                     {ollamaModels.length === 0
-                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,65,108,0.04)', border: '1px solid rgba(255,65,108,0.15)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                          No models installed yet. Pull one from the library below. <span style={{ color: '#ff416c' }}>Ollama must be installed first.</span>
+                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                          ✅ Ollama is installed. No models pulled yet — search below and hit <strong>Pull</strong> to add one.
+                          <div style={{ marginTop: '8px', fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700 }}>💡 Recommended for your GPU: <code>qwen2.5-coder:7b</code> (4.7GB — fits in 8GB VRAM)</div>
                         </div>
                       : <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {ollamaModels.map(m => (
