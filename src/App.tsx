@@ -297,16 +297,23 @@ const App = () => {
 
   // Shorten raw Ollama model names for display
   const shortModelName = (raw: string) => {
+    // HF format: hf.co/Author/Repo:Filename-without-gguf
+    if (/^hf\.co\//i.test(raw)) {
+      const colonIdx = raw.indexOf(':');
+      if (colonIdx > 0) {
+        // Use the tag (e.g. "Qwen3-4B-Q5_K_M") — dash→space, keep underscores in quant
+        return raw.slice(colonIdx + 1).replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      // No tag — use repo name without -GGUF suffix
+      const repo = raw.split('/').pop() || raw;
+      return repo.replace(/-GGUF$/i, '').replace(/-/g, ' ').trim();
+    }
+    // Standard Ollama name like "qwen2.5-coder:7b" or "llama3:latest"
     let s = raw
-      .replace(/^hf\.co\/[^/]+\//i, '')  // strip hf.co/author/
-      .replace(/:latest$/i, '')            // strip :latest
-      .replace(/-GGUF$/i, '')             // strip -GGUF
-      .replace(/-A\d+B(-|$)/gi, '$1')    // strip quantisation tags like -A3B
-      .replace(/-\d+bit(-|$)/gi, '$1')   // strip -4bit etc
-      .replace(/-Q\d+_\w+(-|$)/gi, '$1') // strip -Q4_K_M etc
-      .replace(/-/g, ' ')                 // dashes → spaces
+      .replace(/:latest$/i, '')
+      .replace(/-/g, ' ')
       .replace(/\s+/g, ' ').trim();
-    return s.length > 20 ? s.slice(0, 18) + '…' : s;
+    return s.length > 24 ? s.slice(0, 22) + '…' : s;
   };
 
   const formatStars = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
@@ -1932,8 +1939,9 @@ const App = () => {
                             <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.04)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '10px' }}>
                               <span style={{ fontSize: '1.2rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
                               <div style={{ flex: 1 }}>
-                                <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{m.name}</span>
-                                <span style={{ marginLeft: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
+                                <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{shortModelName(m.name)}</div>
+                                <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: '1px', fontFamily: 'monospace', opacity: 0.6 }}>{m.name}</div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
                                 {m.tooLarge && <div style={{ fontSize: '0.62rem', color: '#ff416c', marginTop: '2px', fontWeight: 700 }}>⚠️ Too large for your GPU ({m.vramGB?.toFixed(0)}GB VRAM) — won't run. Delete and pull a smaller model.</div>}
                               </div>
                               <span style={{ fontSize: '0.6rem', padding: '2px 8px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "Can't Run" : 'Ready'}</span>
