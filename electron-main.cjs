@@ -628,7 +628,8 @@ class ImpactAnalyzer {
           if (!extensions.some(x => e.name.endsWith(x))) continue;
           try {
             const content = fs.readFileSync(full, 'utf-8');
-            const re = /(?:^|\n)\s*(?:import|export)[^'"]*['"]([^'"]+)['"]/g;
+            // Same regex as scan-project-imports — handles multiline imports via 'from' keyword
+            const re = /(?:import|from)\s+['"]([^'"]+)['"]/g;
             let m;
             while ((m = re.exec(content)) !== null) {
               const imp = m[1];
@@ -696,9 +697,11 @@ class ImpactAnalyzer {
 const styleAnalyzer  = new StyleAnalyzer();
 const impactAnalyzer = new ImpactAnalyzer();
 
-// Auto-analyze style on startup (non-blocking)
+// Auto-analyze style on startup (non-blocking) — capture root immediately
+const _startupRoot = currentProjectRoot;
 setImmediate(() => {
-  try { styleAnalyzer.autoAnalyzeIfNeeded(currentProjectRoot); } catch(_) {}
+  try { styleAnalyzer.autoAnalyzeIfNeeded(_startupRoot); }
+  catch(e) { console.warn('[StyleAnalyzer] startup analyze failed:', e.message); }
 });
 
 // ── IMI Agent Tools — used by the agentic loop ───────────────────────────────
@@ -1383,7 +1386,10 @@ ipcMain.handle('save-api-config', (e, config) => {
     const changed = currentProjectRoot !== config.projectRoot;
     currentProjectRoot = config.projectRoot;
     // Re-analyze style non-blocking when project root changes
-    if (changed) setImmediate(() => { try { styleAnalyzer.analyze(currentProjectRoot); } catch(_) {} });
+    if (changed) {
+      const rootToAnalyze = currentProjectRoot; // capture now, not via closure
+      setImmediate(() => { try { styleAnalyzer.analyze(rootToAnalyze); } catch(e) { console.warn('[StyleAnalyzer] auto-analyze failed:', e.message); } });
+    }
   }
   saveGlobalState(); return { success: true };
 });
