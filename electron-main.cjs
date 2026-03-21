@@ -152,6 +152,7 @@ class SkillEngine {
       { id: 'sk_imi_info',  name: 'What is IMI',           pattern: '\\b(what is|explain|describe|tell me about)\\b.{0,20}\\b(imi|this app|this program|this tool)\\b', type: 'cached', handler: null, cachedResponse: 'IMI (Integrated Merge Interface) is your AI orchestration desktop app. It splits every task between a Brain (plans) and a Coder (executes) to minimize token usage. It controls your browser, desktop, and codebase simultaneously.', desc: 'Cached IMI description — 0 tokens' },
       { id: 'sk_help',      name: 'Help / Capabilities',   pattern: '^\\s*(help|what can you do|capabilities|commands|skills|features)\\s*[?!]?\\s*$', type: 'cached', handler: null, cachedResponse: 'IMI can: open websites, create desktop files/folders, write & edit code, take screenshots, control your browser, sync to GitHub, switch AI models, track token usage, and run self-optimizing skills. Just tell me what you need!', desc: 'Cached help response — 0 tokens' },
       { id: 'sk_installed_models', name: 'List Installed AI Models', pattern: '\\b(what|which|list|show|do i have)\\b.{0,40}\\b(ai|ollama|llm|model|models)\\b.{0,40}\\b(installed|downloaded|on my|available|have)\\b|\\b(installed|downloaded|available)\\b.{0,30}\\b(ai|ollama|llm|model|models)\\b', type: 'direct', handler: 'installed-models', desc: 'Lists installed Ollama models + AI tools — no API call' },
+      { id: 'sk_claude_sdk', name: 'Claude Agent SDK', pattern: '\\b(how does claude|claude agent|agent sdk|anthropic sdk|sse event|tool use|agentic loop|how do you think|how do you work|what events|event stream|content_block|message_start|stop_reason|tool_use|how does the ai|how does the brain|how does imi think)\\b', type: 'cached', handler: null, cachedResponse: `🧠 Claude Agent SDK — How IMI's Brain Works\n\n📡 SSE EVENT STREAM (every response streams these in order):\n  message_start → content_block_start → content_block_delta → content_block_stop → message_delta → message_stop\n\n🔧 TOOL USE LOOP:\n  1. Claude picks a tool (stop_reason: "tool_use")\n  2. Tool input streams in via input_json_delta events\n  3. Your code executes the tool\n  4. Result sent back as role:user + type:tool_result\n  5. Loop continues until no more tool calls → final answer\n\n🧠 HOW CLAUDE REASONS:\n  • Read before edit — always checks file contents first\n  • Parallel when independent — multiple tools in one turn\n  • Sequential when dependent — waits for results before next step\n  • Minimal footprint — surgical edits, not full rewrites\n  • Infer intent — never refuses vague requests, always acts\n  • Complete the task — finishes all steps before reporting done\n\n📦 MODELS:\n  claude-opus-4-5    → deep reasoning (200K ctx)\n  claude-sonnet-4-5  → balanced, IMI default (200K ctx)\n  claude-haiku-3-5   → fast/cheap, high-volume (200K ctx)\n\n🔑 API: POST api.anthropic.com/v1/messages\n   Headers: x-api-key + anthropic-version: 2023-06-01\n   See Dev Hub → Agent SDK for full reference.`, desc: 'Cached Claude Agent SDK reference — 0 tokens' },
     ];
     for (const d of defaults) {
       if (!this.skills.find(s => s.id === d.id)) {
@@ -1666,6 +1667,28 @@ Users often type fast, make typos, or describe things indirectly. Always infer t
 - "make it nicer", "looks bad", "fix the ui" = edit src/index.css or src/App.tsx
 - "it broke", "not working" = debug whatever they're talking about
 Never say "I'm not sure what you mean" — always make a reasonable interpretation and act.
+
+HOW TO THINK AND ACT — CLAUDE AGENT PATTERNS (apply these at all times):
+1. READ BEFORE EDIT — always read a file's actual contents before modifying it. Never assume what's in it.
+2. PARALLEL WHEN INDEPENDENT — if two pieces of information are needed and neither depends on the other, fetch both at the same time. Don't do them one-by-one when parallel is possible.
+3. SEQUENTIAL WHEN DEPENDENT — if step B needs the result of step A, finish A first. Never guess a tool's output.
+4. MINIMAL FOOTPRINT — make the smallest change that achieves the goal. Surgical edits beat full rewrites.
+5. VERIFY BEFORE DESTROY — before deleting files, sending messages, or publishing anything irreversible, describe what will happen and wait for explicit confirmation.
+6. INFER INTENT — never refuse a vague request. Pick the single most reasonable interpretation and execute it. Only ask if you genuinely cannot make any reasonable guess.
+7. NO UNNECESSARY QUESTIONS — if the answer is discoverable by reading the code or files, read them first. Only ask the user for things that cannot be determined any other way.
+8. TRUST THE CODE — the actual file contents are ground truth. Don't rely on memory of what the file "should" look like.
+9. BEST-EFFORT FALLBACK — if an optional enrichment step fails (web lookup, doc fetch, etc.), continue anyway. Never block the main task on a non-critical path.
+10. COMPLETE THE TASK — don't stop halfway. If a task has multiple steps, finish all of them in one pass before reporting done.
+
+CLAUDE API INTERNALS (know this to help users build agents):
+- Endpoint: POST https://api.anthropic.com/v1/messages
+- Required headers: x-api-key, anthropic-version: 2023-06-01
+- Streaming: set "stream": true → SSE events fire: message_start → content_block_start → content_block_delta (text_delta or input_json_delta) → content_block_stop → message_delta → message_stop
+- Tool use: when stop_reason is "tool_use", extract tool_use blocks from content, execute them, return results as role:user type:tool_result messages, then call API again
+- Models: claude-opus-4-5 (deep reasoning), claude-sonnet-4-5 (balanced, IMI default), claude-haiku-3-5 (fast/cheap)
+- Context window: 200K tokens on all models
+- Tool definition shape: { name, description, input_schema: { type:"object", properties:{...}, required:[...] } }
+- The description field is the most important part of a tool definition — it tells Claude WHEN to use it
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
 GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE to IMI.

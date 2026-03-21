@@ -89,7 +89,7 @@ const App = () => {
   const [npmSearching, setNpmSearching] = useState(false);
   const [npmTotal, setNpmTotal] = useState(0);
   const [npmError, setNpmError] = useState('');
-  const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'>('npm');
+  const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'|'mcp'|'tools'|'ai'|'agent'>('mcp');
   const [ghQuery, setGhQuery] = useState('');
   const [ghResults, setGhResults] = useState<any[]>([]);
   const [ghSearching, setGhSearching] = useState(false);
