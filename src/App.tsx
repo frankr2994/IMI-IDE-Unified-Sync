@@ -133,18 +133,45 @@ const App = () => {
   const [hfSearching, setHfSearching] = useState(false);
   const [hfError, setHfError] = useState('');
   const [quantPicker, setQuantPicker] = useState<{ model: any; list: any[] } | null>(null);
+  const [featuredFilter, setFeaturedFilter] = useState<string>('all');
   const [hardwareInfo, setHardwareInfo] = useState<{ vramMB: number; freeRamMB: number; gpuName: string } | null>(null);
   const [hfUrlPreview, setHfUrlPreview] = useState<any>(null);
   const [npmUrlPreview, setNpmUrlPreview] = useState<any>(null);
   const OLLAMA_FEATURED = [
-    { name: 'llama3.2',       label: 'Llama 3.2 3B',    size: '2GB',    desc: 'Meta\'s latest — fast, capable, great for chat & code', tags: ['chat','code'] },
-    { name: 'mistral',        label: 'Mistral 7B',       size: '4.1GB',  desc: 'Fast French model, excellent for code',                 tags: ['code','chat'] },
-    { name: 'deepseek-r1',    label: 'DeepSeek R1 7B',   size: '4.7GB',  desc: 'Strong reasoning — rivals GPT-4o on benchmarks',        tags: ['reasoning','code'] },
-    { name: 'qwen2.5-coder',  label: 'Qwen 2.5 Coder',  size: '4.7GB',  desc: '#1 ranked open coding model from Alibaba',              tags: ['code'] },
-    { name: 'gemma2',         label: 'Gemma 2 9B',       size: '5.5GB',  desc: 'Google\'s efficient open model',                        tags: ['chat'] },
-    { name: 'phi3',           label: 'Phi-3 Mini',       size: '2.2GB',  desc: 'Microsoft\'s tiny but punchy model',                    tags: ['chat','fast'] },
-    { name: 'llava',          label: 'LLaVA Vision',     size: '4.5GB',  desc: 'See and describe images — multimodal',                  tags: ['vision'] },
-    { name: 'nomic-embed-text', label: 'Nomic Embed',    size: '274MB',  desc: 'Text embeddings for semantic search & RAG',             tags: ['embeddings'] },
+    // ── Chat & General ──────────────────────────────────────────────────────
+    { name: 'llama3.2',           label: 'Llama 3.2 3B',        size: '2GB',    desc: 'Meta\'s latest — fast, capable, great for chat & code',       tags: ['chat','code'] },
+    { name: 'llama3.1',           label: 'Llama 3.1 8B',        size: '4.9GB',  desc: 'Meta\'s flagship open model — great all-rounder',             tags: ['chat','code'] },
+    { name: 'llama3.3',           label: 'Llama 3.3 70B',       size: '43GB',   desc: 'Meta\'s biggest open model — near GPT-4 quality',             tags: ['chat','code','big'] },
+    { name: 'mistral',            label: 'Mistral 7B',           size: '4.1GB',  desc: 'Fast French model, excellent for code',                       tags: ['code','chat'] },
+    { name: 'mixtral',            label: 'Mixtral 8x7B',         size: '26GB',   desc: 'Mistral\'s MoE model — fast & powerful',                      tags: ['chat','code','big'] },
+    { name: 'gemma2',             label: 'Gemma 2 9B',           size: '5.5GB',  desc: 'Google\'s efficient open model',                              tags: ['chat'] },
+    { name: 'gemma3',             label: 'Gemma 3 12B',          size: '8.1GB',  desc: 'Google\'s newest open model — better reasoning',              tags: ['chat','reasoning'] },
+    { name: 'phi3',               label: 'Phi-3 Mini',           size: '2.2GB',  desc: 'Microsoft\'s tiny but punchy model',                          tags: ['chat','fast'] },
+    { name: 'phi4',               label: 'Phi-4 14B',            size: '9.1GB',  desc: 'Microsoft\'s smartest small model',                           tags: ['chat','reasoning'] },
+    { name: 'phi4-mini',          label: 'Phi-4 Mini',           size: '2.5GB',  desc: 'Microsoft\'s fastest Phi-4 — great on CPU',                   tags: ['chat','fast'] },
+    { name: 'qwen2.5',            label: 'Qwen 2.5 7B',          size: '4.7GB',  desc: 'Alibaba\'s versatile chat model',                             tags: ['chat','code'] },
+    { name: 'qwen3',              label: 'Qwen 3 8B',            size: '5.2GB',  desc: 'Alibaba\'s latest — thinking + chat in one model',            tags: ['chat','reasoning'] },
+    // ── Coding ──────────────────────────────────────────────────────────────
+    { name: 'qwen2.5-coder',      label: 'Qwen 2.5 Coder 7B',   size: '4.7GB',  desc: '#1 ranked open coding model from Alibaba',                    tags: ['code'] },
+    { name: 'qwen2.5-coder:14b',  label: 'Qwen 2.5 Coder 14B',  size: '9GB',    desc: 'Bigger Qwen coder — top-tier coding performance',             tags: ['code','big'] },
+    { name: 'deepseek-coder-v2',  label: 'DeepSeek Coder V2',   size: '8.9GB',  desc: 'DeepSeek\'s dedicated coding model',                          tags: ['code'] },
+    { name: 'codellama',          label: 'Code Llama 7B',        size: '3.8GB',  desc: 'Meta\'s code-focused Llama — Python & more',                  tags: ['code'] },
+    { name: 'starcoder2',         label: 'StarCoder 2 7B',       size: '4.0GB',  desc: 'HuggingFace\'s open code model, 600+ languages',              tags: ['code'] },
+    // ── Reasoning ───────────────────────────────────────────────────────────
+    { name: 'deepseek-r1',        label: 'DeepSeek R1 7B',       size: '4.7GB',  desc: 'Strong reasoning — rivals GPT-4o on benchmarks',             tags: ['reasoning','code'] },
+    { name: 'deepseek-r1:14b',    label: 'DeepSeek R1 14B',      size: '9GB',    desc: 'Bigger DeepSeek — near o1 level reasoning',                  tags: ['reasoning','big'] },
+    { name: 'deepseek-r1:70b',    label: 'DeepSeek R1 70B',      size: '43GB',   desc: 'DeepSeek\'s most powerful reasoning model',                  tags: ['reasoning','big'] },
+    { name: 'qwq',                label: 'QwQ 32B',              size: '20GB',   desc: 'Qwen\'s reasoning model — thinks before answering',           tags: ['reasoning','big'] },
+    // ── Vision ──────────────────────────────────────────────────────────────
+    { name: 'llava',              label: 'LLaVA 7B',             size: '4.5GB',  desc: 'See and describe images — multimodal',                        tags: ['vision'] },
+    { name: 'llava:13b',          label: 'LLaVA 13B',            size: '8.0GB',  desc: 'Larger LLaVA — better image understanding',                  tags: ['vision','big'] },
+    { name: 'moondream',          label: 'Moondream 2',          size: '1.7GB',  desc: 'Tiny fast vision model — great for screenshots',              tags: ['vision','fast'] },
+    { name: 'minicpm-v',          label: 'MiniCPM-V',            size: '5.5GB',  desc: 'Strong vision model — reads text in images',                  tags: ['vision'] },
+    { name: 'llava-phi3',         label: 'LLaVA Phi-3',          size: '2.9GB',  desc: 'Lightweight multimodal — fast vision on CPU',                 tags: ['vision','fast'] },
+    // ── Embeddings & RAG ────────────────────────────────────────────────────
+    { name: 'nomic-embed-text',   label: 'Nomic Embed',          size: '274MB',  desc: 'Text embeddings for semantic search & RAG',                   tags: ['embeddings'] },
+    { name: 'mxbai-embed-large',  label: 'MxBAI Embed Large',    size: '670MB',  desc: 'High-quality embeddings — better than OpenAI ada-002',        tags: ['embeddings'] },
+    { name: 'all-minilm',         label: 'All-MiniLM',           size: '46MB',   desc: 'Tiny sentence embeddings — blazing fast',                     tags: ['embeddings','fast'] },
   ];
   const searchHF = async (q: string) => {
     if (!q.trim()) return;
@@ -2230,9 +2257,16 @@ const App = () => {
                   {/* Featured models — shown when no search active */}
                   {hfResults.length === 0 && (
                   <div>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px' }}>⭐ FEATURED MODELS</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em' }}>⭐ FEATURED MODELS <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>({(featuredFilter === 'all' ? OLLAMA_FEATURED : OLLAMA_FEATURED.filter(m => m.tags.includes(featuredFilter))).length})</span></div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {['all','chat','code','reasoning','vision','embeddings','fast','big'].map(f => (
+                          <button key={f} onClick={() => setFeaturedFilter(f)} style={{ padding: '3px 10px', fontSize: '0.5rem', fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', background: featuredFilter === f ? 'var(--primary)' : 'rgba(255,255,255,0.04)', border: `1px solid ${featuredFilter === f ? 'var(--primary)' : 'var(--glass-border)'}`, borderRadius: '20px', color: featuredFilter === f ? 'black' : 'var(--text-dim)', cursor: 'pointer' }}>{f}</button>
+                        ))}
+                      </div>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
-                      {OLLAMA_FEATURED.map(model => {
+                      {(featuredFilter === 'all' ? OLLAMA_FEATURED : OLLAMA_FEATURED.filter(m => m.tags.includes(featuredFilter))).map(model => {
                         const isInstalled = ollamaModels.some(m => m.name.startsWith(model.name));
                         const isPulling = ollamaPulling === model.name;
                         return (
