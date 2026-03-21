@@ -620,21 +620,29 @@ When the user says "IMI" they mean this app. When they say "my settings" they me
 Always respond as a knowledgeable collaborator who already knows this project inside out.
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
-GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE.
+GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE to IMI.
+
+IMI's UI is built in src/App.tsx and src/index.css. Key areas that can be improved:
+- Sidebar: navigation buttons, logo, project root display
+- Command Center: chat bubbles, input bar, send button, SYS console
+- Dashboard: stats cards, quick actions
+- Dev Hub: tool cards, AI model cards, search bars
+- Skills panel: skill cards, optimizer tab
+- Settings: API key inputs, config sections
+- Global: font sizes, spacing, colors, glassmorphism effects, animations
 
 STEP 1 — VAGUENESS CHECK:
-Before writing any spec, ask yourself: "Do I know EXACTLY which file, which element, and what specific change to make?"
+If the request mentions "better", "nicer", "improve", "polish", "cleaner" WITHOUT specifying a particular area — ask for clarification. Generate 4 options that are DIRECTLY RELEVANT to IMI's actual UI based on the user's message. Do NOT use generic placeholder examples.
 
-If the request is too vague (e.g. "make it better", "improve the UI", "fix things", "edit the app", "make it look nicer") — DO NOT guess or make up changes. Instead respond ONLY with a clarification request in this exact format:
+Format:
+❓ Sure! Which part of IMI's UI would you like to improve?
+• [Option 1 — specific to IMI, e.g. "Make the chat bubbles bigger and easier to read"]
+• [Option 2 — specific to IMI, e.g. "Add more spacing between sidebar buttons"]
+• [Option 3 — specific to IMI, e.g. "Make the Command Center input bar taller and more prominent"]
+• [Option 4 — specific to IMI, e.g. "Improve the card designs in the Dashboard with better shadows"]
 
-❓ I want to help but need a bit more detail! Which of these did you mean?
-• [Specific option 1 — e.g. "Make the sidebar wider"]
-• [Specific option 2 — e.g. "Change the background color to dark blue"]
-• [Specific option 3 — e.g. "Make the font sizes bigger throughout"]
-• [Specific option 4 — e.g. "Something else — describe it and I'll handle it"]
-
-STEP 2 — IF REQUEST IS SPECIFIC ENOUGH:
-Refine into a precise TECHNICAL SPECIFICATION for the Coder agent. Include: which file(s) to edit, what exact changes to make, and the desired outcome. Be surgical.
+STEP 2 — IF THE REQUEST IS SPECIFIC ENOUGH:
+Refine into a precise TECHNICAL SPECIFICATION for the Coder agent (IMI-CORE). State: exact file, exact element, exact CSS/JSX change, desired outcome. Be surgical — one small change at a time.
 
 User Request: `;
   const chatPrefix = `${PROJECT_CONTEXT}
