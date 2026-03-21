@@ -495,6 +495,39 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         skillEngine.recordHit(matchedSkill.id, 400);
         return;
       }
+      if (matchedSkill.handler === 'installed-models') {
+        try {
+          // Check Ollama models
+          const ollamaRaw = await new Promise(resolve => exec('ollama list', { timeout: 5000 }, (err, stdout) => resolve(err ? null : stdout.trim())));
+          let ollamaSection = '🦙 **Ollama (local models):** Not installed or no models pulled yet.';
+          if (ollamaRaw) {
+            const lines = String(ollamaRaw).split('\n').slice(1).filter(Boolean);
+            ollamaSection = lines.length > 0
+              ? `🦙 **Ollama (local models):**\n${lines.map(l => `  • ${l.trim().split(/\s+/)[0]}`).join('\n')}`
+              : '🦙 **Ollama:** Installed but no models pulled yet. Go to Dev Hub → AI Models to pull one.';
+          }
+          // Check AI CLI tools
+          const aiTools = [
+            { name: 'Gemini CLI', cmd: 'gemini --version' },
+            { name: 'Claude CLI', cmd: 'claude --version' },
+            { name: 'Jules CLI',  cmd: 'jules --version' },
+          ];
+          const toolChecks = await Promise.all(aiTools.map(t => new Promise(resolve =>
+            exec(t.cmd, { timeout: 3000 }, (err, stdout) => resolve(err ? null : { name: t.name, version: stdout.trim().split('\n')[0] }))
+          )));
+          const installedCLIs = toolChecks.filter(Boolean);
+          const cliSection = installedCLIs.length > 0
+            ? `🔧 **AI CLI Tools:**\n${installedCLIs.map(t => `  • ${t.name} (${t.version})`).join('\n')}`
+            : '🔧 **AI CLI Tools:** None detected.';
+          const reply = `⚡ [Skill: List Installed AI Models]\n\n${ollamaSection}\n\n${cliSection}\n\n💡 Tip: Pull more local models in **Dev Hub → AI Models**.`;
+          event.sender.send('command-chunk', { messageId, chunk: reply });
+          event.sender.send('command-end', { messageId, code: 0 });
+          skillEngine.recordHit(matchedSkill.id, 600);
+          return;
+        } catch(e) {
+          // Fall through to AI if something goes wrong
+        }
+      }
       // desktop handler falls through to existing triggerDesktopTask below
     }
     // passthrough: skill matched but still needs API — track as partial hit
