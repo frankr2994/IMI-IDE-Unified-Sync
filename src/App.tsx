@@ -1070,7 +1070,7 @@ const App = () => {
     if (!terminalOpen || terminalCwd) return;
     (ipc as any).invoke('terminal-get-cwd').then((cwd: string) => { if (cwd) setTerminalCwd(cwd); }).catch(() => {});
     if (terminalInputRef.current) terminalInputRef.current.focus();
-  }, [terminalOpen]);
+  }, [terminalOpen, terminalCwd]);
 
   // Scroll terminal to bottom when new lines added
   useEffect(() => {
@@ -1228,6 +1228,9 @@ const App = () => {
       ipc.removeAllListeners('sync-status');
       ipc.removeAllListeners('sync-end');
       ipc.removeAllListeners('coder-status');
+      ipc.removeAllListeners('ollama-pull-progress');
+      ipc.removeAllListeners('install-dep-progress');
+      ipc.removeAllListeners('sync-time');
     };
   }, []);
 

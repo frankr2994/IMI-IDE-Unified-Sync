@@ -1972,7 +1972,9 @@ User: `;
 
     if (isAgentTask && payload.engine === 'imi-core') {
       console.log(`[ROUTE] → runAgentLoop (director=${director})`);
-      runAgentLoop(event, command, currentProjectRoot, messageId, director);
+      runAgentLoop(event, command, currentProjectRoot, messageId, director).catch(e => {
+        event.sender.send('command-error', { messageId, error: `Agent loop failed: ${e.message}` });
+      });
       return;
     }
 
