@@ -75,14 +75,12 @@ body {
 }
 
 .sidebar {
-  background: rgba(15, 15, 22, 0.9);
+  background: rgba(9, 9, 14, 0.97);
   backdrop-filter: blur(30px);
-  border-right: 1px solid var(--glass-border);
-  padding: 2rem 1.5rem;
+  border-right: 1px solid rgba(255,255,255,0.055);
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
-  box-shadow: 10px 0 50px rgba(0,0,0,0.5);
   overflow-y: auto;
 }
 
@@ -385,32 +383,35 @@ button:disabled {
 .sidebar-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 1.2rem;
-  border-radius: 14px;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 0;
   border: none;
+  border-left: 2px solid transparent;
   background: transparent;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.38);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
   text-align: left;
-  font-weight: 700;
-  font-size: 0.88rem;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   width: 100%;
 }
 
 .sidebar-btn:hover {
-  background: rgba(255,255,255,0.05);
-  color: #fff;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.8);
+  border-left-color: rgba(155,77,255,0.25);
 }
 
 .sidebar-btn.active {
-  background: var(--primary) !important;
+  background: rgba(155,77,255,0.09) !important;
   color: #fff !important;
-  box-shadow: 0 8px 20px var(--primary-glow);
+  border-left-color: var(--primary) !important;
+  box-shadow: none !important;
+  font-weight: 600;
 }
 
 .divider-v {

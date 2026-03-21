@@ -1358,57 +1358,74 @@ const App = () => {
         </div>
       </div>
       <div className="sidebar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '1rem' }}>
-          <div style={{ 
-            width: '45px', height: '45px', background: 'var(--primary)', 
-            borderRadius: '12px', display: 'flex', alignItems: 'center', 
-            justifyContent: 'center', boxShadow: '0 0 20px var(--primary-glow)' 
-          }}>
-            <Zap size={24} color="#fff" />
+        {/* Brand */}
+        <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+            <div style={{ width: '30px', height: '30px', background: 'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 12px rgba(155,77,255,0.4)' }}>
+              <Zap size={15} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff', lineHeight: 1 }}>IMI</div>
+              <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.14em', marginTop: '3px', fontWeight: 600 }}>SYNC · v1.0.4</div>
+            </div>
           </div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '-0.02em' }}>IMI <span style={{ color: 'var(--primary)' }}>SYNC</span></h1>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button onClick={() => setActiveTab('dashboard')} className={`sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`}><Activity size={18}/> Dashboard</button>
-          <button onClick={() => setActiveTab('command center')} className={`sidebar-btn ${activeTab === 'command center' ? 'active' : ''}`}><TerminalIcon size={18}/> Command Center</button>
-          <button onClick={() => setActiveTab('tools')} className={`sidebar-btn ${activeTab === 'tools' ? 'active' : ''}`}><Layers size={18}/> Dev Hub</button>
-          <button onClick={() => setActiveTab('skills')} className={`sidebar-btn ${activeTab === 'skills' ? 'active' : ''}`}><Zap size={18}/> Skills</button>
-          <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`}><Settings size={18}/> System</button>
+        {/* Nav */}
+        <div style={{ padding: '14px 0 0', flex: 1 }}>
+          <div style={{ padding: '0 20px 8px', fontSize: '0.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.14em' }}>MENU</div>
+          {([
+            { id: 'dashboard',       label: 'Dashboard',       icon: <Activity size={14}/> },
+            { id: 'command center',  label: 'Command Center',  icon: <TerminalIcon size={14}/> },
+            { id: 'tools',           label: 'Dev Hub',         icon: <Layers size={14}/> },
+            { id: 'skills',          label: 'Skills',          icon: <Zap size={14}/> },
+            { id: 'settings',        label: 'System',          icon: <Settings size={14}/> },
+          ] as { id: string; label: string; icon: React.ReactNode }[]).map(item => (
+            <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`sidebar-btn ${activeTab === item.id ? 'active' : ''}`}>
+              <span style={{ opacity: activeTab === item.id ? 1 : 0.6, flexShrink: 0 }}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
         </div>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-          {/* Active project root */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <Database size={12} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>PROJECT ROOT</span>
-          </div>
+        {/* Footer — project root */}
+        <div style={{ padding: '14px 20px 18px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ fontSize: '0.48rem', fontWeight: 700, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.14em', marginBottom: '7px' }}>PROJECT</div>
           <div
             title={stats.projectRoot || 'Not set'}
             onClick={() => setActiveTab('settings')}
-            style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', wordBreak: 'break-all', lineHeight: 1.4, cursor: 'pointer', padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'white'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)'}
+            style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', padding: '7px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '7px', border: '1px solid rgba(255,255,255,0.06)', transition: 'background 0.15s' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'}
           >
-            {stats.projectRoot
-              ? '📁 ' + stats.projectRoot.split(/[\\/]/).slice(-2).join('/')
-              : '📁 Click to set folder'}
+            <Database size={11} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {stats.projectRoot ? stats.projectRoot.split(/[\\/]/).slice(-2).join('/') : 'Set folder →'}
+            </span>
           </div>
-          <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', marginTop: '8px', textAlign: 'center' }}>IMI v1.0.4</div>
         </div>
       </div>
 
       <div className="main-content">
-        <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Unified Orchestration</h2>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '2px', letterSpacing: '0' }}>
-              {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector} · {activeEngine === 'imi-core' ? 'IMI Core' : activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}
-            </p>
+            <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.14em', marginBottom: '5px' }}>
+              {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : 'SYSTEM'}
+            </div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: '#fff' }}>
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'command center' ? 'Command Center' : activeTab === 'tools' ? 'Dev Hub' : activeTab === 'skills' ? 'Skills' : 'System'}
+            </h2>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
-            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>All systems running</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace' }}>
+              {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector}
+              <span style={{ margin: '0 5px', opacity: 0.4 }}>→</span>
+              {activeEngine === 'imi-core' ? 'IMI Core' : activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>live</span>
+            </div>
           </div>
         </header>
 
