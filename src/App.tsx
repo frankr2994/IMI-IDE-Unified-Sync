@@ -1878,29 +1878,9 @@ const App = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                   {isOllama && tool.installed && (
-                                    <>
-                                      <button onClick={async () => {
-                                        setUpdatingTool(tool.id);
-                                        setUpdateResult(p => ({ ...p, [tool.id]: '' }));
-                                        const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false, message: 'Error' }));
-                                        setUpdatingTool(null);
-                                        if (res?.upToDate) {
-                                          setUpdateResult(p => ({ ...p, [tool.id]: '✅ Already latest' }));
-                                        } else if (res?.success) {
-                                          setUpdateResult(p => ({ ...p, [tool.id]: '✅ Updated!' }));
-                                          setTimeout(loadTools, 2000);
-                                        } else {
-                                          setUpdateResult(p => ({ ...p, [tool.id]: '❌ Update failed' }));
-                                        }
-                                        setTimeout(() => setUpdateResult(p => ({ ...p, [tool.id]: '' })), 4000);
-                                      }} style={{ height: '26px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                        {isUpdating ? '⏳ Checking…' : '⬆ Update'}
-                                      </button>
-                                      {updateResult[tool.id] && <span style={{ fontSize: '0.6rem', color: updateResult[tool.id].startsWith('✅') ? '#00ff88' : '#ffaa00', whiteSpace: 'nowrap' }}>{updateResult[tool.id]}</span>}
-                                      <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '26px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                        {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
-                                      </button>
-                                    </>
+                                    <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '26px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                      {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
+                                    </button>
                                   )}
                                   {!tool.installed && (
                                     depInstalling[tool.id] ? (
@@ -1920,7 +1900,7 @@ const App = () => {
                                 </div>{/* end header row */}
                                 {/* Inline model chips when expanded */}
                                 {isOllama && isExpanded && (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingTop: '2px' }}>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingTop: '2px', alignItems: 'center' }}>
                                     {ollamaModels.length === 0
                                       ? <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>No models yet.</span>
                                       : ollamaModels.map(m => (
@@ -1932,6 +1912,19 @@ const App = () => {
                                           </div>
                                         ))
                                     }
+                                    {/* Update Ollama engine button — tucked in the expanded section */}
+                                    <button onClick={async () => {
+                                      setUpdatingTool('ollama');
+                                      setUpdateResult(p => ({ ...p, ollama: '' }));
+                                      const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
+                                      setUpdatingTool(null);
+                                      setUpdateResult(p => ({ ...p, ollama: res?.upToDate ? '✅ Already latest' : res?.success ? '✅ Updated!' : '❌ Failed' }));
+                                      if (res?.success && !res?.upToDate) setTimeout(loadTools, 2000);
+                                      setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 4000);
+                                    }} style={{ height: '22px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.25)', borderRadius: '20px', color: '#4facfe', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                      {updatingTool === 'ollama' ? '⏳ Checking…' : '⬆ Update Ollama'}
+                                    </button>
+                                    {updateResult['ollama'] && <span style={{ fontSize: '0.6rem', color: updateResult['ollama'].startsWith('✅') ? '#00ff88' : '#ff416c' }}>{updateResult['ollama']}</span>}
                                   </div>
                                 )}
                               </div>
