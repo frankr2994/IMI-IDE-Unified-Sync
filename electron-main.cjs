@@ -2158,23 +2158,27 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Implementing');
     event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Generating surgical patches...` });
 
-    const corePrompt = `You are IMI CORE, a surgical code editor. You apply MINIMAL precise changes to fix real project files.
+    const corePrompt = `You are IMI CORE, a surgical code editor. You apply MINIMAL precise changes to real project files.
 
 PROJECT: IMI IDE MERGE INTEGRATIONS
 Stack: Electron + React/Vite/TypeScript
 Root: ${currentProjectRoot}
 
-CURRENT FILE STATE:${fileContext}
+CURRENT FILE STATE (use these exact strings for "search"):${fileContext}
 
 BRAIN PLAN TO IMPLEMENT:
 ${brainPlan.trim()}
 
-OUTPUT: A raw JSON array of patch objects. No markdown, no explanation — ONLY the JSON.
+OUTPUT: A raw JSON array of patch objects. No markdown, no explanation — ONLY the JSON array.
 Format: [{ "file": "relative/path", "search": "exact existing text to find", "replace": "replacement text" }]
 
-RULES:
-- "search" must be verbatim text that exists right now in the file shown above
-- To create a NEW file from scratch, set "search" to exactly "" (empty string)
+CRITICAL RULES:
+- "search" MUST be copied VERBATIM from the CURRENT FILE STATE shown above — never invent or paraphrase it
+- Pick a short unique anchor (3-10 lines) from the actual file as "search" — do not paste the entire file
+- "replace" is the new text that replaces the search anchor (can be empty string "" to delete)
+- To delete a block: set "replace" to "" (empty string)
+- To add new code after an anchor: include the anchor in "replace" plus the new code below it
+- To create a brand NEW file: set "search" to "__NEW_FILE__"
 - Only change lines needed for the plan — do NOT rewrite whole files
 - Multiple patches allowed, one per logical change
 - If no code change is needed (e.g. plan is just analysis), return []`;
@@ -2205,12 +2209,12 @@ RULES:
           } else {
             const results = [];
             for (const patch of patches) {
-              if (!patch.file || !patch.search || patch.replace === undefined) continue;
+              if (!patch.file || patch.search === undefined || patch.replace === undefined) continue;
               const fp = path.join(currentProjectRoot, patch.file);
               // Safety: never escape project root
               if (!fp.startsWith(currentProjectRoot)) { results.push(`BLOCKED: ${patch.file} (outside root)`); continue; }
-              
-              if (patch.search === "") {
+
+              if (patch.search === '' || patch.search === '__NEW_FILE__') {
                 const dir = path.dirname(fp);
                 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
                 fs.writeFileSync(fp, patch.replace, 'utf-8');
