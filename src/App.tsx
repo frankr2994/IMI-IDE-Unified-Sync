@@ -151,8 +151,19 @@ const App = () => {
     }
     try {
       const res = await (ipc as any).invoke('hf-search-models', q);
-      setHfResults(res.results || []);
+      const results = res.results || [];
+      setHfResults(results);
       if (res.error) setHfError(res.error);
+      // Batch-fetch real sizes in background, update cards as they arrive
+      if (results.length > 0) {
+        const ids = results.map((r: any) => r.id);
+        (ipc as any).invoke('hf-batch-sizes', ids).then((sizes: any[]) => {
+          if (!sizes?.length) return;
+          const sizeMap: Record<string, any> = {};
+          sizes.forEach(s => { sizeMap[s.id] = s; });
+          setHfResults(prev => prev.map(r => sizeMap[r.id] ? { ...r, sizeLabel: sizeMap[r.id].sizeLabel, ggufCount: sizeMap[r.id].ggufCount } : r));
+        }).catch(() => {});
+      }
     } catch(e: any) {
       const msg = e.message || '';
       if (msg.includes('No handler registered')) {

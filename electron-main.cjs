@@ -2515,6 +2515,38 @@ ipcMain.handle('ollama-delete', async (_e, modelName) => {
   catch(e) { return { success: false, error: e.message }; }
 });
 
+// Batch-fetch GGUF sizes for a list of model IDs (runs after search to populate sizes)
+ipcMain.handle('hf-batch-sizes', async (_e, modelIds) => {
+  const fmtBytes = (b) => b >= 1e9 ? `${(b/1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b/1e6).toFixed(0)} MB` : `${b} B`;
+  const getModelSize = (modelId) => new Promise((resolve) => {
+    const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'huggingface.co', path: `/api/models/${modelId}?blobs=true` });
+    req.setHeader('Accept', 'application/json');
+    req.setHeader('User-Agent', 'IMI-DevHub/1.0');
+    let raw = '';
+    req.on('response', res => {
+      res.on('data', d => raw += d.toString());
+      res.on('end', () => {
+        try {
+          const m = JSON.parse(raw);
+          const siblings = m.siblings || [];
+          const getSize = (s) => s.lfs?.size || s.size || 0;
+          const ggufFiles = siblings.filter(s => s.rfilename?.toLowerCase().endsWith('.gguf') && getSize(s) > 0);
+          if (!ggufFiles.length) return resolve({ id: modelId, sizeLabel: '', ggufCount: 0 });
+          const smallest = Math.min(...ggufFiles.map(f => getSize(f)));
+          const largest = Math.max(...ggufFiles.map(f => getSize(f)));
+          const sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
+          resolve({ id: modelId, sizeLabel, ggufCount: ggufFiles.length });
+        } catch(e) { resolve({ id: modelId, sizeLabel: '', ggufCount: 0 }); }
+      });
+    });
+    req.on('error', () => resolve({ id: modelId, sizeLabel: '', ggufCount: 0 }));
+    req.end();
+  });
+  // Fetch all in parallel (up to 12)
+  const results = await Promise.all((modelIds || []).slice(0, 12).map(id => getModelSize(id)));
+  return results;
+});
+
 // HuggingFace model search — Ollama can pull any GGUF model from HF
 ipcMain.handle('hf-search-models', async (_e, query) => {
   if (!query || query.trim().length < 1) return { results: [], total: 0 };
