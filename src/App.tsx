@@ -126,6 +126,7 @@ const App = () => {
   const [hfSearching, setHfSearching] = useState(false);
   const [hfError, setHfError] = useState('');
   const [quantPicker, setQuantPicker] = useState<{ model: any; list: any[] } | null>(null);
+  const [hardwareInfo, setHardwareInfo] = useState<{ vramMB: number; freeRamMB: number; gpuName: string } | null>(null);
   const [hfUrlPreview, setHfUrlPreview] = useState<any>(null);
   const [npmUrlPreview, setNpmUrlPreview] = useState<any>(null);
   const OLLAMA_FEATURED = [
@@ -792,6 +793,7 @@ const App = () => {
     fetchStats();
     setTimeout(loadTools, 2000); // defer tool scan — avoids blocking main process during startup paint
     setTimeout(loadOllamaModels, 1500); // load installed models so Coder dropdown is populated on startup
+    setTimeout(async () => { try { const hw = await (ipc as any).invoke('get-hardware-info'); if (hw) setHardwareInfo(hw); } catch {} }, 2000);
     // 🚀 [BALANCED PERF]
     const statsInterval = setInterval(fetchStats, 60000); // Heavy disk scan: 1 min
     const telemetryInterval = setInterval(async () => {
@@ -1979,16 +1981,7 @@ const App = () => {
                                     ✕ Cancel
                                   </button>
                                 ) : (
-                                  <button onClick={async () => {
-                                    if (isInstalled) return;
-                                    const ok = await checkHardwareBeforePull(model.sizeLabel || '');
-                                    if (!ok) return;
-                                    setOllamaPulling(model.ollamaCmd);
-                                    setOllamaLog(prev => ({ ...prev, [model.ollamaCmd]: '' }));
-                                    await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
-                                    setOllamaPulling('');
-                                    loadOllamaModels();
-                                  }} style={{ flex: 2, height: '28px', background: isInstalled ? 'rgba(0,255,136,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '7px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
+                                  <button onClick={async () => { if (isInstalled) return; startPullModel(model); }} style={{ flex: 2, height: '28px', background: isInstalled ? 'rgba(0,255,136,0.1)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.3)'}`, borderRadius: '7px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
                                     {isInstalled ? '✅ Installed' : '⬇ Pull'}
                                   </button>
                                 )}
