@@ -1874,7 +1874,7 @@ const App = () => {
                                       : <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '4px', color: '#ff416c' }}>Not installed</span>
                                     }
                                   </div>
-                                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{tool.desc}</p>
+                                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tool.desc}</p>
                                 </div>
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                   {isOllama && tool.installed && (
@@ -1884,14 +1884,13 @@ const App = () => {
                                         setUpdateResult(p => ({ ...p, [tool.id]: '' }));
                                         const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false, message: 'Error' }));
                                         setUpdatingTool(null);
-                                        const msg = res?.message || '';
-                                        if (msg.includes('already') || msg.includes('No applicable') || msg.includes('up-to-date') || msg.includes('up to date')) {
+                                        if (res?.upToDate) {
                                           setUpdateResult(p => ({ ...p, [tool.id]: '✅ Already latest' }));
                                         } else if (res?.success) {
                                           setUpdateResult(p => ({ ...p, [tool.id]: '✅ Updated!' }));
                                           setTimeout(loadTools, 2000);
                                         } else {
-                                          setUpdateResult(p => ({ ...p, [tool.id]: '⚠ winget not found — download at ollama.com' }));
+                                          setUpdateResult(p => ({ ...p, [tool.id]: '❌ Update failed' }));
                                         }
                                         setTimeout(() => setUpdateResult(p => ({ ...p, [tool.id]: '' })), 4000);
                                       }} style={{ height: '26px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
