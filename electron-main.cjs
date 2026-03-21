@@ -3127,6 +3127,7 @@ ipcMain.handle('check-tools', async () => {
 });
 
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
+ipcMain.handle('open-external', (_e, url) => { shell.openExternal(url); });
 ipcMain.handle('get-log', (_e, lines = 200) => {
   try {
     const content = fs.readFileSync(IMI_LOG_PATH, 'utf-8');
