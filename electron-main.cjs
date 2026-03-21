@@ -1797,6 +1797,12 @@ ABOUT IMI (the app you live inside):
 - Has tabs: Dashboard, Command Center, Dev Hub, Skills, Settings
 - You can modify IMI's own code when asked
 
+CRITICAL — IMI IS AN ELECTRON APP, NOT A WEB BROWSER:
+- IMI runs in Electron with FULL Node.js file system access. It can create, read, write, and open ANY file on the user's computer.
+- NEVER say "browsers cannot create files" or "I can't access the file system". That is WRONG for IMI.
+- IMI has built-in handlers that use fs.writeFileSync, fs.mkdirSync, shell.openPath — it creates files and folders natively.
+- When asked to create a file, folder, game, or script — DO IT. Don't explain limitations. IMI has no such limitations.
+
 RULES:
 1. UNDERSTAND INTENT, NOT WORDS. "can u make a pong game" = make a working pong game. "htlm" = html. "u" = you. "wat" = what.
 2. NEVER say "I don't understand" or "Could you clarify?" — always make your best guess and go.
@@ -1845,6 +1851,18 @@ User: `;
       return;
     }
 
+    // ── Windows absolute file path — open with shell.openPath ──────────────
+    // Catches: "open C:\Users\nikol\Desktop\pong_game.html in the browser"
+    const winFilePathMatch = command.match(/[A-Za-z]:\\[^\n"']+\.(?:html?|pdf|txt|png|jpe?g|gif|js|ts|css|py|json|md|csv|xml|svg)/i);
+    if (winFilePathMatch && /\b(open|show|launch|preview|view|display|load|start)\b/i.test(command)) {
+      const filePath = winFilePathMatch[0].trim().replace(/[/\\]+$/, '');
+      console.log(`[ROUTE] → shell.openPath (Windows file): ${filePath}`);
+      shell.openPath(filePath);
+      event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening: ${filePath}` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    }
+
     // ── Browser routing ────────────────────────────────────────────────────
     const isCodeAction = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(cmdL);
 
@@ -1872,7 +1890,7 @@ User: `;
       const skipWords = /^(chrome|crome|chromium|firefox|edge|safari|browser|browsers|internet|a|an|the|my|up|it|new|tab|tabs|some|and|then|next|also|please|now)$/;
       const siteNames = [...cmdL.matchAll(/(?:head\s+to|go\s+to|open|visit|launch|navigate\s+to|take\s+me\s+to)\s+([a-z0-9.-]+)/g)]
         .map(m => m[1].trim())
-        .filter(s => !skipWords.test(s))
+        .filter(s => !skipWords.test(s) && s.length > 1)
         .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
       const allUrls = [...new Set([...urls, ...siteNames])];
       if (allUrls.length > 0) {
