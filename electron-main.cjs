@@ -2664,7 +2664,13 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   // Ask Gemini to generate the file content
   if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
   const prompt = `The user asked: "${command}"
-Generate the COMPLETE content for a file named "${fileName}". Only output the file content inside a code block — nothing else. Make it fully functional and well-commented.`;
+
+Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
+- If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
+- If it's an app/tool: make it polished with a clean modern UI.
+- Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
+- Everything must be in a single file — inline CSS and JS. No external dependencies.
+- Output ONLY the raw file content inside a code block. No explanation.`;
 
   let generatedContent = '';
   try {
@@ -2856,8 +2862,14 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
 
   event.sender.send('command-chunk', { messageId, chunk: `🧠 Generating ${fileName}...\n` });
 
-  const codePrompt = `Generate a complete, self-contained ${fileExt.toUpperCase()} file for: ${fileDesc}.
-Output ONLY the raw file content with no markdown fences, no explanation — just the code.`;
+  const codePrompt = `The user asked: "${fileDesc}"
+
+Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${fileExt.toUpperCase()} file.
+- If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
+- If it's an app/tool: make it polished with a clean modern UI.
+- Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
+- Everything in one file — inline CSS and JS. No external dependencies.
+- Output ONLY the raw code. No markdown fences, no explanation.`;
 
   const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
     path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
