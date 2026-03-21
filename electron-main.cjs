@@ -2838,7 +2838,12 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
       const largest  = Math.max(...ggufFiles.map(f => getSize(f)));
       sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
     }
-    return { id: m.modelId||m.id, name: m.modelId||m.id, author: (m.modelId||m.id||'').split('/')[0], downloads: m.downloads||0, likes: m.likes||0, tags: m.tags||[], pipeline: m.pipeline_tag||'text-generation', updatedAt: m.lastModified||m.createdAt, hfUrl: `https://huggingface.co/${m.modelId||m.id}`, ollamaCmd: `hf.co/${m.modelId||m.id}`, sizeLabel, ggufCount: ggufFiles.length };
+    const ggufList = ggufFiles.map(f => {
+      const quantMatch = f.rfilename.match(/[-_](Q\d[^-.]*(?:_[A-Z]+)*)\./i) || f.rfilename.match(/(Q\d[^-.]*)\./i);
+      const quant = quantMatch ? quantMatch[1].toUpperCase() : f.rfilename.replace('.gguf','');
+      return { filename: f.rfilename, quant, size: fmtBytes(getSize(f)), sizeBytes: getSize(f) };
+    }).sort((a,b) => a.sizeBytes - b.sizeBytes);
+    return { id: m.modelId||m.id, name: m.modelId||m.id, author: (m.modelId||m.id||'').split('/')[0], downloads: m.downloads||0, likes: m.likes||0, tags: m.tags||[], pipeline: m.pipeline_tag||'text-generation', updatedAt: m.lastModified||m.createdAt, hfUrl: `https://huggingface.co/${m.modelId||m.id}`, ollamaCmd: `hf.co/${m.modelId||m.id}`, sizeLabel, ggufCount: ggufFiles.length, ggufList };
   };
 
   const fetchHF = (path) => new Promise((res) => {

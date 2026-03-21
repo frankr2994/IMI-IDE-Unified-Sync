@@ -125,6 +125,7 @@ const App = () => {
   const [hfResults, setHfResults] = useState<any[]>([]);
   const [hfSearching, setHfSearching] = useState(false);
   const [hfError, setHfError] = useState('');
+  const [quantPicker, setQuantPicker] = useState<{ model: any; list: any[] } | null>(null);
   const [hfUrlPreview, setHfUrlPreview] = useState<any>(null);
   const [npmUrlPreview, setNpmUrlPreview] = useState<any>(null);
   const OLLAMA_FEATURED = [
@@ -202,6 +203,21 @@ const App = () => {
   };
 
   // Pre-pull hardware check — returns true if safe to proceed, false if blocked
+  // Smart pull — shows quant picker for multi-file repos
+  const startPullModel = async (model: any) => {
+    const list: any[] = model.ggufList || [];
+    if (list.length > 1) {
+      setQuantPicker({ model, list });
+      return;
+    }
+    const ok = await checkHardwareBeforePull(model.sizeLabel || '');
+    if (!ok) return;
+    setOllamaPulling(model.ollamaCmd);
+    await (ipc as any).invoke('ollama-pull', model.ollamaCmd);
+    setOllamaPulling('');
+    loadOllamaModels();
+  };
+
   const checkHardwareBeforePull = async (sizeLabel: string): Promise<boolean> => {
     if (!sizeLabel) return true;
     // Parse size from label like "4.7GB", "22 GB", "899 MB – 49.8 GB (28 files)"
