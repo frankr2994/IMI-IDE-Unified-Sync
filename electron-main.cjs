@@ -1185,18 +1185,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   const cmdLower = command.toLowerCase().trim();
   console.log(`[CMD] director=${director} | "${command.slice(0, 120)}${command.length > 120 ? '…' : ''}"`);
 
-  // ── Plan phases bypass ALL routing — straight to Brain → IMI-CORE ──
-  if (isPlanPhase) {
-    console.log(`[ROUTE] → Plan phase: Brain(${director}) → ${payload.engine || 'imi-core'}`);
-    const engine = payload.engine || 'imi-core';
-    // Stream the brain response, collect full text, then hand to coder
-    streamGeminiBrain(event, command, messageId, director, history, (fullBrainText) => {
-      if (fullBrainText && fullBrainText.trim()) {
-        triggerCoderImplementation(event, engine, fullBrainText, messageId);
-      }
-    });
-    return;
-  }
+  // ── Plan phases skip routing — force Brain → IMI-CORE path ──
+  if (isPlanPhase && !payload.engine) payload.engine = 'imi-core';
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
   // Only trigger for short user commands (< 80 chars), never for long plan phase prompts
@@ -1697,7 +1687,7 @@ User: `;
     const _hasAction = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign|restyle)\b/i.test(command);
     const _hasIMITarget = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isAboutDesktopFile = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
-    const isCodingAction = ((_hasAction && _hasIMITarget) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isAboutDesktopFile;
+    const isCodingAction = ((_hasAction && _hasIMITarget) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isAboutDesktopFile || isPlanPhase;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     console.log(`[ROUTE] → Gemini stream (isCodingAction=${isCodingAction})`);
     const hostname = 'generativelanguage.googleapis.com';
