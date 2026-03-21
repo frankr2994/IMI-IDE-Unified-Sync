@@ -1155,8 +1155,17 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       if (matchedSkill.handler === 'browser') {
         const cmdL = command.toLowerCase();
         const urlMatch = command.match(/https?:\/\/[^\s]+/i);
-        const siteMatch = cmdL.match(/(?:go to|open|visit|navigate to|launch)\s+([a-z0-9.-]+)/i);
-        const raw = urlMatch ? urlMatch[0] : siteMatch ? siteMatch[1] : null;
+        // Match "head to X", "go to X", "open X", "navigate to X", "visit X", "launch X"
+        // but skip filler words like "up", "my", "the", "a", "browser", "chrome", "internet"
+        const FILLER = new Set(['up','my','the','a','an','browser','chrome','internet','web','website','webpage']);
+        const siteMatch = cmdL.match(/(?:head\s+to|go\s+to|open\s+up\s+(?:my\s+)?(?:browser\s+(?:and\s+)?)?(?:head\s+to|go\s+to)?|open|visit|navigate\s+to|launch|take\s+me\s+to)\s+([a-z0-9.-]+(?:\s+[a-z0-9.-]+)*)/i);
+        let raw = urlMatch ? urlMatch[0] : null;
+        if (!raw && siteMatch) {
+          // Walk through captured words, skip fillers, take first real word
+          const words = siteMatch[1].trim().split(/\s+/);
+          const site = words.find(w => !FILLER.has(w));
+          if (site) raw = site;
+        }
         if (raw) {
           const url = raw.startsWith('http') ? raw : `https://${raw.includes('.') ? raw : raw + '.com'}`;
           shell.openExternal(url);
