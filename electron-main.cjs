@@ -1018,6 +1018,71 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId } = payload;
   const cmdLower = command.toLowerCase().trim();
 
+  // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
+  const installMatch = command.match(/\b(?:install|setup|download|get|add)\b\s+(.+?)(?:\s+(?:for me|please|now|on my (?:pc|computer|machine|desktop)))?\s*$/i);
+  if (installMatch) {
+    const target = installMatch[1].trim().toLowerCase().replace(/['"]/g, '');
+    const key = resolveInstallKey(target);
+    if (key) {
+      const info = INSTALL_MANIFEST[key];
+      // Check if already installed
+      try { execSync(info.cmd, { timeout: 3000 });
+        event.sender.send('command-chunk', { messageId, chunk: `✅ **${info.name}** is already installed on your system.` });
+        event.sender.send('command-done', { messageId, fullText: `✅ ${info.name} is already installed.` });
+        return;
+      } catch {}
+      // Not installed — trigger in-app install
+      event.sender.send('command-chunk', { messageId, chunk: `⬇ Installing **${info.name}** for you…\n` });
+      const fakeEvent = { sender: event.sender };
+      const result = await (async () => {
+        fakeEvent.sender.send = (ch, data) => { if (ch === 'install-dep-progress') {
+          const s = data.status === 'downloading' ? `⬇ Downloading ${info.name}… ${data.received||0}MB / ${data.total||0}MB (${data.percent}%)` :
+                    data.status === 'installing' ? `⚙️ Installing ${info.name}…` :
+                    data.status === 'done' ? `✅ ${info.name} installed successfully!` : `❌ ${data.error}`;
+          event.sender.send('command-chunk', { messageId, chunk: `\n${s}` });
+        } else { event.sender.send(ch, data); } };
+        return ipcMain.listeners && (await new Promise(r => {
+          exec(`echo test`, {}, () => r({ success: true }));
+        }));
+      })();
+      // Actually call install-dep
+      const installResult = await new Promise(async (resolve) => {
+        const mockEvent = { sender: { send: (ch, data) => {
+          if (ch === 'install-dep-progress') {
+            const msg = data.status === 'downloading' ? `⬇ Downloading ${info.name}… ${data.received||0}MB / ${data.total||0}MB (${data.percent}%)` :
+                        data.status === 'installing' ? `⚙️ Installing ${info.name}…` :
+                        data.status === 'done' ? `\n✅ **${info.name} installed!** You can now use it.` : `\n❌ Install failed: ${data.error}`;
+            event.sender.send('command-chunk', { messageId, chunk: '\n' + msg });
+          }
+        }}};
+        // Re-invoke install logic directly
+        const depKey = resolveInstallKey(target) || target;
+        const depInfo = INSTALL_MANIFEST[depKey];
+        if (!depInfo) { resolve({ success: false }); return; }
+        try {
+          if (depInfo.npm && !depInfo.winExe) {
+            mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 20 });
+            await new Promise((res2, rej2) => exec(`npm install -g ${depInfo.npm}`, { timeout: 120000 }, (err) => err ? rej2(err) : res2()));
+            mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'done', percent: 100 });
+          } else if (depInfo.winExe) {
+            const isMsi = depInfo.winExe.includes('.msi');
+            const ext = isMsi ? '.msi' : '.exe';
+            const installerPath = path.join(require('os').tmpdir(), `imi-install-${depKey}${ext}`);
+            await downloadFile(mockEvent, depKey, depInfo.winExe, installerPath);
+            mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'installing', percent: 92 });
+            const cmd2 = isMsi ? `msiexec /i "${installerPath}" ${depInfo.winArgs||'/quiet'}` : `"${installerPath}" ${depInfo.winArgs||'/S'}`;
+            await new Promise((res2, rej2) => exec(cmd2, { timeout: 180000 }, (err) => err ? rej2(err) : res2()));
+            require('fs').unlink(installerPath, () => {});
+            mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'done', percent: 100 });
+          }
+          resolve({ success: true });
+        } catch(e) { mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'error', percent: 0, error: e.message }); resolve({ success: false }); }
+      });
+      event.sender.send('command-done', { messageId, fullText: `Install ${info.name} complete.` });
+      return;
+    }
+  }
+
   // ── 🔍 HARDCODED SYSTEM QUERIES — always intercept, no skill file needed ──
   if (/\b(what|which|list|show)\b.{0,50}\b(ai|ollama|llm|model|models)\b.{0,50}\b(installed|have|downloaded|available)\b/i.test(cmdLower)
     || /\b(installed|downloaded)\b.{0,30}\b(ai|ollama|llm|model|models)\b/i.test(cmdLower)) {
