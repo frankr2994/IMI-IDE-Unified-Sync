@@ -1547,8 +1547,16 @@ User message: `;
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
-    const ollamaLightPrefix = `You are a helpful AI assistant built into IMI (Integrated Merge Interface), a developer desktop app. Be concise, friendly, and remember the conversation.`;
+    const ollamaLightPrefix = `You are a helpful AI assistant built into IMI (Integrated Merge Interface), a developer desktop app. Be concise, friendly, and remember the conversation. Do NOT greet the user repeatedly — only say hello on the very first message.`;
     const activePrefix = isCodingAction ? blueprintPrefix : ollamaLightPrefix;
+    // Warn if user sent an image but the model likely doesn't support vision
+    const visionModels = ['llava', 'moondream', 'bakllava', 'minicpm', 'qwen2-vl', 'llava-phi', 'llava-llama'];
+    const modelSupportsVision = visionModels.some(v => ollamaModel.toLowerCase().includes(v));
+    if (imageBase64 && !modelSupportsVision) {
+      event.sender.send('command-chunk', { messageId, chunk: `⚠️ **${ollamaModel.split(':').pop() || ollamaModel}** is a text-only model and cannot see images.\n\nTo analyze images, switch your Brain to **Gemini** (built-in, free) or pull a vision model like **moondream** (1.7GB) or **llava:7b** (4.1GB) from the AI Models tab.\n` });
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    }
     const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
     req.setHeader('Content-Type', 'application/json');
     let timedOut = false;
