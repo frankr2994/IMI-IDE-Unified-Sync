@@ -623,6 +623,116 @@ async function executeAgentTool(toolName, args, projectRoot) {
   }
 }
 
+// ── Generic model caller — used by debate system (no streaming, returns text) ─
+async function callModelAPI(director, systemPrompt, messages, maxTokens = 8000) {
+  // messages: [{role: 'user'|'assistant', content: string}]
+  if (director === 'gemini' || !director) {
+    if (!GEMINI_KEY) throw new Error('Gemini API key not configured — add it in Settings → APIs');
+    const contents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens }
+      });
+      const req = https.request({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`,
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      }, res => {
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            if (data.error) throw new Error(data.error.message || 'Gemini API error');
+            resolve(data?.candidates?.[0]?.content?.parts?.[0]?.text || '(no response)');
+          } catch(e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  if (director === 'claude') {
+    if (!CLAUDE_KEY) throw new Error('Claude API key not configured — add it in Settings → APIs');
+    const body = JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: messages.map(m => ({ role: m.role, content: m.content }))
+    });
+    return new Promise((resolve, reject) => {
+      const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
+      req.setHeader('Content-Type', 'application/json');
+      req.setHeader('x-api-key', CLAUDE_KEY.trim());
+      req.setHeader('anthropic-version', '2023-06-01');
+      let raw = '';
+      req.on('response', res => {
+        res.on('data', d => raw += d.toString());
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            if (data.error) throw new Error(data.error.message || 'Claude API error');
+            resolve(data?.content?.[0]?.text || '(no response)');
+          } catch(e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+  }
+
+  // OpenAI / Groq / Ollama / Custom — all OpenAI-compatible
+  let hostname, apiPath, authHeader, model;
+  if (director === 'chatgpt') {
+    if (!OPENAI_KEY) throw new Error('OpenAI API key not configured');
+    hostname = 'api.openai.com'; apiPath = '/v1/chat/completions'; authHeader = `Bearer ${OPENAI_KEY}`; model = 'gpt-4o';
+  } else if (director === 'groq') {
+    if (!GROQ_KEY) throw new Error('Groq API key not configured');
+    hostname = 'api.groq.com'; apiPath = '/openai/v1/chat/completions'; authHeader = `Bearer ${GROQ_KEY}`; model = 'llama-3.3-70b-versatile';
+  } else if (director === 'ollama') {
+    hostname = '127.0.0.1'; apiPath = '/api/chat'; authHeader = ''; model = CUSTOM_API_MODEL || 'llama3';
+  } else if (director === 'custom') {
+    try { const u = new URL(CUSTOM_API_URL || 'http://localhost:11434'); hostname = u.hostname; apiPath = u.pathname; } catch { hostname = 'localhost'; apiPath = '/v1/chat/completions'; }
+    authHeader = CUSTOM_API_KEY ? `Bearer ${CUSTOM_API_KEY}` : '';
+    model = CUSTOM_API_MODEL || 'gpt-4';
+  } else {
+    return callModelAPI('gemini', systemPrompt, messages, maxTokens);
+  }
+
+  const allMsgs = [{ role: 'system', content: systemPrompt }, ...messages.map(m => ({ role: m.role, content: m.content }))];
+  const body = JSON.stringify({ model, messages: allMsgs, max_tokens: maxTokens, temperature: 0.4 });
+
+  return new Promise((resolve, reject) => {
+    const reqOptions = {
+      method: 'POST', hostname, path: apiPath,
+      headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) }
+    };
+    const reqLib = (hostname === '127.0.0.1' || hostname === 'localhost') ? require('http') : https;
+    const req = reqLib.request(reqOptions, res => {
+      let raw = '';
+      res.on('data', d => raw += d);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          const text = data?.choices?.[0]?.message?.content || data?.message?.content || '';
+          resolve(text || '(no response)');
+        } catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 // ── Agentic Loop — multi-step reasoning like Claude Code ─────────────────────
 async function runAgentLoop(event, command, projectRoot, messageId, director = 'gemini') {
   // Pick which API key/URL to use based on director
