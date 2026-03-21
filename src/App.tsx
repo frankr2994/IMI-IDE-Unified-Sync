@@ -952,6 +952,14 @@ const App = () => {
     return () => clearTimeout(t);
   }, [mcpSearch]);
 
+  // Pre-warm Ollama model when selected as brain — eliminates cold-start delay on first message
+  useEffect(() => {
+    if (activeDirector?.startsWith('ollama:')) {
+      const model = activeDirector.slice(7);
+      (ipc as any).invoke('warmup-ollama-model', model).catch(() => {});
+    }
+  }, [activeDirector]);
+
   const renderContent = (text: string) => {
     if (!text) return null;
 

@@ -3051,6 +3051,26 @@ const ensureOllamaRunning = async () => {
   return false;
 };
 
+// Warm up the Ollama model by sending a silent 1-token request — eliminates cold-start delay on first real message
+const warmupOllamaModel = async (modelName) => {
+  if (!modelName) return;
+  try {
+    const body = JSON.stringify({ model: modelName, messages: [{ role: 'user', content: 'hi' }], max_tokens: 1, stream: false });
+    const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
+    req.setHeader('Content-Type', 'application/json');
+    req.on('response', (res) => { res.on('data', () => {}); res.on('end', () => {}); });
+    req.on('error', () => {});
+    req.write(body);
+    req.end();
+  } catch {}
+};
+
+ipcMain.handle('warmup-ollama-model', async (_e, modelName) => {
+  await ensureOllamaRunning();
+  warmupOllamaModel(modelName);
+  return { ok: true };
+});
+
 // Auto-start Ollama at app launch (background, fire-and-forget)
 app.whenReady().then(() => setTimeout(ensureOllamaRunning, 2000));
 
