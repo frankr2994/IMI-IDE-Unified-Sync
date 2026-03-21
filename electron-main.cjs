@@ -1028,6 +1028,21 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     } catch(e) { /* fall through to AI */ }
   }
 
+  // ── 🐙 GITHUB NAVIGATION — open browser directly, 0 tokens ─────────────────
+  const isGithubNav = /\b(go to|open|show|view|navigate|visit|take me to|pull up|launch)\b.{0,50}\b(my\s+)?(github|gh repo|repository|repo)\b/i.test(cmdLower)
+    || /\b(my\s+)?(github|gh)\b.{0,40}\b(repo|profile|page|account|project)\b/i.test(cmdLower)
+    || /\bgithub\.com\b/i.test(cmdLower);
+  if (isGithubNav) {
+    const ghUser = GITHUB_USER || 'creepybunny99';
+    const ghRepo = GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync';
+    const isProfile = /\b(profile|account|page|me)\b/i.test(cmdLower) && !/\brepo\b/i.test(cmdLower);
+    const url = isProfile ? `https://github.com/${ghUser}` : `https://github.com/${ghRepo}`;
+    shell.openExternal(url);
+    event.sender.send('command-chunk', { messageId, chunk: `🐙 Opening GitHub...\n🌐 **${url}**` });
+    event.sender.send('command-end', { messageId, code: 0 });
+    return;
+  }
+
   // ── ⚡ SKILL ENGINE — check skills FIRST before any API call ──────────────
   const matchedSkill = skillEngine.match(command);
   if (matchedSkill) {
