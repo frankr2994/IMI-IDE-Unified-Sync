@@ -624,9 +624,15 @@ async function executeAgentTool(toolName, args, projectRoot) {
 }
 
 // ── Agentic Loop — multi-step reasoning like Claude Code ─────────────────────
-async function runAgentLoop(event, command, projectRoot, messageId) {
-  if (!GEMINI_KEY) {
-    event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' });
+async function runAgentLoop(event, command, projectRoot, messageId, director = 'gemini') {
+  // Pick which API key/URL to use based on director
+  const brainKey = {
+    gemini: GEMINI_KEY, claude: CLAUDE_KEY, chatgpt: OPENAI_KEY,
+    groq: GROQ_KEY, custom: CUSTOM_API_KEY, ollama: 'ollama'
+  }[director] || GEMINI_KEY;
+
+  if (!brainKey) {
+    event.sender.send('command-chunk', { messageId, chunk: `❌ No API key configured for ${director}. Add it in Settings → APIs.` });
     event.sender.send('command-end', { messageId, code: 1 });
     return;
   }
@@ -668,57 +674,138 @@ STEP 4 — VERIFY
 
 START NOW — use search_code or read_file first, never write_patch as your first action.`;
 
-  const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
-  const MAX_STEPS = 15;
-  let step = 0;
+  // Generic brain caller — works for any configured model
+  const callBrain = async (history) => {
+    if (director === 'gemini') {
+      const body = JSON.stringify({
+        contents: history,
+        generationConfig: { temperature: 0.1, maxOutputTokens: 16000 }
+      });
+      return new Promise((resolve, reject) => {
+        const req = https.request({
+          hostname: 'generativelanguage.googleapis.com',
+          path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        }, res => {
+          let raw = '';
+          res.on('data', d => raw += d);
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(raw);
+              resolve(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+            } catch(e) { reject(e); }
+          });
+        });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+      });
+    }
 
-  event.sender.send('command-chunk', { messageId, chunk: `🤖 **Agent Mode** — reasoning through your request...\n\n` });
+    // OpenAI-compatible format (Claude, OpenAI, Groq, Ollama, Custom)
+    const msgs = history.map(h => ({
+      role: h.role === 'model' ? 'assistant' : 'user',
+      content: h.parts?.map(p => p.text).join('') || h.content || ''
+    }));
 
-  const callGemini = async (history) => {
-    const body = JSON.stringify({
-      contents: history,
-      generationConfig: { temperature: 0.1, maxOutputTokens: 16000 }
-    });
+    let hostname, apiPath, authHeader, model;
+    if (director === 'claude') {
+      // Claude uses its own format
+      const claudeBody = JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 16000,
+        system: msgs[0]?.role === 'system' ? msgs.shift().content : undefined,
+        messages: msgs.filter(m => m.role !== 'system')
+      });
+      return new Promise((resolve, reject) => {
+        const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
+        req.setHeader('Content-Type', 'application/json');
+        req.setHeader('x-api-key', CLAUDE_KEY.trim());
+        req.setHeader('anthropic-version', '2023-06-01');
+        let raw = '';
+        req.on('response', res => {
+          res.on('data', d => raw += d.toString());
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(raw);
+              resolve(data?.content?.[0]?.text || '');
+            } catch(e) { reject(e); }
+          });
+        });
+        req.on('error', reject);
+        req.write(claudeBody);
+        req.end();
+      });
+    }
+
+    // OpenAI / Groq / Ollama / Custom — all OpenAI-compatible
+    if (director === 'chatgpt') { hostname = 'api.openai.com'; apiPath = '/v1/chat/completions'; authHeader = `Bearer ${OPENAI_KEY}`; model = 'gpt-4o'; }
+    else if (director === 'groq') { hostname = 'api.groq.com'; apiPath = '/openai/v1/chat/completions'; authHeader = `Bearer ${GROQ_KEY}`; model = 'llama-3.3-70b-versatile'; }
+    else if (director === 'ollama') { hostname = '127.0.0.1'; apiPath = '/api/chat'; authHeader = ''; model = CUSTOM_API_MODEL || 'llama3'; }
+    else if (director === 'custom') {
+      try { const u = new URL(CUSTOM_API_URL || 'http://localhost:11434'); hostname = u.hostname; apiPath = u.pathname; } catch { hostname = 'localhost'; apiPath = '/v1/chat/completions'; }
+      authHeader = CUSTOM_API_KEY ? `Bearer ${CUSTOM_API_KEY}` : '';
+      model = CUSTOM_API_MODEL || 'gpt-4';
+    }
+
+    const openAiBody = JSON.stringify({ model, messages: msgs, max_tokens: 16000, temperature: 0.1 });
     return new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`,
+      const reqOptions = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }, res => {
+        hostname,
+        path: apiPath,
+        headers: { 'Content-Type': 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) }
+      };
+      const reqLib = (hostname === '127.0.0.1' || hostname === 'localhost') ? require('http') : https;
+      const req = reqLib.request(reqOptions, res => {
         let raw = '';
         res.on('data', d => raw += d);
         res.on('end', () => {
-          try { resolve(JSON.parse(raw)); } catch(e) { reject(e); }
+          try {
+            const data = JSON.parse(raw);
+            // Ollama returns {message: {content}} or {choices: [...]}
+            const text = data?.choices?.[0]?.message?.content || data?.message?.content || '';
+            resolve(text);
+          } catch(e) { reject(e); }
         });
       });
       req.on('error', reject);
-      req.write(body);
+      req.write(openAiBody);
       req.end();
     });
   };
 
+  const conversationHistory = [{ role: 'user', parts: [{ text: systemPrompt }] }];
+  const MAX_STEPS = 15;
+  let step = 0;
+  const runSteps = [];
+
+  // Track stats
+  agentStats.totalRuns++;
+  const runStart = Date.now();
+
+  event.sender.send('command-chunk', { messageId, chunk: `🤖 **Agent Mode** (${director}) — reasoning through your request...\n\n` });
+
   while (step < MAX_STEPS) {
     step++;
-    let response;
+    let responseText;
     try {
-      response = await callGemini(conversationHistory);
+      responseText = await callBrain(conversationHistory);
     } catch(e) {
       event.sender.send('command-chunk', { messageId, chunk: `\n❌ Agent error: ${e.message}` });
       break;
     }
 
-    const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) break;
+    if (!responseText) break;
 
     // Add assistant response to history
-    conversationHistory.push({ role: 'model', parts: [{ text }] });
+    conversationHistory.push({ role: 'model', parts: [{ text: responseText }] });
 
     // Parse tool call
-    const toolMatch = text.match(/TOOL_CALL:\s*(\{[\s\S]*?\})/);
+    const toolMatch = responseText.match(/TOOL_CALL:\s*(\{[\s\S]*?\})/);
     if (!toolMatch) {
-      // No tool call — final answer
-      event.sender.send('command-chunk', { messageId, chunk: text });
+      event.sender.send('command-chunk', { messageId, chunk: responseText });
       break;
     }
 
@@ -730,40 +817,60 @@ START NOW — use search_code or read_file first, never write_patch as your firs
 
     const { tool, args } = toolCall;
 
-    // Done tool = finish
     if (tool === 'done') {
       event.sender.send('command-chunk', { messageId, chunk: `\n✅ **Done!** ${args?.message || ''}` });
       break;
     }
 
-    // Show what the agent is doing
-    const toolEmoji = { read_file: '📖', search_code: '🔍', list_dir: '📁', write_patch: '✏️', run_build: '🔨', read_error: '🔎' };
-    const toolLabel = { read_file: `Reading \`${args?.path}\``, search_code: `Searching for \`${args?.pattern}\``, list_dir: `Listing \`${args?.path}\``, write_patch: `Patching \`${args?.file}\``, run_build: `Running build...`, read_error: `Reading error at \`${args?.file}:${args?.line}\`` };
+    // Track tool usage
+    agentStats.totalSteps++;
+    if (tool in agentStats.toolsUsed) agentStats.toolsUsed[tool]++;
+    runSteps.push({ tool, args, step });
+
+    const toolEmoji = { read_file: '📖', search_code: '🔍', list_dir: '📁', write_patch: '✏️', run_build: '🔨', read_error: '🔎', run_command: '⚡', take_screenshot: '📸', open_browser: '🌐' };
+    const toolLabel = {
+      read_file: `Reading \`${args?.path}\``,
+      search_code: `Searching for \`${args?.pattern}\``,
+      list_dir: `Listing \`${args?.path}\``,
+      write_patch: `Patching \`${args?.file}\``,
+      run_build: `Running build...`,
+      read_error: `Reading error at \`${args?.file}:${args?.line}\``,
+      run_command: `Running: ${args?.cmd}`,
+      take_screenshot: `Taking screenshot...`,
+      open_browser: `Opening ${args?.url}`
+    };
     event.sender.send('command-chunk', { messageId, chunk: `\n${toolEmoji[tool] || '⚙️'} ${toolLabel[tool] || tool}...\n` });
 
-    // Execute tool
     const result = await executeAgentTool(tool, args || {}, projectRoot);
-
-    // Show result summary (not full output for large files)
     const resultStr = String(result);
     const preview = resultStr.length > 400 ? resultStr.slice(0, 400) + `\n... (${resultStr.length - 400} more chars)` : resultStr;
     event.sender.send('command-chunk', { messageId, chunk: `\`\`\`\n${preview}\n\`\`\`\n` });
 
-    // Add tool result to conversation — include screenshot image if one was just taken
     const toolResultParts = [{ text: `Tool result for ${tool}:\n${resultStr}` }];
     if (tool === 'take_screenshot' && global._lastScreenshot) {
       toolResultParts.push({ inlineData: { mimeType: 'image/png', data: global._lastScreenshot } });
-      global._lastScreenshot = null; // consume it
+      global._lastScreenshot = null;
     }
     conversationHistory.push({ role: 'user', parts: toolResultParts });
 
-    // Small delay to avoid rate limiting
     await new Promise(r => setTimeout(r, 300));
   }
 
   if (step >= MAX_STEPS) {
     event.sender.send('command-chunk', { messageId, chunk: `\n⚠️ Reached maximum steps (${MAX_STEPS}). Task may be incomplete.` });
   }
+
+  // Save run to stats
+  agentStats.lastRun = {
+    command: command.slice(0, 120),
+    director,
+    model: director === 'gemini' ? BRAIN_MODEL : director,
+    steps: step,
+    toolsUsed: runSteps.map(s => s.tool),
+    ts: runStart,
+    duration: Date.now() - runStart
+  };
+  agentStats.lastRunSteps = runSteps.slice(0, 20);
 
   event.sender.send('command-end', { messageId, code: 0 });
 }
@@ -780,6 +887,13 @@ process.env.PATH = sterilizePath(process.env.PATH);
 const GLOBAL_STATE_PATH = path.join(os.homedir(), '.gemini', 'state.json');
 
 let tokenStats = { gemini: 0, jules: 0, openai: 0, claude: 0, antigravity: 0, 'imi-core': 0 };
+let agentStats = {
+  totalRuns: 0,
+  totalSteps: 0,
+  toolsUsed: { read_file: 0, search_code: 0, list_dir: 0, write_patch: 0, run_build: 0, run_command: 0, take_screenshot: 0 },
+  lastRun: null,
+  lastRunSteps: []
+};
 let GEMINI_KEY = ''; let GITHUB_TOKEN = ''; let OPENAI_KEY = ''; let CLAUDE_KEY = '';
 let GITHUB_USER = ''; let GITHUB_REPO = '';
 let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_KEY = '';
@@ -893,6 +1007,14 @@ ipcMain.handle('get-system-usage', async () => ({
 }));
 
 ipcMain.handle('get-token-usage', () => tokenStats);
+ipcMain.handle('get-agent-stats', () => ({
+  ...agentStats,
+  currentBrain: BRAIN_MODEL,
+  currentDirector: ACTIVE_BRAIN,
+  maxSteps: 15,
+  temperature: BRAIN_TEMPERATURE,
+  maxTokens: BRAIN_MAX_TOKENS
+}));
 ipcMain.handle('get-project-stats', () => ({ projectRoot: currentProjectRoot, platform: os.platform(), freeMem: (os.freemem() / 1024 / 1024 / 1024).toFixed(2) }));
 
 // Native folder picker — opens Windows folder browser dialog
@@ -1849,8 +1971,8 @@ User: `;
     ) || /\bagent mode\b/i.test(command);
 
     if (isAgentTask && payload.engine === 'imi-core') {
-      console.log(`[ROUTE] → runAgentLoop`);
-      runAgentLoop(event, command, currentProjectRoot, messageId);
+      console.log(`[ROUTE] → runAgentLoop (director=${director})`);
+      runAgentLoop(event, command, currentProjectRoot, messageId, director);
       return;
     }
 
