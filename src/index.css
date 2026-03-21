@@ -136,6 +136,22 @@ body {
   }
 }
 
+/* ── Skills Panel — lift all tiny inline font sizes to readable minimums ── */
+/* React serializes inline styles as "font-size: Xrem" — these selectors catch them */
+.skills-panel *[style*="font-size: 0.5rem"]  { font-size: 0.72rem !important; }
+.skills-panel *[style*="font-size: 0.55rem"] { font-size: 0.74rem !important; }
+.skills-panel *[style*="font-size: 0.6rem"]  { font-size: 0.78rem !important; }
+.skills-panel *[style*="font-size: 0.62rem"] { font-size: 0.8rem  !important; }
+.skills-panel *[style*="font-size: 0.65rem"] { font-size: 0.84rem !important; }
+.skills-panel *[style*="font-size: 0.68rem"] { font-size: 0.86rem !important; }
+.skills-panel *[style*="font-size: 0.7rem"]  { font-size: 0.88rem !important; }
+.skills-panel *[style*="font-size: 0.75rem"] { font-size: 0.9rem  !important; }
+/* Sub-tab buttons, stat bar labels */
+.skills-panel button { font-size: max(0.78rem, 1em); }
+/* Catch anything else that falls below the floor */
+.skills-panel span,
+.skills-panel div:not([class]) { min-height: revert; }
+
 /* Fullscreen adjustments */
 @media (min-width: 1600px) {
   .dashboard-container {
