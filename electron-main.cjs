@@ -1120,14 +1120,14 @@ Respond with ONLY valid JSON matching exactly:
   });
 });
 
-// ── UI PREVIEW — Imagen 3 mockup generation ───────────────────────────────
+// ── UI PREVIEW — Gemini 2.0 Flash image generation ────────────────────────
 ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
   if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
-  const imagePrompt = `High-fidelity UI mockup screenshot: ${description}. Modern desktop app interface, dark theme with purple accents, clean minimal design, pixel-perfect, professional product design, no watermarks, no text labels saying "mockup".`;
+  const imagePrompt = `Create a high-fidelity UI mockup screenshot of: ${description}. Dark theme desktop app, modern and clean design, professional product UI.`;
   return new Promise((resolve, reject) => {
     const req = https.request({
       hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/imagen-3.0-generate-001:predict?key=${GEMINI_KEY}`,
+      path: `/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_KEY}`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     }, res => {
@@ -1136,17 +1136,19 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(body);
-          if (parsed.error) throw new Error(parsed.error.message || 'Imagen API error');
-          const prediction = parsed.predictions?.[0];
-          if (!prediction?.bytesBase64Encoded) throw new Error('No image returned from Imagen');
-          resolve({ base64: prediction.bytesBase64Encoded, mimeType: prediction.mimeType || 'image/png' });
+          if (parsed.error) throw new Error(parsed.error.message || 'Gemini image generation error');
+          // Image data is in inlineData parts
+          const parts = parsed?.candidates?.[0]?.content?.parts || [];
+          const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+          if (!imagePart) throw new Error('No image returned — try a more specific UI description');
+          resolve({ base64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType });
         } catch(e) { reject(e); }
       });
     });
     req.on('error', reject);
     req.write(JSON.stringify({
-      instances: [{ prompt: imagePrompt }],
-      parameters: { sampleCount: 1, aspectRatio: '4:3', safetyFilterLevel: 'BLOCK_ONLY_HIGH' }
+      contents: [{ parts: [{ text: imagePrompt }] }],
+      generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
     }));
     req.end();
   });
