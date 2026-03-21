@@ -133,6 +133,7 @@ const App = () => {
   const terminalOutputRef = React.useRef<HTMLDivElement>(null);
   const [terminalHeight, setTerminalHeight] = useState(320);
   const terminalDragRef = React.useRef<{ dragging: boolean; startY: number; startH: number }>({ dragging: false, startY: 0, startH: 320 });
+  const debatePanelRef = React.useRef<HTMLDivElement>(null);
 
   // 🛠 Installed Tools
   const [toolsList, setToolsList] = useState<any[]>([]);
@@ -1114,6 +1115,13 @@ const App = () => {
     if (terminalOutputRef.current) terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
   }, [terminalLines]);
 
+  // Auto-scroll debate panel when new rounds arrive or complete
+  useEffect(() => {
+    if (debatePanelRef.current) {
+      debatePanelRef.current.scrollTop = debatePanelRef.current.scrollHeight;
+    }
+  }, [debateRounds, debateComplete]);
+
   // Terminal drag-to-resize
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -1278,9 +1286,10 @@ const App = () => {
       setDebateRounds(prev => {
         const idx = prev.findIndex(r => r.round === data.round);
         if (idx >= 0) { const u = [...prev]; u[idx] = data; return u; }
+        // First new round — switch to debate tab automatically
+        if (prev.length === 0 && data.round > 0) setRightPanelTab('debate');
         return [...prev, data];
       });
-      if (data.round > 0 && data.status !== 'error') setRightPanelTab('debate' as any);
     });
 
     ipc.on('debate-complete', (_: any, data: any) => {

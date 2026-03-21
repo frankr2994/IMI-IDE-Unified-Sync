@@ -1555,13 +1555,14 @@ CONTEXT:\n${contextStr}`,
     const executeMatch = finalPlan.match(/EXECUTE:\s*(.+?)(?:\n|$)/i);
     const refinedCommand = executeMatch ? executeMatch[1].trim() : command;
 
-    event.sender.send('debate-complete', { messageId, refinedCommand, patch, finalPlan });
+    try { event.sender.send('debate-complete', { messageId, refinedCommand, patch, finalPlan }); } catch(_) {}
     return { success: true };
 
   } catch(e) {
-    sendUpdate(-1, 'error', '❌ Debate Error', e.message || String(e), 'error');
-    event.sender.send('debate-complete', { messageId, refinedCommand: command, patch: '', finalPlan: '', error: e.message });
-    return { success: false, error: e.message };
+    const errMsg = e?.message || String(e);
+    sendUpdate(-1, 'error', '❌ Debate Error', errMsg, 'error');
+    try { event.sender.send('debate-complete', { messageId, refinedCommand: command, patch: '', finalPlan: '', error: errMsg }); } catch(_) {}
+    return { success: false, error: errMsg };
   }
 });
 
