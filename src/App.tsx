@@ -2384,8 +2384,9 @@ const App = () => {
                                              setImpactData(null);
                                              try {
                                                const res = await (ipc as any).invoke('get-impact', { filePath: phase.files[0], projectRoot: stats.projectRoot });
-                                               if (!res.error) { setImpactData(res); setRightPanelTab('plan'); }
-                                             } catch(_) {}
+                                               if (res && !res.error) setImpactData(res);
+                                               else if (res?.error) addLog('system', `Impact: ${res.error}`);
+                                             } catch(e: any) { addLog('system', `Impact error: ${e?.message}`); }
                                              setImpactLoading(false);
                                            }}
                                            title={`Check blast radius for ${phase.files[0]}`}
@@ -4590,7 +4591,8 @@ const App = () => {
                               setImpactData(null);
                               try {
                                 const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot });
-                                if (res.error) alert(res.error);
+                                if (!res) alert('No response from impact analyzer');
+                                else if (res.error) alert(res.error);
                                 else setImpactData(res);
                               } catch(e: any) { alert(e.message); }
                               setImpactLoading(false);
