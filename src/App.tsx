@@ -1695,6 +1695,10 @@ const App = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {isSyncing && <span style={{ fontSize: '0.65rem', color: 'rgba(155,77,255,0.7)', display: 'flex', alignItems: 'center', gap: '4px' }}><RefreshCw size={10} className="spin" /> Processing</span>}
+                    {/* Clear chat */}
+                    <button title="Clear chat history" onClick={async () => { setMessages([]); setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ height: '28px', padding: '0 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 700, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <X size={10}/> CLEAR
+                    </button>
                     {/* Parallel mode toggle */}
                     <button onClick={() => setParallelMode(p => !p)} title="Parallel Orchestration — query all models simultaneously" style={{ height: '28px', padding: '0 10px', background: parallelMode ? 'rgba(79,172,254,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${parallelMode ? 'rgba(79,172,254,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: parallelMode ? '#4facfe' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
                       ⚡ PARALLEL {parallelMode ? 'ON' : 'OFF'}
@@ -2164,6 +2168,9 @@ const App = () => {
                            </div>
                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', flexShrink: 0 }}>
                              <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)' }}>{(ap.plan.complexity || 'medium').toUpperCase()}</span>
+                             <button onClick={() => setYoloMode(y => !y)} title={yoloMode ? 'Auto-Run ON — all phases run without approval' : 'Auto-Run OFF — approve each phase manually'} style={{ background: yoloMode ? 'rgba(255,180,0,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.45)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '5px', color: yoloMode ? '#ffb400' : 'rgba(255,255,255,0.4)', cursor: 'pointer', padding: '2px 8px', fontSize: '0.55rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                               {yoloMode ? '⚡ AUTO-RUN ON' : '⚡ AUTO-RUN'}
+                             </button>
                              <button onClick={() => cancelPlan(ap.messageId)} title="Delete plan from chat and panel" style={{ background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer', padding: '2px 8px', fontSize: '0.55rem', fontWeight: 700, whiteSpace: 'nowrap' }}>✕ Delete</button>
                            </div>
                          </div>
