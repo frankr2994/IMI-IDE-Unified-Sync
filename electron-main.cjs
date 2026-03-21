@@ -1466,6 +1466,59 @@ User message: `;
     return;
   }
 
+  // ── Claude (Anthropic) Brain ──────────────────────────────────────────────
+  if (director === 'claude') {
+    if (!CLAUDE_KEY) { event.sender.send('command-error', { messageId, error: 'Claude API key missing. Add it in Settings → APIs.' }); return; }
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit', 'look'];
+    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
+    req.setHeader('Content-Type', 'application/json');
+    req.setHeader('x-api-key', CLAUDE_KEY.trim());
+    req.setHeader('anthropic-version', '2023-06-01');
+    req.setHeader('anthropic-beta', 'prompt-caching-2024-07-31');
+    const body = JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 8096,
+      stream: true,
+      system: activePrefix,
+      messages: [{ role: 'user', content: command }],
+    });
+    req.write(body);
+    let fullText = '';
+    req.on('response', (res) => {
+      let buf = '';
+      res.on('data', chunk => {
+        buf += chunk.toString();
+        const lines = buf.split('\n'); buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const json = line.slice(5).trim();
+          try {
+            const evt = JSON.parse(json);
+            if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+              const delta = evt.delta.text || '';
+              if (delta) { fullText += delta; event.sender.send('command-chunk', { messageId, chunk: delta }); }
+            }
+          } catch {}
+        }
+      });
+      res.on('end', () => {
+        event.sender.send('command-done', { messageId, fullText });
+        tokenStats['claude'] = (tokenStats['claude'] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
+        const isClarifying = fullText.includes('\u2753') || (fullText.includes('?') && fullText.includes('\u2022'));
+        if (isCodingAction && payload.engine && payload.engine !== 'claude' && !isClarifying) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- [IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()} ---` });
+          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+        }
+      });
+    });
+    req.on('error', err => event.sender.send('command-error', { messageId, error: `Claude API error: ${err.message}` }));
+    req.end();
+    return;
+  }
+
 
   const commandName = director === 'geminicli' ? 'gemini' : director;
   let binPath = await checkCommand(commandName);
