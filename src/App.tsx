@@ -3420,13 +3420,11 @@ const App = () => {
                     <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>
                       Same pattern <b style={{ color: 'rgba(255,255,255,0.6)' }}>3+ times</b> → engine auto-creates a skill · Auto-optimizes every <b style={{ color: 'rgba(255,255,255,0.6)' }}>5 minutes</b>
                     </div>
-                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '10px' }}>
-                      ⏱ Auto-runs every <b style={{ color: 'white' }}>5 minutes</b> · Removes skills scoring below 20% · Creates skills from repeated patterns
-                    </div>
                   </div>
 
-                  {/* Run Optimizer + Last Result */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                </div>
+              )}
+
               {/* BENCHMARKS SUB-TAB */}
               {skillsSubTab === 'benchmarks' && (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
@@ -3467,7 +3465,7 @@ const App = () => {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontSize: '0.72rem', fontWeight: 800, color: avgMs < 2000 ? '#00ff88' : avgMs < 5000 ? '#ffa500' : '#ff416c', fontFamily: 'monospace' }}>{avgMs < 1000 ? `${avgMs}ms` : `${(avgMs/1000).toFixed(1)}s`}</span>
                               </div>
-                              <div style={{ display: 'flex', align: 'center', gap: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <div style={{ height: '3px', flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden', alignSelf: 'center' }}>
                                   <div style={{ height: '100%', width: `${successRate}%`, background: successRate >= 90 ? '#00ff88' : successRate >= 60 ? '#ffa500' : '#ff416c', borderRadius: '2px' }} />
                                 </div>
