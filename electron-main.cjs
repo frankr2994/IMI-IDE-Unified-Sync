@@ -2830,43 +2830,43 @@ ipcMain.handle('github-search', async (_e, query, sort) => {
   return new Promise((resolve) => {
     const q = encodeURIComponent(query.trim());
     const sortBy = sort || 'stars';
-    const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'IMI-GitHub-Hub/1.0' };
-    if (GITHUB_TOKEN) headers['Authorization'] = `token ${GITHUB_TOKEN}`;
-    const req = net.request({
-      method: 'GET', protocol: 'https:', hostname: 'api.github.com',
-      path: `/search/repositories?q=${q}&sort=${sortBy}&order=desc&per_page=24`
-    });
-    Object.entries(headers).forEach(([k, v]) => req.setHeader(k, v));
-    let raw = '';
-    req.on('response', res => {
-      res.on('data', d => raw += d.toString());
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(raw);
-          if (data.message) { resolve({ results: [], total: 0, error: data.message }); return; }
-          const results = (data.items || []).map(r => ({
-            id: r.id,
-            name: r.full_name,
-            shortName: r.name,
-            owner: r.owner?.login,
-            ownerAvatar: r.owner?.avatar_url,
-            description: r.description || 'No description.',
-            stars: r.stargazers_count,
-            forks: r.forks_count,
-            language: r.language,
-            topics: r.topics || [],
-            htmlUrl: r.html_url,
-            cloneUrl: r.clone_url,
-            updatedAt: r.updated_at,
-            license: r.license?.spdx_id || null,
-            openIssues: r.open_issues_count,
-          }));
-          resolve({ results, total: data.total_count || results.length });
-        } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
+    const doSearch = (useToken) => {
+      const req = net.request({
+        method: 'GET', protocol: 'https:', hostname: 'api.github.com',
+        path: `/search/repositories?q=${q}&sort=${sortBy}&order=desc&per_page=24`
       });
-    });
-    req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
-    req.end();
+      req.setHeader('Accept', 'application/vnd.github.v3+json');
+      req.setHeader('User-Agent', 'IMI-GitHub-Hub/1.0');
+      if (useToken && GITHUB_TOKEN) req.setHeader('Authorization', `token ${GITHUB_TOKEN}`);
+      let raw = '';
+      req.on('response', res => {
+        res.on('data', d => raw += d.toString());
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            // Bad/expired token — silently retry without auth
+            if (useToken && (data.message === 'Bad credentials' || res.statusCode === 401)) {
+              return doSearch(false);
+            }
+            if (data.message) { resolve({ results: [], total: 0, error: data.message }); return; }
+            const results = (data.items || []).map(r => ({
+              id: r.id, name: r.full_name, shortName: r.name,
+              owner: r.owner?.login, ownerAvatar: r.owner?.avatar_url,
+              description: r.description || 'No description.',
+              stars: r.stargazers_count, forks: r.forks_count,
+              language: r.language, topics: r.topics || [],
+              htmlUrl: r.html_url, cloneUrl: r.clone_url,
+              updatedAt: r.updated_at, license: r.license?.spdx_id || null,
+              openIssues: r.open_issues_count,
+            }));
+            resolve({ results, total: data.total_count || results.length });
+          } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
+        });
+      });
+      req.on('error', e => resolve({ results: [], total: 0, error: e.message }));
+      req.end();
+    };
+    doSearch(!!GITHUB_TOKEN);
   });
 });
 
