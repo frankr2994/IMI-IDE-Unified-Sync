@@ -1279,194 +1279,179 @@ const App = () => {
           {activeTab === 'dashboard' && (
             <motion.div key="db" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-              {/* ── STATUS BANNER ── */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 10px #00ff88' }} className="pulse-slow" />
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em' }}>ALL SYSTEMS NOMINAL</span>
+              {/* ── STATUS ROW ── */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px 16px', background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flex: 1 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} className="pulse-slow" />
+                  <span style={{ fontSize: '0.73rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Operational</span>
+                  {lastSyncTime && <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)' }}>· Last sync {lastSyncTime}</span>}
                 </div>
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <ShieldCheck size={13} color="rgba(255,255,255,0.4)" />
-                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>SAFE MODE</span>
-                    <span style={{ fontSize: '0.72rem', color: '#00ff88', fontWeight: 800 }}>ON</span>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <ShieldCheck size={12} color="rgba(255,255,255,0.3)" />
+                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>Safe mode</span>
+                    <span style={{ fontSize: '0.68rem', color: '#22c55e', fontWeight: 600 }}>on</span>
                   </div>
-                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Clock size={13} color="rgba(255,255,255,0.4)" />
-                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>LAST SYNC:</span>
-                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)', fontWeight: 800 }}>{lastSyncTime || '—'}</span>
-                  </div>
-                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
-                  <button onClick={fetchStats} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '8px', padding: '5px 12px', color: 'var(--primary)', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.25)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.12)'; }}>
-                    <RefreshCw size={11} /> REFRESH
+                  <button onClick={fetchStats} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '6px', padding: '4px 10px', color: 'rgba(155,77,255,0.8)', fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.18)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.1)'; }}>
+                    <RefreshCw size={11} /> Refresh
                   </button>
                 </div>
               </div>
 
-              {/* ── KPI ROW ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+              {/* ── KPI GRID ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                 {[
-                  { label: 'BRAIN MODEL', value: activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase(), sub: `${(tokenUsage[activeDirector] || 0).toLocaleString()} tokens used`, icon: <Zap size={15} />, color: '#4facfe', glow: 'rgba(79,172,254,0.2)' },
-                  { label: 'CODER ENGINE', value: activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase(), sub: `${(tokenUsage[activeEngine] || 0).toLocaleString()} tokens used`, icon: <Cpu size={15} />, color: '#00ff88', glow: 'rgba(0,255,136,0.18)' },
-                  { label: 'PROJECT FILES', value: stats.fileCount || '—', sub: `${stats.sizeMB || '0'} MB on disk`, icon: <Database size={15} />, color: '#f093fb', glow: 'rgba(240,147,251,0.18)' },
-                  { label: 'FREE MEMORY', value: `${stats.freeMem || '—'}`, sub: `${usage.threads || 0} active threads`, icon: <Activity size={15} />, color: '#ffd700', glow: 'rgba(255,215,0,0.15)' },
+                  { label: 'Brain Model', value: activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector, sub: `${(tokenUsage[activeDirector] || 0).toLocaleString()} tokens` },
+                  { label: 'Coder Engine', value: activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-Core' : activeEngine, sub: `${(tokenUsage[activeEngine] || 0).toLocaleString()} tokens` },
+                  { label: 'Project Files', value: stats.fileCount || '—', sub: `${stats.sizeMB || '0'} MB on disk` },
+                  { label: 'Free Memory', value: stats.freeMem || '—', sub: `${usage.threads || 0} threads · load ${usage.load || '0'}` },
                 ].map((kpi, i) => (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '18px 20px', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s, box-shadow 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = kpi.color + '55'; (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 20px ${kpi.glow}`; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
-                    {/* top accent bar */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${kpi.color}, transparent)`, borderRadius: '16px 16px 0 0' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                      <span style={{ fontSize: '0.64rem', fontWeight: 800, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.12em' }}>{kpi.label}</span>
-                      <div style={{ color: kpi.color, opacity: 0.8 }}>{kpi.icon}</div>
-                    </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1, marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kpi.value}</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.38)', fontWeight: 600 }}>{kpi.sub}</div>
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', padding: '16px 18px' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.38)', marginBottom: '8px', letterSpacing: '0' }}>{kpi.label}</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>{kpi.value}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>{kpi.sub}</div>
                   </div>
                 ))}
               </div>
 
-              {/* ── MAIN BODY: Engine + Resource ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px' }}>
+              {/* ── MAIN BODY ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '10px' }}>
 
-                {/* Engine Overview */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '28px 28px 24px', position: 'relative', overflow: 'hidden' }}>
-                  {/* colored left rail */}
-                  <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '3px', background: `linear-gradient(180deg, transparent, ${activeEngine === 'jules' ? '#ff416c' : '#9b4dff'}, transparent)`, borderRadius: '4px' }} />
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                {/* Engine Status */}
+                <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '22px 24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                     <div>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em', marginBottom: '6px' }}>ORCHESTRATION ENGINE</div>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}>
-                        {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase()}
-                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginLeft: '8px' }}>→</span>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#9b4dff', marginLeft: '6px' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</span>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.35)', marginBottom: '6px' }}>Active Pipeline</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span>{activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector}</span>
+                        <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.25)', fontWeight: 400 }}>→</span>
+                        <span style={{ color: 'rgba(155,77,255,0.9)' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-Core' : activeEngine}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,255,136,0.07)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px', padding: '8px 14px' }}>
-                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} className="pulse-slow" />
-                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.06em' }}>LIVE</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: '6px' }}>
+                      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
+                      <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#22c55e' }}>Live</span>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                     {[
                       { label: 'Bridge Mode', value: activeEngine === 'jules' ? 'Cloud' : 'Local', ok: true },
                       { label: 'Session Type', value: activeEngine === 'jules' ? 'Cloud Context' : 'Heartbeat', ok: true },
-                      { label: 'Sync Latency', value: activeEngine === 'jules' ? '450ms' : '< 1ms', ok: activeEngine !== 'jules' },
-                      { label: 'Skill Engine', value: `${skills.length} skills`, ok: skills.length > 0 },
-                      { label: 'MCP Servers', value: `${mcpServers.filter(s => s.status === 'online').length} online`, ok: mcpServers.some(s => s.status === 'online') },
+                      { label: 'Latency', value: activeEngine === 'jules' ? '~450ms' : '< 1ms', ok: activeEngine !== 'jules' },
+                      { label: 'Skills', value: `${skills.length} loaded`, ok: skills.length > 0 },
+                      { label: 'MCP Servers', value: `${mcpServers.filter(s => s.status === 'online').length} / ${mcpServers.length} online`, ok: mcpServers.some(s => s.status === 'online') },
                       { label: 'Snapshot', value: lastSnapshot ? 'Loaded' : 'None', ok: !!lastSnapshot },
                     ].map((item, i) => (
-                      <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', marginBottom: '6px' }}>{item.label}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: item.ok ? '#00ff88' : '#ff6b6b', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: item.ok ? '#fff' : '#ff9999' }}>{item.value}</span>
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '11px 14px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 500, color: 'rgba(255,255,255,0.3)', marginBottom: '5px' }}>{item.label}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: item.ok ? '#22c55e' : '#f87171', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: item.ok ? 'rgba(255,255,255,0.85)' : '#fca5a5' }}>{item.value}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Resource Telemetry */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>RESOURCE TELEMETRY</div>
+                {/* Resources */}
+                <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.35)' }}>Resources</div>
 
                   {[
-                    { label: 'CPU', value: Number(usage.cpu) || 0, color: '#4facfe', unit: '%' },
-                    { label: 'RAM', value: Number(usage.ram) || 0, color: '#9b4dff', unit: '%' },
-                    { label: 'SKILL HIT RATE', value: skillEfficiency || 0, color: '#00ff88', unit: '%' },
-                  ].map((metric, i) => (
+                    { label: 'CPU', value: Number(usage.cpu) || 0, color: '#60a5fa' },
+                    { label: 'RAM', value: Number(usage.ram) || 0, color: '#a78bfa' },
+                    { label: 'Skill hit rate', value: skillEfficiency || 0, color: '#22c55e' },
+                  ].map((m, i) => (
                     <div key={i}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>{metric.label}</span>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 900, color: metric.color }}>{metric.value}{metric.unit}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>{m.label}</span>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{m.value}%</span>
                       </div>
-                      <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${Math.min(metric.value, 100)}%`, background: metric.color, borderRadius: '99px', boxShadow: `0 0 8px ${metric.color}88`, transition: 'width 0.8s ease' }} />
+                      <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(m.value, 100)}%`, background: m.color, borderRadius: '99px', transition: 'width 0.8s ease' }} />
                       </div>
                     </div>
                   ))}
 
-                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '2px 0' }} />
+                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '2px 0' }} />
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     {[
-                      { label: 'PLATFORM', value: stats.platform || '—' },
-                      { label: 'THREADS', value: String(usage.threads || '—') },
-                      { label: 'DIRS', value: stats.dirCount || '—' },
-                      { label: 'LOAD', value: usage.load ? `${usage.load}` : '—' },
+                      { label: 'Platform', value: stats.platform || '—' },
+                      { label: 'Threads', value: String(usage.threads || '—') },
+                      { label: 'Dirs', value: stats.dirCount || '—' },
+                      { label: 'Load', value: usage.load ? `${usage.load}` : '—' },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '9px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ fontSize: '0.58rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', marginBottom: '3px' }}>{s.label}</div>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fff' }}>{s.value}</div>
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '7px', padding: '9px 11px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.28)', marginBottom: '2px' }}>{s.label}</div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{s.value}</div>
                       </div>
                     ))}
                   </div>
 
-                  <button onClick={fetchStats} style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '10px', color: 'var(--primary)', fontWeight: 800, fontSize: '0.74rem', letterSpacing: '0.06em', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.22)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.1)'; }}>
-                    <RefreshCw size={12} /> RESCAN SYSTEM
+                  <button onClick={fetchStats} style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: 'rgba(255,255,255,0.4)', fontWeight: 500, fontSize: '0.7rem', cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.3)'; (e.currentTarget as HTMLElement).style.color = 'rgba(155,77,255,0.9)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}>
+                    <RefreshCw size={11} /> Rescan system
                   </button>
                 </div>
               </div>
 
-              {/* ── BOTTOM ROW: MCP Services + Activity Log ── */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              {/* ── BOTTOM ROW ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
 
-                {/* MCP Services */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '22px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>LINKED SERVICES</span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#00ff88' }}>{mcpServers.filter(s => s.status === 'online').length} / {mcpServers.length} ONLINE</span>
+                {/* Linked Services */}
+                <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.35)' }}>Linked Services</span>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: mcpServers.filter(s => s.status === 'online').length > 0 ? '#22c55e' : 'rgba(255,255,255,0.3)' }}>
+                      {mcpServers.filter(s => s.status === 'online').length}/{mcpServers.length} online
+                    </span>
                   </div>
                   {mcpServers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(255,255,255,0.2)', fontSize: '0.78rem', fontWeight: 600 }}>No services linked yet</div>
+                    <div style={{ padding: '20px 0', color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', textAlign: 'center' }}>No services linked</div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '160px', overflowY: 'auto' }}>
                       {mcpServers.slice(0, 8).map((srv: any, i: number) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: srv.status === 'online' ? '#00ff88' : '#ff6b6b', flexShrink: 0, boxShadow: srv.status === 'online' ? '0 0 6px #00ff88' : 'none' }} />
-                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{srv.name.replace(/^[●○✗\s]+/, '')}</span>
-                          <span style={{ fontSize: '0.6rem', fontWeight: 800, color: srv.status === 'online' ? '#00ff88' : '#ff6b6b', letterSpacing: '0.05em', flexShrink: 0 }}>{srv.status.toUpperCase()}</span>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '7px' }}>
+                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: srv.status === 'online' ? '#22c55e' : '#f87171', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(255,255,255,0.65)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{srv.name.replace(/^[●○✗\s]+/, '')}</span>
+                          <span style={{ fontSize: '0.58rem', fontWeight: 600, color: srv.status === 'online' ? '#22c55e' : '#f87171', flexShrink: 0 }}>{srv.status}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <button onClick={() => setActiveTab('settings')} style={{ marginTop: '14px', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.35)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}>
-                    MANAGE IN SYSTEM →
+                  <button onClick={() => setActiveTab('settings')} style={{ marginTop: '12px', width: '100%', padding: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.25)'; (e.currentTarget as HTMLElement).style.color = 'rgba(155,77,255,0.8)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}>
+                    Manage in System →
                   </button>
                 </div>
 
-                {/* Activity Feed */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '22px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>SYSTEM ACTIVITY</span>
-                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'rgba(255,255,255,0.25)' }}>{logs.length} events</span>
+                {/* Activity */}
+                <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 500, color: 'rgba(255,255,255,0.35)' }}>Recent Activity</span>
+                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>{logs.length} events</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '160px', overflowY: 'auto' }}>
                     {[...logs].reverse().map((log: any) => {
-                      const typeColor: Record<string, string> = { ag: '#9b4dff', system: '#4facfe', error: '#ff6b6b', success: '#00ff88' };
-                      const dot = typeColor[log.type] || 'rgba(255,255,255,0.3)';
+                      const c: Record<string, string> = { ag: 'rgba(155,77,255,0.8)', system: 'rgba(96,165,250,0.8)', error: '#f87171', success: '#22c55e' };
                       return (
-                        <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '7px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: dot, flexShrink: 0, marginTop: '4px' }} />
-                          <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.45, fontFamily: 'var(--font-mono)' }}>{log.msg}</span>
+                        <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', padding: '6px 8px', background: 'rgba(255,255,255,0.015)', borderRadius: '6px' }}>
+                          <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: c[log.type] || 'rgba(255,255,255,0.2)', flexShrink: 0, marginTop: '5px' }} />
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.45, fontFamily: 'var(--font-mono)' }}>{log.msg}</span>
                         </div>
                       );
                     })}
                   </div>
-                  <button onClick={() => setActiveTab('command center')} style={{ marginTop: '14px', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(79,172,254,0.35)'; (e.currentTarget as HTMLElement).style.color = '#4facfe'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}>
-                    OPEN COMMAND CENTER →
+                  <button onClick={() => setActiveTab('command center')} style={{ marginTop: '12px', width: '100%', padding: '8px', background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(96,165,250,0.25)'; (e.currentTarget as HTMLElement).style.color = 'rgba(96,165,250,0.8)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}>
+                    Open Command Center →
                   </button>
                 </div>
               </div>
