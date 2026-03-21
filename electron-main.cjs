@@ -1088,7 +1088,7 @@ Respond with ONLY valid JSON matching exactly:
     req.write(JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: `User request: ${command}` }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
     }));
     let body = '';
     req.on('response', res => {
@@ -1187,10 +1187,10 @@ State exact files, exact existing code to find, exact replacement code. Be surgi
       if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
       const raw = await new Promise((resolve, reject) => {
         const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
-          path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+          path: `/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}` });
         req.setHeader('Content-Type', 'application/json');
         req.write(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `${brainSystemPrompt}\n\nPhase: ${prompt}` }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } }));
+          generationConfig: { temperature: 0.3, maxOutputTokens: 16000 } }));
         let body = ''; req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); }); req.on('error', reject); req.end();
       });
       const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
@@ -1240,10 +1240,10 @@ State exact files, exact existing code to find, exact replacement code. Be surgi
       if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
       const raw = await new Promise((resolve, reject) => {
         const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
-          path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+          path: `/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}` });
         req.setHeader('Content-Type', 'application/json');
         req.write(JSON.stringify({ contents: [{ role: 'user', parts: [{ text: `${brainSystemPrompt}\n\nPhase: ${prompt}` }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } }));
+          generationConfig: { temperature: 0.3, maxOutputTokens: 16000 } }));
         let body = ''; req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); }); req.on('error', reject); req.end();
       });
       const p = JSON.parse(raw); if (p.error) throw new Error(p.error.message);
@@ -2803,7 +2803,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   let generatedContent = '';
   try {
     const https = require('https');
-    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } } });
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 8192 } });
     const data = await new Promise((resolve, reject) => {
       const req = https.request({ hostname: 'generativelanguage.googleapis.com', path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`, method: 'POST', headers: { 'Content-Type': 'application/json' } }, res => {
         let raw = '';
