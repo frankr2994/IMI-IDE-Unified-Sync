@@ -1906,7 +1906,7 @@ const App = () => {
                           {data.tags?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>{data.tags.slice(0,6).map((t: string) => <span key={t} style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{t}</span>)}</div>}
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button onClick={() => (ipc as any).send('open-external-url', data.hfUrl)} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>🤗 HF ↗</button>
-                            <button disabled={isPulling || isInstalled} onClick={async () => { if (isPulling || isInstalled) return; const ok = await checkHardwareBeforePull(data.sizeLabel || ''); if (!ok) return; setOllamaPulling(data.ollamaCmd); const r = await (ipc as any).invoke('ollama-pull', data.ollamaCmd); setOllamaPulling(''); if (r.success) { loadOllamaModels(); } }} style={{ flex: 1, height: '34px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(155,77,255,0.2)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.4)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>{isInstalled ? '✅ Installed' : isPulling ? '⏳ Pulling…' : '⬇ Pull Model'}</button>
+                            <button disabled={isPulling || isInstalled} onClick={async () => { if (isPulling || isInstalled) return; startPullModel(data); }} style={{ flex: 1, height: '34px', background: isInstalled ? 'rgba(0,255,136,0.1)' : isPulling ? 'rgba(155,77,255,0.2)' : 'rgba(155,77,255,0.15)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.3)' : 'rgba(155,77,255,0.4)'}`, borderRadius: '8px', color: isInstalled ? '#00ff88' : 'var(--primary)', cursor: isInstalled ? 'default' : 'pointer', fontSize: '0.7rem', fontWeight: 700 }}>{isInstalled ? '✅ Installed' : isPulling ? '⏳ Pulling…' : '⬇ Pull Model'}</button>
                             <button onClick={() => { setHfUrlPreview(null); setOllamaSearch(''); }} style={{ height: '34px', padding: '0 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>✕</button>
                           </div>
                         </div>
@@ -2899,6 +2899,43 @@ const App = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── Quant Picker Modal ── */}
+      {quantPicker && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setQuantPicker(null)}>
+          <div style={{ background: 'rgba(18,18,28,0.98)', border: '1px solid rgba(155,77,255,0.4)', borderRadius: '20px', padding: '28px', width: '420px', maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontWeight: 900, fontSize: '1rem', marginBottom: '4px' }}>Choose Quantization</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '20px' }}>{quantPicker.model.name} · Pick the size that fits your GPU ({hardwareInfo?.gpuName || 'GPU'} {hardwareInfo ? `${(hardwareInfo.vramMB/1024).toFixed(0)}GB VRAM` : ''})</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {quantPicker.list.map((f: any, i: number) => {
+                const sizeGB = f.sizeBytes / 1e9;
+                const fitsGPU = hardwareInfo ? sizeGB <= hardwareInfo.vramMB / 1024 : true;
+                const isRec = i === Math.floor(quantPicker.list.length * 0.4); // recommend mid-low quant
+                return (
+                  <button key={f.filename} onClick={async () => {
+                    setQuantPicker(null);
+                    const tag = f.quant.toLowerCase();
+                    const cmd = `${quantPicker.model.ollamaCmd}:${tag}`;
+                    const ok = await checkHardwareBeforePull(f.size);
+                    if (!ok) return;
+                    setOllamaPulling(cmd);
+                    await (ipc as any).invoke('ollama-pull', cmd);
+                    setOllamaPulling('');
+                    loadOllamaModels();
+                  }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: isRec ? 'rgba(155,77,255,0.12)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isRec ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: 'white', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.82rem' }}>{f.quant} <span style={{ fontWeight: 400, color: 'var(--text-dim)', fontSize: '0.72rem' }}>· {f.size}</span></div>
+                      <div style={{ fontSize: '0.62rem', color: fitsGPU ? '#00ff88' : '#ff416c', marginTop: '2px' }}>{fitsGPU ? '✅ Fits your GPU' : '⚠️ May not fit in VRAM'}</div>
+                    </div>
+                    {isRec && <span style={{ fontSize: '0.58rem', background: 'rgba(155,77,255,0.2)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '5px', fontWeight: 900 }}>RECOMMENDED</span>}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={() => setQuantPicker(null)} style={{ marginTop: '16px', width: '100%', height: '36px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.75rem' }}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
