@@ -523,6 +523,7 @@ const App = () => {
     { id: 'lib_npmlint',      name: 'npm run lint',         pattern: 'npm.*lint',                 response: '', category: '💻 Dev — npm', desc: 'Runs linter', icon: '🔍', type: 'passthrough' },
     // 💻 Dev — Editors & Deploy
     { id: 'lib_vscode',       name: 'Open VS Code',         pattern: 'open vscode',               response: '', category: '💻 Dev — Tools', desc: 'Launches VS Code', icon: '💙', type: 'passthrough' },
+    { id: 'lib_github_profile', name: 'Open My GitHub',      pattern: 'open.*github|go.*github|my github', response: '', category: '💻 Dev — Tools', desc: 'Opens your GitHub profile', icon: '🐙', type: 'browser', url: 'https://github.com/creepybunny99' },
     { id: 'lib_vercel',       name: 'Open Vercel',          pattern: 'open vercel',               response: '', category: '💻 Dev — Tools', desc: 'Opens Vercel dashboard', icon: '▲', type: 'browser' },
     { id: 'lib_netlify',      name: 'Open Netlify',         pattern: 'open netlify',              response: '', category: '💻 Dev — Tools', desc: 'Opens Netlify dashboard', icon: '🟢', type: 'browser' },
     { id: 'lib_supabase',     name: 'Open Supabase',        pattern: 'open supabase',             response: '', category: '💻 Dev — Tools', desc: 'Opens Supabase dashboard', icon: '⚡', type: 'browser' },
