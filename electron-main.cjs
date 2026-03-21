@@ -1169,19 +1169,55 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
 });
 
 // Execute a single plan phase by re-using the main stream handler
-ipcMain.on('execute-plan-phase', (event, payload) => {
-  ipcMain.emit('execute-command-stream', event, {
-    command: payload.prompt,
-    director: payload.director,
-    engine: payload.engine,
-    messageId: payload.messageId,
-    history: [],
-    isPlanPhase: true,   // ← skip all routing, go straight to Brain → IMI-CORE
-  });
+// ── PLAN PHASE EXECUTOR — completely isolated, never touches execute-command-stream ──
+ipcMain.on('execute-plan-phase', async (event, payload) => {
+  const { prompt, messageId, engine = 'imi-core' } = payload;
+  if (!GEMINI_KEY) { event.sender.send('command-error', { messageId, error: 'Gemini key missing.' }); return; }
+
+  console.log(`[ROUTE] → Plan phase executor → Brain(gemini-2.5-flash) → ${engine}`);
+
+  // Step 1: Call Gemini brain (non-streaming, thinkingBudget:0) to get the tech spec
+  const brainPrompt = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop app built with Electron + React/TypeScript/Vite.
+Key files: electron-main.cjs (backend), src/App.tsx (UI), src/index.css (styles).
+Generate a precise TECHNICAL SPECIFICATION for IMI-CORE to implement this phase.
+State exact files, exact code to find, exact code to replace. Be surgical and specific.
+
+Phase instruction: ${prompt}`;
+
+  let brainText = '';
+  try {
+    const raw = await new Promise((resolve, reject) => {
+      const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+      req.setHeader('Content-Type', 'application/json');
+      req.write(JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: brainPrompt }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } }
+      }));
+      let body = '';
+      req.on('response', res => { res.on('data', d => body += d); res.on('end', () => resolve(body)); });
+      req.on('error', reject);
+      req.end();
+    });
+    const parsed = JSON.parse(raw);
+    if (parsed.error) throw new Error(parsed.error.message);
+    brainText = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  } catch(e) {
+    event.sender.send('command-error', { messageId, error: `Brain failed: ${e.message}` }); return;
+  }
+
+  if (!brainText.trim()) { event.sender.send('command-error', { messageId, error: 'Brain returned empty response.' }); return; }
+
+  // Stream brain text to UI so user sees the spec
+  event.sender.send('command-chunk', { messageId, chunk: brainText });
+  event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to IMI-CORE` });
+
+  // Step 2: Pass spec to IMI-CORE to apply the actual code changes
+  await triggerCoderImplementation(event, engine, brainText, messageId);
 });
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
-  const { command, director, messageId, imageBase64, imageMimeType, history = [], isPlanPhase = false } = payload;
+  const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
   const cmdLower = command.toLowerCase().trim();
   console.log(`[CMD] director=${director} | "${command.slice(0, 120)}${command.length > 120 ? '…' : ''}"`);
 
