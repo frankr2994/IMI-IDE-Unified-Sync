@@ -1204,6 +1204,129 @@ ipcMain.on('execute-plan-phase', (event, payload) => {
 });
 
 
+// ══════════════════════════════════════════════════════════════════════════
+// 🛠 BRAIN TOOL USE — gives Gemini real file-reading tools before patching
+// This is the core of "think like Claude": read first, then write.
+// ══════════════════════════════════════════════════════════════════════════
+const BRAIN_TOOLS_SCHEMA = {
+  functionDeclarations: [
+    {
+      name: 'read_file',
+      description: 'Read a file\'s actual contents. ALWAYS call this before writing any patch to a file — you must see the real code before you can edit it accurately.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'File path relative to project root (e.g. src/App.tsx) or absolute' },
+          start_line: { type: 'integer', description: 'Optional: first line to read (1-indexed)' },
+          end_line: { type: 'integer', description: 'Optional: last line to read (1-indexed)' }
+        },
+        required: ['path']
+      }
+    },
+    {
+      name: 'search_in_file',
+      description: 'Find exact text in a file and see surrounding context. Use this to locate the precise search string for your patch before writing it.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'File path' },
+          query: { type: 'string', description: 'Exact text to find' }
+        },
+        required: ['path', 'query']
+      }
+    },
+    {
+      name: 'list_project_files',
+      description: 'List all source files in the current project. Use when you need to know what files exist.',
+      parameters: { type: 'object', properties: {} }
+    }
+  ]
+};
+
+function executeBrainTool(toolName, args) {
+  try {
+    if (toolName === 'read_file') {
+      const filePath = path.isAbsolute(args.path) ? args.path : path.join(currentProjectRoot || os.homedir(), args.path);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n');
+      const start = args.start_line ? Math.max(0, args.start_line - 1) : 0;
+      const end = args.end_line ? Math.min(lines.length, args.end_line) : Math.min(lines.length, start + 300);
+      return lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join('\n')
+        + (end < lines.length ? `\n... (${lines.length - end} more lines — call again with start_line=${end + 1})` : '');
+    }
+    if (toolName === 'search_in_file') {
+      const filePath = path.isAbsolute(args.path) ? args.path : path.join(currentProjectRoot || os.homedir(), args.path);
+      const lines = fs.readFileSync(filePath, 'utf-8').split('\n');
+      const hits = [];
+      lines.forEach((line, i) => {
+        if (line.includes(args.query)) {
+          const s = Math.max(0, i - 2), e = Math.min(lines.length - 1, i + 2);
+          hits.push(`\n--- MATCH at line ${i + 1} ---`);
+          for (let j = s; j <= e; j++) hits.push(`${j + 1}${j === i ? ' >' : '  '} ${lines[j]}`);
+        }
+      });
+      return hits.length > 0 ? hits.join('\n') : `"${args.query}" — NOT FOUND in ${args.path}. Search for a different string.`;
+    }
+    if (toolName === 'list_project_files') {
+      const walk = (dir, depth = 0) => {
+        if (depth > 3) return [];
+        return fs.readdirSync(dir).flatMap(item => {
+          if (['node_modules','.git','dist','dist-electron','.imi'].includes(item)) return [];
+          const full = path.join(dir, item);
+          try {
+            return fs.statSync(full).isDirectory()
+              ? [`${item}/`, ...walk(full, depth + 1).map(f => '  ' + f)]
+              : [item];
+          } catch { return []; }
+        });
+      };
+      return walk(currentProjectRoot || process.cwd()).join('\n');
+    }
+    return 'Unknown tool: ' + toolName;
+  } catch (e) { return `Tool error: ${e.message}`; }
+}
+
+async function callGeminiWithTools(systemPrompt, userCommand, geminiKey, model, maxTokens, onToolCall) {
+  const contents = [{ role: 'user', parts: [{ text: systemPrompt + '\n\nUser request: ' + userCommand }] }];
+  let iterations = 0;
+  const MAX_ITER = 8;
+  while (iterations++ < MAX_ITER) {
+    const body = JSON.stringify({
+      contents,
+      tools: [BRAIN_TOOLS_SCHEMA],
+      generationConfig: { temperature: 0.15, maxOutputTokens: maxTokens }
+    });
+    const rawResp = await new Promise((resolve, reject) => {
+      const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/${model}:generateContent?key=${geminiKey}` });
+      req.setHeader('Content-Type', 'application/json');
+      let buf = '';
+      req.on('response', res => { res.on('data', d => buf += d); res.on('end', () => resolve(buf)); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    const parsed = JSON.parse(rawResp);
+    if (parsed.error) throw new Error(parsed.error.message);
+    const parts = parsed.candidates?.[0]?.content?.parts || [];
+    const fnCalls = parts.filter(p => p.functionCall);
+    const textParts = parts.filter(p => p.text);
+    if (fnCalls.length === 0) return textParts.map(p => p.text).join('');
+    // Execute tools
+    contents.push({ role: 'model', parts });
+    const toolResults = [];
+    for (const p of fnCalls) {
+      const { name, args } = p.functionCall;
+      if (onToolCall) onToolCall(name, args);
+      const result = executeBrainTool(name, args || {});
+      toolResults.push({ functionResponse: { name, response: { result } } });
+    }
+    contents.push({ role: 'user', parts: toolResults });
+  }
+  throw new Error('Brain tool loop exceeded max iterations');
+}
+// ══════════════════════════════════════════════════════════════════════════
+
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
   const cmdLower = command.toLowerCase().trim();
@@ -1769,6 +1892,42 @@ User: `;
     const _isAboutDesktopFile = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
     const isCodingAction = ((_hasAction && _hasIMITarget) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isAboutDesktopFile;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+
+    // ── 🛠 TOOL-USE BRAIN — for coding actions, read files first ──────────────
+    if (isCodingAction) {
+      console.log(`[ROUTE] → Gemini tool-use loop (reads real files before patching)`);
+      event.sender.send('command-chunk', { messageId, chunk: '🧠 Analyzing project...\n' });
+      try {
+        const brainResult = await callGeminiWithTools(
+          activePrefix, command, GEMINI_KEY, BRAIN_MODEL, BRAIN_MAX_TOKENS,
+          (toolName, args) => {
+            const label = toolName === 'read_file'       ? `🔍 Reading \`${args.path}\`...` :
+                          toolName === 'search_in_file'  ? `🔍 Searching \`${args.path}\` for "${args.query}"...` :
+                          '🗂 Listing project files...';
+            event.sender.send('command-chunk', { messageId, chunk: '\n' + label + '\n' });
+          }
+        );
+        if (!brainResult.trim()) {
+          event.sender.send('command-error', { messageId, error: 'Brain returned empty response.' }); return;
+        }
+        event.sender.send('command-chunk', { messageId, chunk: '\n' + brainResult });
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(brainResult.length / 4);
+        saveGlobalState();
+        if (payload.engine && payload.engine !== 'gemini' && payload.engine !== director) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()}` });
+          setTimeout(() => triggerCoderImplementation(event, payload.engine, brainResult, messageId), 800);
+        } else {
+          await triggerCoderImplementation(event, payload.engine || 'imi-core', brainResult, messageId);
+          event.sender.send('command-end', { messageId, code: 0 });
+        }
+      } catch(e) {
+        event.sender.send('command-error', { messageId, error: `Brain tool-use failed: ${e.message}` });
+      }
+      triggerGitSync();
+      return;
+    }
+    // ── Non-coding actions: use fast streaming as before ──────────────────────
+
     console.log(`[ROUTE] → Gemini stream (isCodingAction=${isCodingAction})`);
     const hostname = 'generativelanguage.googleapis.com';
     // Use user-configured model (from System > Brain Configuration)
