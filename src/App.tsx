@@ -1348,7 +1348,7 @@ const App = () => {
           // Regular code block — show in scrollable pre
           nodes.push(
             <pre key={nodeKey++} style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '10px 14px', overflowX: 'auto', overflowY: 'auto', maxHeight: '240px', fontSize: '0.72rem', fontFamily: 'monospace', lineHeight: 1.5, color: '#e2e8f0', margin: '6px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {seg.lang && <span style={{ display: 'block', color: 'rgba(155,77,255,0.6)', fontSize: '0.58rem', marginBottom: '6px', fontFamily: 'sans-serif', fontStyle: 'italic' }}>{seg.lang}</span>}
+              {seg.lang && <span style={{ display: 'block', color: 'rgba(200,180,255,0.8)', fontSize: '0.7rem', marginBottom: '6px', fontFamily: 'sans-serif', fontStyle: 'italic' }}>{seg.lang}</span>}
               {seg.content.trim()}
             </pre>
           );
@@ -1377,14 +1377,14 @@ const App = () => {
             </div>
             <div>
               <div style={{ fontSize: '0.88rem', fontWeight: 800, letterSpacing: '-0.01em', color: '#fff', lineHeight: 1 }}>IMI</div>
-              <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.14em', marginTop: '3px', fontWeight: 600 }}>SYNC · v1.0.4</div>
+              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', marginTop: '3px', fontWeight: 600 }}>SYNC · v1.0.4</div>
             </div>
           </div>
         </div>
 
         {/* Nav */}
         <div style={{ padding: '14px 0 0', flex: 1 }}>
-          <div style={{ padding: '0 20px 8px', fontSize: '0.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.14em' }}>MENU</div>
+          <div style={{ padding: '0 20px 8px', fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>MENU</div>
           {([
             { id: 'dashboard',       label: 'Dashboard',       icon: <Activity size={14}/> },
             { id: 'command center',  label: 'Command Center',  icon: <TerminalIcon size={14}/> },
@@ -1415,7 +1415,7 @@ const App = () => {
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'}
           >
             <Database size={11} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {stats.projectRoot ? stats.projectRoot.split(/[\\/]/).slice(-2).join('/') : 'Set folder →'}
             </span>
           </div>
@@ -1425,7 +1425,7 @@ const App = () => {
       <div className="main-content">
         <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
-            <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.14em', marginBottom: '5px' }}>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', marginBottom: '5px' }}>
               {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : 'SYSTEM'}
             </div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: '#fff' }}>
@@ -1433,7 +1433,7 @@ const App = () => {
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
               {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector}
               <span style={{ margin: '0 5px', opacity: 0.4 }}>→</span>
               {activeEngine === 'imi-core' ? 'IMI Core' : activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}
@@ -1692,7 +1692,7 @@ const App = () => {
                                       <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontSize: '0.78rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
                                         <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
-                                        {phase.files?.length > 0 && <div style={{ fontSize: '0.55rem', color: 'rgba(155,77,255,0.7)', marginTop: '4px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                        {phase.files?.length > 0 && <div style={{ fontSize: '0.72rem', color: 'rgba(200,180,255,0.85)', marginTop: '4px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
                                       </div>
                                       {!isDone && !isCurrent && ap && !ap.running && !isEditing && (
                                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
@@ -1757,7 +1757,7 @@ const App = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               {m.isStreaming && <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                 <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
-                                <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>streaming</span>
+                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>streaming</span>
                               </div>}
                               {!m.isStreaming && m.text && (
                                 <button onClick={() => { navigator.clipboard.writeText(m.text); }} title="Copy message" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', opacity: 0.5, padding: '2px 4px', borderRadius: '4px', display: 'flex', alignItems: 'center', transition: 'opacity 0.15s' }} onMouseEnter={e => (e.currentTarget.style.opacity='1')} onMouseLeave={e => (e.currentTarget.style.opacity='0.5')}>
@@ -2127,7 +2127,7 @@ const App = () => {
                                    <div style={{ flex: 1, minWidth: 0 }}>
                                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: isDone ? '#00ff88' : 'white' }}>Phase {idx + 1}: {phase.name}</div>
                                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px', lineHeight: 1.4 }}>{phase.description}</div>
-                                     {phase.files?.length > 0 && <div style={{ fontSize: '0.52rem', color: 'rgba(155,77,255,0.7)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
+                                     {phase.files?.length > 0 && <div style={{ fontSize: '0.72rem', color: 'rgba(200,180,255,0.85)', marginTop: '3px', fontFamily: 'monospace' }}>{phase.files.join(' · ')}</div>}
                                    </div>
                                    {!isDone && !isCurrent && !ap.running && !isEditing && (
                                      <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
