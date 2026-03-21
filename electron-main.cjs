@@ -1112,10 +1112,14 @@ Respond with ONLY valid JSON matching exactly:
             if (!parsed) throw new Error('JSON truncated and could not be repaired');
           }
           resolve(parsed);
-        } catch(e) { reject(new Error('Plan parse failed: ' + e.message + '\nRaw: ' + body.slice(0, 300))); }
+        } catch(e) {
+          const msg = 'Plan parse failed: ' + (e.message || e) + '\nRaw: ' + body.slice(0, 300);
+          console.error('[generate-plan]', msg);
+          reject(msg); // reject with string so Electron serializes it properly
+        }
       });
     });
-    req.on('error', reject);
+    req.on('error', e => { console.error('[generate-plan] request error:', e.message); reject(e.message); });
     req.end();
   });
 });
@@ -1136,16 +1140,26 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(body);
-          if (parsed.error) throw new Error(parsed.error.message || 'Gemini image generation error');
-          // Image data is in inlineData parts
+          if (parsed.error) {
+            const msg = parsed.error.message || 'Gemini image generation error';
+            console.error('[generate-ui-preview] API error:', msg);
+            reject(msg); return;
+          }
           const parts = parsed?.candidates?.[0]?.content?.parts || [];
           const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
-          if (!imagePart) throw new Error('No image returned — try a more specific UI description');
+          if (!imagePart) {
+            const msg = 'No image returned — try a more specific UI description';
+            console.error('[generate-ui-preview]', msg, '| parts:', JSON.stringify(parts).slice(0, 200));
+            reject(msg); return;
+          }
           resolve({ base64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType });
-        } catch(e) { reject(e); }
+        } catch(e) {
+          console.error('[generate-ui-preview] parse error:', e.message);
+          reject(e.message || String(e));
+        }
       });
     });
-    req.on('error', reject);
+    req.on('error', e => { console.error('[generate-ui-preview] request error:', e.message); reject(e.message); });
     req.write(JSON.stringify({
       contents: [{ parts: [{ text: imagePrompt }] }],
       generationConfig: { responseModalities: ['TEXT', 'IMAGE'] }
@@ -1500,6 +1514,7 @@ User message: `;
       || (/\b(desktop|my desktop|folder)\b/i.test(command) && /\b(edit|modify|update|fix|improve|rewrite)\b/i.test(command) && /\b(file|\.)\b/i.test(command))
     );
     if (isEditOp) {
+      console.log(`[ROUTE] → triggerFileEdit`);
       triggerFileEdit(event, command, messageId);
       return;
     }
@@ -1530,6 +1545,7 @@ User message: `;
     const needsVision = /\b(look at|see|view|check|analyze|read)\b.{0,30}\b(screen|desktop|window|monitor)\b/i.test(command)
       || /\b(screen|desktop|window|monitor)\b.{0,30}\b(look|see|view|check|analyze|read)\b/i.test(command);
     if (needsVision) {
+      console.log(`[ROUTE] → triggerDesktopVision`);
       triggerDesktopVision(event, command, messageId);
       return;
     }
@@ -1541,6 +1557,7 @@ User message: `;
     ) || /\bagent mode\b/i.test(command);
 
     if (isAgentTask && payload.engine === 'imi-core') {
+      console.log(`[ROUTE] → runAgentLoop`);
       runAgentLoop(event, command, currentProjectRoot, messageId);
       return;
     }
@@ -1560,6 +1577,7 @@ User message: `;
     );
 
     if (needsAutomation) {
+      console.log(`[ROUTE] → triggerBrowserAgent (automation)`);
       triggerBrowserAgent(event, command, messageId);
       return;
     }

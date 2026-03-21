@@ -967,6 +967,17 @@ const App = () => {
     const isDesktopTask = /\b(desktop|my desktop)\b/i.test(chatInput) && /\b(create|make|build|write|generate|folder|file|directory|html|script|game|app)\b/i.test(chatInput);
     const isFileTask   = /\b(create|make|write|generate)\b.{0,40}\b(html|python|javascript|script|file|folder|directory)\b/i.test(chatInput);
 
+    // If Plan Mode is on but this is a desktop/file task, show a brief notice
+    if (planMode && (isDesktopTask || isFileTask)) {
+      setMessages(prev => [...prev, {
+        id: Date.now() - 1,
+        type: 'ai' as const,
+        director: 'gemini',
+        text: '📋 Plan Mode is on — but running this directly (desktop/file tasks don\'t need a plan).',
+        isStreaming: false,
+      } as any]);
+    }
+
     if (planMode && !isDesktopTask && !isFileTask) {
       const userText = chatInput;
       const messageId = Date.now();
