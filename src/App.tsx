@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './App.css';
 import { 
   Zap, 
   Cpu, 
@@ -388,7 +389,8 @@ const App = () => {
       const lines = mcpData.data.split('\n').filter((l: string) => 
         (l.includes('●') || l.includes('○') || l.includes('✗') || l.includes(':')) &&
         !l.includes('automated checks disabled') 
-      );
+        </div>
+  );
       setMcpServers(lines.map((l: string) => ({ 
         name: l.trim(), 
         status: l.includes('●') ? 'online' : 'offline' 
@@ -729,7 +731,8 @@ const App = () => {
       if (status !== 'Idle') addLog('system', `Coder: ${status}`);
     });
 
-    return () => {
+    return (
+    <div className="App">) => {
       clearInterval(statsInterval);
       clearInterval(telemetryInterval);
       ipc.removeAllListeners('command-chunk');
