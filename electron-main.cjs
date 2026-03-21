@@ -1519,6 +1519,7 @@ User message: `;
 
   // ── Local Ollama Brain (ollama:<model>) ──────────────────────────────────
   if (director && director.startsWith('ollama:')) {
+    await ensureOllamaRunning();
     const ollamaModel = director.slice(7); // strip "ollama:"
     // Detect model size to set appropriate timeout & warn user
     const modelSizeGB = (() => { try { const out = require('child_process').execSync('ollama list', { timeout: 3000 }).toString(); const line = out.split('\n').find(l => l.toLowerCase().includes(ollamaModel.split(':')[0].toLowerCase())); if (!line) return 0; const m = line.match(/([\d.]+)\s*GB/i); return m ? parseFloat(m[1]) : 0; } catch { return 0; } })();
@@ -2989,6 +2990,7 @@ ipcMain.handle('check-dep', async (_e, dep) => {
 
 ipcMain.handle('ollama-list', async () => {
   try {
+    await ensureOllamaRunning();
     const raw = await new Promise((resolve, reject) => exec('ollama list', { timeout: 5000 }, (err, stdout) => err ? reject(err) : resolve(stdout.trim())));
     const lines = String(raw).split('\n').slice(1).filter(Boolean);
     return { success: true, models: lines.map(l => {
@@ -3022,9 +3024,45 @@ ipcMain.handle('get-hardware-info', async () => {
   return { vramMB, gpuName, freeRamMB, totalRamMB };
 });
 
+// ── Ollama auto-start ────────────────────────────────────────────────────────
+let ollamaServeProcess = null;
+
+const pingOllama = () => new Promise(resolve => {
+  const req = net.request({ method: 'GET', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/' });
+  req.on('response', () => resolve(true));
+  req.on('error', () => resolve(false));
+  setTimeout(() => resolve(false), 2000);
+  req.end();
+});
+
+const ensureOllamaRunning = async () => {
+  if (await pingOllama()) return true; // already up
+  // Not running — try to start it
+  try {
+    execSync('where ollama', { timeout: 2000 });
+  } catch { return false; } // Ollama not installed
+  ollamaServeProcess = spawn('ollama', ['serve'], { shell: true, detached: false, stdio: 'ignore' });
+  ollamaServeProcess.unref();
+  // Wait up to 6 seconds for it to come up
+  for (let i = 0; i < 12; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    if (await pingOllama()) return true;
+  }
+  return false;
+};
+
+// Auto-start Ollama at app launch (background, fire-and-forget)
+app.whenReady().then(() => setTimeout(ensureOllamaRunning, 2000));
+
+ipcMain.handle('ensure-ollama-running', async () => {
+  const ok = await ensureOllamaRunning();
+  return { running: ok };
+});
+
 const ollamaPullProcesses = new Map(); // modelName → child process
 
 ipcMain.handle('ollama-pull', async (event, modelName) => {
+  await ensureOllamaRunning();
   return new Promise((resolve) => {
     const child = spawn('ollama', ['pull', modelName], { shell: true });
     ollamaPullProcesses.set(modelName, child);
