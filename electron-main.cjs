@@ -1545,7 +1545,10 @@ User message: `;
     const timeoutMs = modelSizeGB >= 15 ? 120000 : modelSizeGB >= 8 ? 90000 : 60000;
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'look', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
-    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+    // For local models use a lightweight system prompt for casual chat — injecting the full
+    // project code into a 3-7B model's context leaves no room for conversation history.
+    const ollamaLightPrefix = `You are a helpful AI assistant built into IMI (Integrated Merge Interface), a developer desktop app. Be concise, friendly, and remember the conversation.`;
+    const activePrefix = isCodingAction ? blueprintPrefix : ollamaLightPrefix;
     const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
     req.setHeader('Content-Type', 'application/json');
     let timedOut = false;
