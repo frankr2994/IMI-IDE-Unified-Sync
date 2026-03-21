@@ -25,6 +25,17 @@ html {
   --text-xl:   1.3rem;   /* 20.8px — tab titles                          */
 }
 
+/* Light Mode Theme Overrides */
+.light-mode {
+  --primary: #6200EE;
+  --primary-glow: rgba(98, 0, 238, 0.3);
+  --secondary: #03DAC6;
+  --bg-dark: #f0f2f5;
+  --card-bg: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(0, 0, 0, 0.12);
+  --text-main: #1a1a1a;
+  --text-dim: #5c5c5c;
+}
 
 
 * {

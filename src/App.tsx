@@ -1642,7 +1642,7 @@ const App = () => {
                         {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector}
                         {activeEngine !== 'imi-core' && <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}> · {activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}</span>}
                       </div>
-                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)' }}>
                         {planMode ? '📋 Plan mode' : 'Direct chat'}
                         {lastSyncTime && ` · synced ${lastSyncTime}`}
                       </div>
