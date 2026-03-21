@@ -4179,5 +4179,57 @@ ipcMain.handle('parallel-brain-query', async (e, { prompt, models, keys }) => {
 
 ipcMain.on('open-external-url', (e, url) => { shell.openExternal(url); });
 
+// ══════════════════════════════════════════════════════════════
+// 🌐 WEB GROUNDING — DuckDuckGo instant answers, no API key needed
+// Used by: browser skill URL resolution + brain context injection
+// ══════════════════════════════════════════════════════════════
+function ddgSearch(query, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), timeoutMs);
+    const q = encodeURIComponent(query.trim());
+    const req = net.request({
+      method: 'GET', protocol: 'https:',
+      hostname: 'api.duckduckgo.com',
+      path: `/?q=${q}&format=json&no_html=1&skip_disambig=1&no_redirect=1`
+    });
+    req.setHeader('User-Agent', 'IMI-Desktop/1.0');
+    let body = '';
+    req.on('response', res => {
+      res.on('data', d => body += d);
+      res.on('end', () => {
+        clearTimeout(t);
+        try {
+          const j = JSON.parse(body);
+          resolve({
+            abstract: j.AbstractText?.trim() || '',
+            abstractUrl: j.AbstractURL?.trim() || '',
+            abstractSource: j.AbstractSource?.trim() || '',
+            answer: j.Answer?.trim() || '',
+            answerType: j.AnswerType?.trim() || '',
+            redirect: j.Redirect?.trim() || '',
+            relatedTopics: (j.RelatedTopics || []).slice(0, 3).map((r) => r.Text || '').filter(Boolean),
+          });
+        } catch { clearTimeout(t); resolve(null); }
+      });
+    });
+    req.on('error', () => { clearTimeout(t); resolve(null); });
+    req.end();
+  });
+}
+
+// Expose DDG search to frontend
+ipcMain.handle('ddg-search', async (e, query) => ddgSearch(query));
+
+// DDG URL resolver — finds the real URL for a site name like "figma" or "linear"
+async function ddgResolveUrl(siteName) {
+  try {
+    const result = await ddgSearch(`${siteName} official website`, 2500);
+    if (!result) return null;
+    if (result.abstractUrl) return result.abstractUrl;
+    // Try the redirect approach — DDG "I'm Lucky" bang
+    return null;
+  } catch { return null; }
+}
+
 
 
