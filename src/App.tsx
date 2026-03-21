@@ -185,6 +185,10 @@ const App = () => {
   };
   const formatNum = (n: number) => n >= 1000000 ? `${(n/1000000).toFixed(1)}M` : n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n);
   const loadOllamaModels = async () => {
+    // Check if Ollama is installed first
+    const check = await (ipc as any).invoke('check-dep', 'ollama').catch(() => ({ installed: false }));
+    setOllamaInstalled(check.installed);
+    if (!check.installed) { setOllamaModels([]); return; }
     const res = await (ipc as any).invoke('ollama-list').catch(() => ({ models: [] }));
     const models = res.models || [];
     // Tag each model with canRun based on VRAM + free RAM
@@ -205,8 +209,14 @@ const App = () => {
   };
 
   // Pre-pull hardware check — returns true if safe to proceed, false if blocked
-  // Smart pull — shows quant picker for multi-file repos
+  // Smart pull — checks dependencies, shows quant picker for multi-file repos
   const startPullModel = async (model: any) => {
+    if (ollamaInstalled === false) {
+      if (window.confirm('Ollama is not installed — it\'s required to run local models.\n\nOpen the Ollama download page now?')) {
+        (ipc as any).send('open-external-url', 'https://ollama.com/download');
+      }
+      return;
+    }
     let list: any[] = model.ggufList || [];
 
     // Search results don't have file sizes — fetch model details to get quant list
@@ -1861,10 +1871,19 @@ const App = () => {
                       <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>INSTALLED MODELS</div>
                       <button onClick={loadOllamaModels} style={{ height: '28px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.65rem' }}>🔄 Refresh</button>
                     </div>
-                    {ollamaModels.length === 0
+                    {ollamaInstalled === false
+                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.35)', borderRadius: '12px' }}>
+                          <div style={{ fontWeight: 900, fontSize: '0.85rem', color: '#ff416c', marginBottom: '6px' }}>⚠️ Ollama is not installed</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '14px' }}>Ollama is required to run local AI models. Free, takes 2 minutes, runs silently in the background.</div>
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button onClick={() => (ipc as any).send('open-external-url', 'https://ollama.com/download')} style={{ height: '36px', padding: '0 20px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '8px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 900 }}>⬇ Download Ollama</button>
+                            <button onClick={loadOllamaModels} style={{ height: '36px', padding: '0 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.72rem' }}>🔄 I installed it — check again</button>
+                          </div>
+                        </div>
+                      : ollamaModels.length === 0
                       ? <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                          ✅ Ollama is installed. No models pulled yet — search below and hit <strong>Pull</strong> to add one.
-                          <div style={{ marginTop: '8px', fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700 }}>💡 Recommended for your GPU: <code>qwen2.5-coder:7b</code> (4.7GB — fits in 8GB VRAM)</div>
+                          ✅ Ollama installed. No models pulled yet — search below and hit <strong>Pull</strong>.
+                          <div style={{ marginTop: '8px', fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700 }}>💡 Recommended: <code>qwen2.5-coder:7b</code> (4.7GB)</div>
                         </div>
                       : <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {ollamaModels.map(m => (

@@ -2726,6 +2726,25 @@ ipcMain.handle('check-tools', async () => {
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
+// Dependency checker — returns { installed, version, installUrl }
+const DEP_CHECK = {
+  ollama:  { cmd: 'ollama --version', url: 'https://ollama.com/download', name: 'Ollama' },
+  node:    { cmd: 'node --version',   url: 'https://nodejs.org', name: 'Node.js' },
+  git:     { cmd: 'git --version',    url: 'https://git-scm.com', name: 'Git' },
+  python:  { cmd: 'python --version', url: 'https://python.org', name: 'Python' },
+};
+ipcMain.handle('check-dep', async (_e, dep) => {
+  const info = DEP_CHECK[dep];
+  if (!info) return { installed: false };
+  try {
+    const out = execSync(info.cmd, { timeout: 4000 }).toString().trim();
+    const ver = out.match(/(\d+\.\d+[\.\d]*)/)?.[1] || out.replace(/^v/,'').trim();
+    return { installed: true, version: ver, installUrl: info.url, name: info.name };
+  } catch {
+    return { installed: false, installUrl: info.url, name: info.name };
+  }
+});
+
 ipcMain.handle('ollama-list', async () => {
   try {
     const raw = await new Promise((resolve, reject) => exec('ollama list', { timeout: 5000 }, (err, stdout) => err ? reject(err) : resolve(stdout.trim())));
