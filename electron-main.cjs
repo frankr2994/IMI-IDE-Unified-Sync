@@ -2726,57 +2726,108 @@ ipcMain.handle('check-tools', async () => {
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
-// Dependency checker — returns { installed, version, installUrl }
-const DEP_CHECK = {
-  ollama:  { cmd: 'ollama --version', url: 'https://ollama.com/download', name: 'Ollama', winInstaller: 'https://ollama.com/download/OllamaSetup.exe' },
-  node:    { cmd: 'node --version',   url: 'https://nodejs.org', name: 'Node.js' },
-  git:     { cmd: 'git --version',    url: 'https://git-scm.com', name: 'Git' },
-  python:  { cmd: 'python --version', url: 'https://python.org', name: 'Python' },
+// ── Universal Install Manifest ─────────────────────────────────────────────
+// Each entry: cmd=version check, winExe=silent installer URL, winArgs=silent flags, npm=npm package name
+const INSTALL_MANIFEST = {
+  ollama:     { name: 'Ollama',       cmd: 'ollama --version',   winExe: 'https://ollama.com/download/OllamaSetup.exe',                                  winArgs: '/S' },
+  git:        { name: 'Git',          cmd: 'git --version',      winExe: 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.1/Git-2.47.0-64-bit.exe', winArgs: '/VERYSILENT /NORESTART' },
+  vscode:     { name: 'VS Code',      cmd: 'code --version',     winExe: 'https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user',    winArgs: '/VERYSILENT /NORESTART /MERGETASKS=!runcode' },
+  gh:         { name: 'GitHub CLI',   cmd: 'gh --version',       npm: '@github/github-cli', winExe: 'https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_windows_amd64.msi', winArgs: '/quiet' },
+  gemini:     { name: 'Gemini CLI',   cmd: 'gemini --version',   npm: '@google/gemini-cli' },
+  typescript: { name: 'TypeScript',   cmd: 'tsc --version',      npm: 'typescript' },
+  prettier:   { name: 'Prettier',     cmd: 'prettier --version', npm: 'prettier' },
+  eslint:     { name: 'ESLint',       cmd: 'eslint --version',   npm: 'eslint' },
+  nodemon:    { name: 'Nodemon',      cmd: 'nodemon --version',  npm: 'nodemon' },
+  pm2:        { name: 'PM2',          cmd: 'pm2 --version',      npm: 'pm2' },
+  serve:      { name: 'Serve',        cmd: 'serve --version',    npm: 'serve' },
+  vercel:     { name: 'Vercel CLI',   cmd: 'vercel --version',   npm: 'vercel' },
 };
 
-// Auto-install dependency — downloads installer and runs it silently
+// Aliases so "install node.js" maps to "node", "install vs code" → "vscode" etc.
+const INSTALL_ALIASES = {
+  'node.js': 'node', 'nodejs': 'node', 'node js': 'node',
+  'vs code': 'vscode', 'vscode': 'vscode', 'visual studio code': 'vscode',
+  'github cli': 'gh', 'github-cli': 'gh',
+  'gemini cli': 'gemini', 'gemini-cli': 'gemini',
+};
+
+// Resolve install key from any user string
+const resolveInstallKey = (name) => {
+  const n = name.toLowerCase().trim();
+  if (INSTALL_MANIFEST[n]) return n;
+  if (INSTALL_ALIASES[n]) return INSTALL_ALIASES[n];
+  // Partial match
+  for (const key of Object.keys(INSTALL_MANIFEST)) {
+    if (n.includes(key) || key.includes(n)) return key;
+  }
+  return null;
+};
+
+// Download file with progress streaming
+const downloadFile = (event, dep, url, destPath) => new Promise((resolve, reject) => {
+  const parsed = new URL(url);
+  const file = require('fs').createWriteStream(destPath);
+  const doReq = (reqUrl) => {
+    const p = new URL(reqUrl);
+    const req = net.request({ method: 'GET', protocol: p.protocol, hostname: p.hostname, path: p.pathname + p.search });
+    req.setHeader('User-Agent', 'IMI-Installer/1.0');
+    req.on('response', (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        doReq(res.headers.location); return;
+      }
+      const total = parseInt(res.headers['content-length'] || '0');
+      let received = 0;
+      res.on('data', chunk => {
+        file.write(chunk); received += chunk.length;
+        if (total > 0) event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: Math.round((received/total)*88), received: Math.round(received/1e6), total: Math.round(total/1e6) });
+      });
+      res.on('end', () => { file.end(); resolve(); });
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
+  };
+  doReq(url);
+});
+
+// Universal install handler
 ipcMain.handle('install-dep', async (event, dep) => {
-  const info = DEP_CHECK[dep];
-  if (!info || !info.winInstaller) return { success: false, error: 'No installer available' };
-  const os = require('os');
-  const installerPath = path.join(os.tmpdir(), `imi-install-${dep}.exe`);
-  event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: 0 });
+  const key = resolveInstallKey(dep) || dep;
+  const info = INSTALL_MANIFEST[key];
+  if (!info) return { success: false, error: `Unknown dependency: ${dep}` };
+
+  event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'starting', percent: 0 });
+
   try {
-    // Download installer with progress
-    await new Promise((resolve, reject) => {
-      const file = require('fs').createWriteStream(installerPath);
-      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'ollama.com', path: '/download/OllamaSetup.exe' });
-      req.setHeader('User-Agent', 'IMI-Installer/1.0');
-      req.on('response', (res) => {
-        const total = parseInt(res.headers['content-length'] || '0');
-        let received = 0;
-        res.on('data', chunk => {
-          file.write(chunk);
-          received += chunk.length;
-          if (total > 0) {
-            const pct = Math.round((received / total) * 90);
-            event.sender.send('install-dep-progress', { dep, status: 'downloading', percent: pct, received: Math.round(received/1e6), total: Math.round(total/1e6) });
-          }
+    // npm packages — just run npm install -g
+    if (info.npm && !info.winExe) {
+      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 20 });
+      await new Promise((resolve, reject) => {
+        exec(`npm install -g ${info.npm}`, { timeout: 120000 }, (err, stdout, stderr) => {
+          if (err) reject(new Error(stderr || err.message)); else resolve();
         });
-        res.on('end', () => { file.end(); resolve(); });
-        res.on('error', reject);
       });
-      req.on('error', reject);
-      req.end();
-    });
-    event.sender.send('install-dep-progress', { dep, status: 'installing', percent: 92 });
-    // Run installer silently
-    await new Promise((resolve, reject) => {
-      exec(`"${installerPath}" /S`, { timeout: 120000 }, (err) => {
-        if (err) reject(err); else resolve();
-      });
-    });
-    event.sender.send('install-dep-progress', { dep, status: 'done', percent: 100 });
-    // Clean up installer file
-    require('fs').unlink(installerPath, () => {});
-    return { success: true };
+      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+      return { success: true };
+    }
+
+    // EXE/MSI installer — download then run silently
+    if (info.winExe) {
+      const isMsi = info.winExe.includes('.msi');
+      const ext = isMsi ? '.msi' : '.exe';
+      const installerPath = path.join(require('os').tmpdir(), `imi-install-${key}${ext}`);
+      await downloadFile(event, key, info.winExe, installerPath);
+      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 92 });
+      const cmd = isMsi ? `msiexec /i "${installerPath}" ${info.winArgs || '/quiet'}` : `"${installerPath}" ${info.winArgs || '/S'}`;
+      await new Promise((resolve, reject) => exec(cmd, { timeout: 180000 }, (err) => err ? reject(err) : resolve()));
+      require('fs').unlink(installerPath, () => {});
+      event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'done', percent: 100 });
+      return { success: true };
+    }
+
+    return { success: false, error: 'No installer method available' };
   } catch(e) {
-    event.sender.send('install-dep-progress', { dep, status: 'error', percent: 0, error: e.message });
+    event.sender.send('install-dep-progress', { dep: key, name: info.name, status: 'error', percent: 0, error: e.message });
     return { success: false, error: e.message };
   }
 });
