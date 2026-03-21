@@ -1428,7 +1428,16 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           if (site) raw = site;
         }
         if (raw) {
-          const url = raw.startsWith('http') ? raw : `https://${raw.includes('.') ? raw : raw + '.com'}`;
+          let url;
+          if (raw.startsWith('http')) {
+            url = raw;
+          } else if (raw.includes('.')) {
+            url = `https://${raw}`;
+          } else {
+            // No dot = ambiguous name — ask DDG for the real URL before guessing
+            const resolved = await ddgResolveUrl(raw);
+            url = resolved || `https://${raw}.com`;
+          }
           shell.openExternal(url);
           event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
           event.sender.send('command-end', { messageId, code: 0 });
@@ -1605,13 +1614,30 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
   const memoryLog = smartContext.getMemorySummary();
 
+  // ── 🌐 WEB GROUNDING — inject live DDG context for factual/current queries ──
+  const WEB_QUERY_RE = /\b(what is|what's|who is|who's|latest|current version|how do i|how to|when is|when was|price of|cost of|news about|today|release date|changelog|just released|just dropped|available now)\b/i;
+  let webGrounding = '';
+  if (WEB_QUERY_RE.test(command)) {
+    try {
+      const ddgResult = await ddgSearch(command, 2500);
+      if (ddgResult && (ddgResult.abstract || ddgResult.answer || ddgResult.relatedTopics.length)) {
+        const parts = [];
+        if (ddgResult.answer) parts.push(`Quick Answer: ${ddgResult.answer}`);
+        if (ddgResult.abstract) parts.push(`${ddgResult.abstractSource ? ddgResult.abstractSource + ': ' : ''}${ddgResult.abstract}`);
+        if (ddgResult.abstractUrl) parts.push(`Source: ${ddgResult.abstractUrl}`);
+        if (ddgResult.relatedTopics.length) parts.push(`Related: ${ddgResult.relatedTopics.slice(0, 2).join(' | ')}`);
+        if (parts.length) webGrounding = `\nWEB CONTEXT (live, retrieved now via DuckDuckGo):\n${parts.join('\n')}\nUse this to inform your answer — treat it as current, factual context.\n`;
+      }
+    } catch { /* grounding is best-effort — never block the main flow */ }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface) — an AI orchestration desktop app built with Electron + React/TypeScript.
 You have FULL awareness of this project's actual live code (shown below). Think and act like Claude Code — read the code, understand the structure, make precise targeted changes.
 
 ${projectMap}
 
-${memoryLog ? memoryLog + '\n' : ''}
-LIVE CODE (only the sections relevant to this request):
+${memoryLog ? memoryLog + '\n' : ''}${webGrounding}LIVE CODE (only the sections relevant to this request):
 ${relevantCode}
 
 SYSTEM INFO:
