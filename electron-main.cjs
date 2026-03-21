@@ -1081,9 +1081,10 @@ Respond with ONLY valid JSON matching exactly:
   "complexity": "low or medium or high"
 }`;
 
+  const PLAN_MODEL = 'gemini-1.5-flash';
   return new Promise((resolve, reject) => {
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
+      path: `/v1beta/models/${PLAN_MODEL}:generateContent?key=${GEMINI_KEY}` });
     req.setHeader('Content-Type', 'application/json');
     req.write(JSON.stringify({
       systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -2183,10 +2184,11 @@ CRITICAL RULES:
 - Multiple patches allowed, one per logical change
 - If no code change is needed (e.g. plan is just analysis), return []`;
 
+    const CORE_MODEL = 'gemini-1.5-flash';
     const coreReq = net.request({
       method: 'POST', protocol: 'https:',
       hostname: 'generativelanguage.googleapis.com',
-      path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}`
+      path: `/v1beta/models/${CORE_MODEL}:generateContent?key=${GEMINI_KEY}`
     });
     coreReq.setHeader('Content-Type', 'application/json');
     coreReq.write(JSON.stringify({
