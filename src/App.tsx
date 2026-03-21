@@ -476,8 +476,16 @@ const App = () => {
   const [newSkillPattern, setNewSkillPattern] = useState('');
   const [newSkillResponse, setNewSkillResponse] = useState('');
   const [skillLibSearch, setSkillLibSearch] = useState('');
-  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'|'benchmarks'>('mine');
+  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'|'benchmarks'|'community'>('mine');
   const [installedSkillIds, setInstalledSkillIds] = useState<Set<string>>(new Set());
+  const [communitySkills, setCommunitySkills] = useState<any[]>([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
+  const [communitySource, setCommunitySource] = useState<'remote'|'local'|''>('');
+  const [communitySearch, setCommunitySearch] = useState('');
+  const [communityCategory, setCommunityCategory] = useState('all');
+  const [communitySort, setCommunitySort] = useState<'installs'|'rating'|'newest'>('installs');
+  const [shareModalSkill, setShareModalSkill] = useState<any>(null);
+  const [shareJson, setShareJson] = useState('');
   const [optimizerHistory, setOptimizerHistory] = useState<any[]>([]);
   const [optimizerLastResult, setOptimizerLastResult] = useState<{ efficiency: number; removed: number } | null>(null);
   const [optimizerRunning, setOptimizerRunning] = useState(false);
@@ -3385,18 +3393,25 @@ const App = () => {
                 </div>
 
                 {/* Sub-tabs */}
-                <div style={{ display: 'flex', gap: '0', marginTop: '0' }}>
+                <div style={{ display: 'flex', gap: '0', marginTop: '0', overflowX: 'auto' }}>
                   {([
                     { id: 'mine',       label: 'MY SKILLS',  count: skills.length },
                     { id: 'library',    label: 'LIBRARY',    count: SKILL_LIBRARY.length },
+                    { id: 'community',  label: '🌐 COMMUNITY', count: communitySkills.length || null },
                     { id: 'optimizer',  label: 'OPTIMIZER',  count: null },
                     { id: 'benchmarks', label: 'BENCHMARKS', count: Object.keys(benchmarkData).length || null },
-                  ] as { id: 'mine'|'library'|'optimizer'|'benchmarks'; label: string; count: number|null }[]).map(tab => (
+                  ] as { id: 'mine'|'library'|'community'|'optimizer'|'benchmarks'; label: string; count: number|null }[]).map(tab => (
                     <button key={tab.id} onClick={async () => {
                       setSkillsSubTab(tab.id);
                       if (tab.id === 'optimizer') { const h = await (ipc as any).invoke('skills-get-history'); if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); } }
                       if (tab.id === 'benchmarks') { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }
-                    }} style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'rgba(255,255,255,0.35)', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      if (tab.id === 'community' && communitySkills.length === 0) {
+                        setCommunityLoading(true);
+                        const res = await (ipc as any).invoke('skills-fetch-community').catch(() => null);
+                        if (res) { setCommunitySkills(res.skills || []); setCommunitySource(res.source || 'local'); }
+                        setCommunityLoading(false);
+                      }
+                    }} style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'rgba(255,255,255,0.35)', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
                       onMouseEnter={e => { if (skillsSubTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)'; }}
                       onMouseLeave={e => { if (skillsSubTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}>
                       {tab.label}
@@ -3464,14 +3479,23 @@ const App = () => {
                             style={{ height: '26px', padding: '0 10px', fontSize: '0.55rem', fontWeight: 900, background: skill.active ? 'rgba(0,255,136,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${skill.active ? 'rgba(0,255,136,0.25)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '5px', color: skill.active ? '#00ff88' : 'rgba(255,255,255,0.3)', cursor: 'pointer', letterSpacing: '0.06em', transition: 'all 0.15s' }}>
                             {skill.active ? 'ON' : 'OFF'}
                           </button>
-                          {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (
+                          {!['sk_browser','sk_desktop','sk_stats','sk_imi_info','sk_help'].includes(skill.id) && (<>
+                            <button onClick={async () => {
+                              const res = await (ipc as any).invoke('skills-export', skill.id);
+                              if (res?.success) { setShareModalSkill(skill); setShareJson(res.json); }
+                            }} title="Share this skill"
+                              style={{ height: '26px', width: '26px', fontSize: '0.65rem', background: 'rgba(79,172,254,0.06)', border: '1px solid rgba(79,172,254,0.15)', borderRadius: '5px', color: 'rgba(79,172,254,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#4facfe'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(79,172,254,0.4)'; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(79,172,254,0.5)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(79,172,254,0.15)'; }}>
+                              ↑
+                            </button>
                             <button onClick={async () => { if (confirm(`Remove "${skill.name}"?`)) { await (ipc as any).invoke('skills-remove', skill.id); fetchStats(); } }}
                               style={{ height: '26px', width: '26px', fontSize: '0.65rem', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.15)', borderRadius: '5px', color: 'rgba(255,65,108,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
                               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ff416c'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,65,108,0.4)'; }}
                               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,65,108,0.5)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,65,108,0.15)'; }}>
                               ✕
                             </button>
-                          )}
+                          </>)}
                         </div>
                       </div>
                     ))}
