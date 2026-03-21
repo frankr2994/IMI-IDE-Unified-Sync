@@ -3180,11 +3180,13 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
 });
 
 ipcMain.handle('ollama-running', async () => {
+  const running = await pingOllama();
+  if (!running) return { success: false, models: [] };
   try {
     const raw = execSync('ollama ps', { timeout: 4000 }).toString().trim();
     const lines = raw.split('\n').slice(1).filter(Boolean);
     return { success: true, models: lines.map(l => l.split(/\s+/)[0]) };
-  } catch(e) { return { success: true, models: [] }; }
+  } catch { return { success: true, models: [] }; }
 });
 
 ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
