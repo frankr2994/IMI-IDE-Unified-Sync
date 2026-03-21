@@ -206,7 +206,17 @@ const App = () => {
   // Pre-pull hardware check — returns true if safe to proceed, false if blocked
   // Smart pull — shows quant picker for multi-file repos
   const startPullModel = async (model: any) => {
-    const list: any[] = model.ggufList || [];
+    let list: any[] = model.ggufList || [];
+
+    // Search results don't have file sizes — fetch model details to get quant list
+    if (list.length === 0 && model.ggufCount > 1) {
+      setHfError('');
+      try {
+        const res = await (ipc as any).invoke('hf-fetch-model', model.hfUrl);
+        if (res?.data?.ggufList?.length > 0) list = res.data.ggufList;
+      } catch {}
+    }
+
     if (list.length > 1) {
       setQuantPicker({ model, list });
       return;
