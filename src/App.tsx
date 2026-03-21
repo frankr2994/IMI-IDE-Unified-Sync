@@ -861,10 +861,76 @@ const App = () => {
       );
     }
 
-    // Standard message rendering
-    return text.split('\n').map((line, i) => (
-      <p key={i} style={{ marginBottom: line.trim() ? '0.5rem' : '1rem' }}>{line}</p>
-    ));
+    // ── Rich markdown-style rendering ──────────────────────────────────────
+    const renderInline = (raw: string): React.ReactNode[] => {
+      // Split on `code`, **bold**, and →
+      const parts = raw.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+      return parts.map((part, j) => {
+        if (part.startsWith('`') && part.endsWith('`')) {
+          return <code key={j} style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '1px 6px', borderRadius: '4px', fontSize: '0.82em', fontFamily: 'monospace' }}>{part.slice(1,-1)}</code>;
+        }
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={j} style={{ color: 'white', fontWeight: 800 }}>{part.slice(2,-2)}</strong>;
+        }
+        // Highlight → arrows
+        return <span key={j}>{part.split('→').map((seg, k, arr) => k < arr.length - 1 ? [seg, <span key={k} style={{ color: 'var(--primary)', fontWeight: 700, margin: '0 3px' }}>→</span>] : seg)}</span>;
+      });
+    };
+
+    const lines = text.split('\n');
+    const nodes: React.ReactNode[] = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const trimmed = line.trim();
+
+      // Blank line → spacer
+      if (!trimmed) { nodes.push(<div key={i} style={{ height: '0.5rem' }} />); i++; continue; }
+
+      // ## Heading or line ending with : (section header)
+      if (/^#{1,3}\s/.test(trimmed) || /^[A-Z][^a-z\n]{2,}:$/.test(trimmed)) {
+        const label = trimmed.replace(/^#{1,3}\s+/, '').replace(/:$/, '');
+        nodes.push(<div key={i} style={{ fontWeight: 900, fontSize: '0.82rem', color: 'var(--primary)', letterSpacing: '0.05em', marginTop: '0.9rem', marginBottom: '0.3rem', borderBottom: '1px solid rgba(155,77,255,0.2)', paddingBottom: '3px' }}>{label}</div>);
+        i++; continue;
+      }
+
+      // Bold header pattern: **Title** or "Title:" at start of line
+      if (/^\*\*[^*]+\*\*[:.]?$/.test(trimmed) || /^[A-Z][A-Za-z0-9 ]{2,40}:$/.test(trimmed)) {
+        const label = trimmed.replace(/^\*\*|\*\*$/g, '').replace(/:$/, '');
+        nodes.push(<div key={i} style={{ fontWeight: 800, fontSize: '0.83rem', color: 'white', marginTop: '0.8rem', marginBottom: '0.25rem' }}>{label}</div>);
+        i++; continue;
+      }
+
+      // Bullet: - or * or • → render as dot
+      if (/^[-*•]\s+/.test(trimmed)) {
+        const content = trimmed.replace(/^[-*•]\s+/, '');
+        nodes.push(
+          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
+            <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '1px', fontSize: '1em' }}>•</span>
+            <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(content)}</span>
+          </div>
+        );
+        i++; continue;
+      }
+
+      // Numbered list: 1. 2. etc
+      if (/^\d+\.\s+/.test(trimmed)) {
+        const num = trimmed.match(/^(\d+)\./)?.[1];
+        const content = trimmed.replace(/^\d+\.\s+/, '');
+        nodes.push(
+          <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '4px' }}>
+            <span style={{ color: 'var(--primary)', flexShrink: 0, fontWeight: 700, minWidth: '16px', textAlign: 'right' }}>{num}.</span>
+            <span style={{ lineHeight: 1.55, color: 'rgba(255,255,255,0.82)' }}>{renderInline(content)}</span>
+          </div>
+        );
+        i++; continue;
+      }
+
+      // Normal paragraph
+      nodes.push(<p key={i} style={{ marginBottom: '0.45rem', lineHeight: 1.6, color: 'rgba(255,255,255,0.85)' }}>{renderInline(trimmed)}</p>);
+      i++;
+    }
+    return <div>{nodes}</div>;
   };
 
   return (
