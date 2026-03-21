@@ -2802,19 +2802,31 @@ ipcMain.handle('check-tools', async () => {
 
 ipcMain.handle('open-install-url', (_e, url) => { shell.openExternal(url); });
 
-ipcMain.handle('ollama-update', async () => {
-  return new Promise((resolve) => {
+ipcMain.handle('ollama-update', async (event) => {
+  // Try winget first
+  const wingetResult = await new Promise(resolve => {
     exec(`winget upgrade --id Ollama.Ollama --silent --accept-package-agreements --accept-source-agreements`, { timeout: 180000, windowsHide: true }, (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
-      // "No applicable update" or "already installed" = already latest
-      if (out.match(/no applicable update|already installed|up.to.date|nothing to upgrade/i)) {
-        resolve({ success: true, message: 'Already up to date' }); return;
-      }
-      if (!err) { resolve({ success: true, message: out }); return; }
-      // winget not found or failed
-      resolve({ success: false, message: out || err.message });
+      if (out.match(/no applicable update|already installed|up.to.date|nothing to upgrade/i)) { resolve({ success: true, upToDate: true }); return; }
+      if (!err) { resolve({ success: true, upToDate: false }); return; }
+      resolve({ success: false });
     });
   });
+  if (wingetResult.success) return wingetResult;
+
+  // Fallback: download latest OllamaSetup.exe and run silently (same as fresh install — Ollama auto-updates)
+  try {
+    const installerPath = path.join(require('os').tmpdir(), 'imi-ollama-update.exe');
+    const fakeEvent = { sender: { send: () => {} } };
+    await downloadFile(fakeEvent, 'ollama', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
+    await new Promise((resolve, reject) => {
+      exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP-`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
+    });
+    require('fs').unlink(installerPath, () => {});
+    return { success: true, upToDate: false };
+  } catch(e) {
+    return { success: false, message: e.message };
+  }
 });
 
 // ── Ollama AI Models ──────────────────────────────────────────────────────────
