@@ -1120,6 +1120,38 @@ Respond with ONLY valid JSON matching exactly:
   });
 });
 
+// ── UI PREVIEW — Imagen 3 mockup generation ───────────────────────────────
+ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
+  if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
+  const imagePrompt = `High-fidelity UI mockup screenshot: ${description}. Modern desktop app interface, dark theme with purple accents, clean minimal design, pixel-perfect, professional product design, no watermarks, no text labels saying "mockup".`;
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/imagen-3.0-generate-001:predict?key=${GEMINI_KEY}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    }, res => {
+      let body = '';
+      res.on('data', d => body += d.toString());
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.error) throw new Error(parsed.error.message || 'Imagen API error');
+          const prediction = parsed.predictions?.[0];
+          if (!prediction?.bytesBase64Encoded) throw new Error('No image returned from Imagen');
+          resolve({ base64: prediction.bytesBase64Encoded, mimeType: prediction.mimeType || 'image/png' });
+        } catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(JSON.stringify({
+      instances: [{ prompt: imagePrompt }],
+      parameters: { sampleCount: 1, aspectRatio: '4:3', safetyFilterLevel: 'BLOCK_ONLY_HIGH' }
+    }));
+    req.end();
+  });
+});
+
 // Execute a single plan phase by re-using the main stream handler
 ipcMain.on('execute-plan-phase', (event, payload) => {
   ipcMain.emit('execute-command-stream', event, {

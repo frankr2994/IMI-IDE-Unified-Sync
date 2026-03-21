@@ -79,6 +79,7 @@ const App = () => {
   const [editingPhase, setEditingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
   const [editPhaseData, setEditPhaseData] = useState<{ name: string; description: string; prompt: string }>({ name: '', description: '', prompt: '' });
   const [suggestingPhase, setSuggestingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
+  const [generatingPreview, setGeneratingPreview] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -921,6 +922,38 @@ const App = () => {
       startEditPhase(planMsgId, phaseIdx, phase);
     } finally {
       setSuggestingPhase(null);
+    }
+  };
+
+  const handleUIPreview = async () => {
+    // Build a description from chat input or last few messages
+    const inputText = chatInput.trim();
+    const contextLines = messages
+      .filter(m => m.type === 'user' || m.type === 'ai')
+      .slice(-6)
+      .map(m => `${m.type === 'user' ? 'User' : 'AI'}: ${m.text?.slice(0, 200)}`)
+      .join('\n');
+    const description = inputText || contextLines || 'a modern developer dashboard application';
+    setGeneratingPreview(true);
+    const previewMsgId = Date.now();
+    setMessages(prev => [...prev, {
+      id: previewMsgId, type: 'ai', director: 'gemini', text: '', isStreaming: true
+    } as any]);
+    try {
+      const result = await (ipc as any).invoke('generate-ui-preview', { description });
+      const dataUrl = `data:${result.mimeType};base64,${result.base64}`;
+      setMessages(prev => prev.map(m => m.id === previewMsgId ? {
+        ...m,
+        text: `🎨 **UI Preview** — *${description.slice(0, 80)}${description.length > 80 ? '…' : ''}*`,
+        isStreaming: false,
+        previewImageUrl: dataUrl,
+      } as any : m));
+    } catch(e: any) {
+      setMessages(prev => prev.map(m => m.id === previewMsgId ? {
+        ...m, text: `❌ Preview failed: ${e.message}`, isStreaming: false
+      } : m));
+    } finally {
+      setGeneratingPreview(false);
     }
   };
 
@@ -1866,6 +1899,8 @@ const App = () => {
                         </div>
                       </div>
                       <button type="button" onClick={handleImageAttach} title="Attach image" style={{ height: '44px', width: '44px', background: attachedImage ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${attachedImage ? 'rgba(155,77,255,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: attachedImage ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
+                      <button type="button" onClick={handleUIPreview} disabled={generatingPreview} title="Generate UI preview with Gemini Imagen" style={{ height: '44px', width: '44px', background: generatingPreview ? 'rgba(255,180,0,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${generatingPreview ? 'rgba(255,180,0,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: generatingPreview ? '#ffb400' : 'var(--text-dim)', cursor: generatingPreview ? 'default' : 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: generatingPreview ? 0.7 : 1 }} title="Generate UI mockup with Gemini Imagen">{generatingPreview ? '⏳' : '🎨'}</button>
+                      <button type="button" onClick={() => (ipc as any).invoke('open-external', 'https://stitch.withgoogle.com')} title="Open Google Stitch — AI UI design tool" style={{ height: '44px', width: '44px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '-0.02em' }}>Stitch</button>
                       <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — generate a phased plan before executing'} style={{ height: '44px', width: '44px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.05)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '10px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
                       {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title={yoloMode ? 'YOLO ON — auto-runs all phases' : 'YOLO — auto-run all phases without confirmation'} style={{ height: '44px', padding: '0 10px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', flexShrink: 0 }}>YOLO</button>}
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
