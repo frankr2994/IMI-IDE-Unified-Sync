@@ -783,7 +783,7 @@ try {
 
 ipcMain.handle('save-api-config', (e, config) => {
   if (config.geminiKey !== undefined) GEMINI_KEY = config.geminiKey;
-  if (config.githubToken !== undefined) { GITHUB_TOKEN = config.githubToken; fetchGitHubIdentity(); }
+  if (config.githubToken !== undefined) { GITHUB_TOKEN = config.githubToken; if (app.isReady()) fetchGitHubIdentity(); }
   if (config.openaiKey !== undefined) OPENAI_KEY = config.openaiKey;
   if (config.claudeKey !== undefined) CLAUDE_KEY = config.claudeKey;
   if (config.deepseekKey !== undefined) DEEPSEEK_KEY = config.deepseekKey;
