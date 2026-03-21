@@ -1863,87 +1863,64 @@ const App = () => {
                             const isUpdating = updatingTool === tool.id;
                             return (
                               <div key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${isOllama && isExpanded ? 'rgba(155,77,255,0.35)' : tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px' }}>
-                                {/* Tool header row */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <span style={{ fontSize: '1.4rem' }}>{tool.icon}</span>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                      <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{tool.label}</span>
-                                      {tool.installed
-                                        ? <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '4px', color: '#00ff88' }}>v{tool.version}</span>
-                                        : <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '4px', color: '#ff416c' }}>Not installed</span>
-                                      }
-                                    </div>
-                                    <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{tool.desc}</p>
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
-                                    {/* Ollama: update + expand models buttons */}
-                                    {isOllama && tool.installed && (
-                                      <>
-                                        <button onClick={async () => {
-                                          setUpdatingTool(tool.id);
-                                          await (ipc as any).invoke('ollama-update').catch(() => {});
-                                          setUpdatingTool(null);
-                                          setTimeout(loadTools, 1500);
-                                        }} style={{ height: '28px', padding: '0 10px', background: isUpdating ? 'rgba(79,172,254,0.1)' : 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                          {isUpdating ? '⏳ Updating…' : '⬆ Update'}
-                                        </button>
-                                        <button onClick={() => {
-                                          setExpandedTools(prev => {
-                                            const n = new Set(prev);
-                                            n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id);
-                                            return n;
-                                          });
-                                          if (!expandedTools.has(tool.id)) loadOllamaModels();
-                                        }} style={{ height: '28px', padding: '0 10px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '7px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                          {isExpanded ? '▲ Hide' : `▼ Models (${ollamaModels.length})`}
-                                        </button>
-                                      </>
-                                    )}
-                                    {!tool.installed && (
-                                      depInstalling[tool.id] ? (
-                                        <div style={{ minWidth: '140px' }}>
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                                            <span style={{ fontSize: '0.58rem', color: '#00ff88' }}>
-                                              {depInstalling[tool.id].status === 'downloading' ? `⬇ ${depInstalling[tool.id].percent}%` :
-                                               depInstalling[tool.id].status === 'installing' ? '⚙️ Installing…' :
-                                               depInstalling[tool.id].status === 'done' ? '✅ Done!' : '❌ Failed'}
-                                            </span>
-                                          </div>
-                                          <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', width: `${depInstalling[tool.id].percent}%`, background: depInstalling[tool.id].status === 'done' ? '#00ff88' : 'var(--primary)', borderRadius: '3px', transition: 'width 0.3s' }} />
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <button onClick={async () => { await (ipc as any).invoke('install-dep', tool.id); setTimeout(loadTools, 2000); }} style={{ flexShrink: 0, height: '28px', padding: '0 12px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>⬇ Install</button>
-                                      )
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Ollama expanded: installed models list */}
-                                {isOllama && isExpanded && (
-                                  <div style={{ marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '8px' }}>
-                                    {ollamaModels.length === 0
-                                      ? <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', padding: '4px 0' }}>No models yet — pull one from the AI Models tab.</div>
-                                      : <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                          {ollamaModels.map(m => (
-                                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 10px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.03)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.15)' : 'rgba(0,255,136,0.12)'}`, borderRadius: '6px' }}>
-                                              <span style={{ fontSize: '0.8rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
-                                              <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortModelName(m.name)}</span>
-                                              <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size}</span>
-                                              <span style={{ fontSize: '0.55rem', padding: '1px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "⚠ Can't Run" : '✓ Ready'}</span>
-                                              <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', padding: '0 4px', flexShrink: 0, opacity: 0.7 }} title="Remove">✕</button>
-                                            </div>
-                                          ))}
-                                        </div>
+                                <span style={{ fontSize: '1.4rem' }}>{tool.icon}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{tool.label}</span>
+                                    {tool.installed
+                                      ? <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '4px', color: '#00ff88' }}>v{tool.version}</span>
+                                      : <span style={{ fontSize: '0.6rem', padding: '2px 7px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '4px', color: '#ff416c' }}>Not installed</span>
                                     }
                                   </div>
-                                )}
+                                  <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{tool.desc}</p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                                  {isOllama && tool.installed && (
+                                    <>
+                                      <button onClick={async () => { setUpdatingTool(tool.id); await (ipc as any).invoke('ollama-update').catch(() => {}); setUpdatingTool(null); setTimeout(loadTools, 1500); }} style={{ height: '26px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                        {isUpdating ? '⏳' : '⬆ Update'}
+                                      </button>
+                                      <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '26px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                        {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
+                                      </button>
+                                    </>
+                                  )}
+                                  {!tool.installed && (
+                                    depInstalling[tool.id] ? (
+                                      <div style={{ minWidth: '120px' }}>
+                                        <div style={{ fontSize: '0.58rem', color: '#00ff88', marginBottom: '3px' }}>
+                                          {depInstalling[tool.id].status === 'downloading' ? `⬇ ${depInstalling[tool.id].percent}%` : depInstalling[tool.id].status === 'installing' ? '⚙️ Installing…' : depInstalling[tool.id].status === 'done' ? '✅ Done!' : '❌ Failed'}
+                                        </div>
+                                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', width: `${depInstalling[tool.id].percent}%`, background: depInstalling[tool.id].status === 'done' ? '#00ff88' : 'var(--primary)', borderRadius: '3px', transition: 'width 0.3s' }} />
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button onClick={async () => { await (ipc as any).invoke('install-dep', tool.id); setTimeout(loadTools, 2000); }} style={{ height: '26px', padding: '0 10px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>⬇ Install</button>
+                                    )
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
                         </div>
+                        {/* Ollama models panel — full width, below the grid */}
+                        {expandedTools.has('ollama') && items.some(t => t.id === 'ollama' && t.installed) && (
+                          <div style={{ marginTop: '6px', padding: '6px 10px', background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            {ollamaModels.length === 0
+                              ? <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', padding: '2px 0' }}>No models yet.</div>
+                              : ollamaModels.map(m => (
+                                  <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '3px 8px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.03)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.15)' : 'rgba(0,255,136,0.12)'}`, borderRadius: '5px', minHeight: '28px' }}>
+                                    <span style={{ fontSize: '0.75rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
+                                    <span style={{ flex: 1, fontWeight: 700, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortModelName(m.name)}</span>
+                                    <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size}</span>
+                                    <span style={{ fontSize: '0.52rem', padding: '1px 5px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '3px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "Can't Run" : '✓ Ready'}</span>
+                                    <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.7rem', padding: '0 2px', opacity: 0.6, lineHeight: 1 }}>✕</button>
+                                  </div>
+                                ))
+                            }
+                          </div>
+                        )}
                       </div>
                     );
                   })}
