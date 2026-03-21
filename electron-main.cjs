@@ -1015,7 +1015,7 @@ async function triggerGitSync() {
 }
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
-  const { command, director, messageId, imageBase64, imageMimeType } = payload;
+  const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
   const cmdLower = command.toLowerCase().trim();
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
@@ -1383,13 +1383,24 @@ User message: `;
     console.log('[IMI Brain] Model:', BRAIN_MODEL, '| Temp:', BRAIN_TEMPERATURE, '| MaxTokens:', BRAIN_MAX_TOKENS);
     const req = net.request({ method: 'POST', protocol: 'https:', hostname, path: apiPath });
     req.setHeader('Content-Type', 'application/json');
-    const parts = [];
-    if (imageBase64 && imageMimeType) {
-      parts.push({ inlineData: { mimeType: imageMimeType, data: imageBase64 } });
+    // Build multi-turn contents from history
+    const geminiContents = [];
+    for (const h of history) {
+      geminiContents.push({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.text }] });
     }
-    parts.push({ text: activePrefix + command });
+    // Current message (with optional image)
+    const currentParts = [];
+    if (imageBase64 && imageMimeType) currentParts.push({ inlineData: { mimeType: imageMimeType, data: imageBase64 } });
+    currentParts.push({ text: (geminiContents.length === 0 ? activePrefix : '') + command });
+    // System instruction prepended to first user turn if no history
+    if (geminiContents.length === 0) {
+      geminiContents.push({ role: 'user', parts: currentParts });
+    } else {
+      geminiContents.push({ role: 'user', parts: currentParts });
+    }
     req.write(JSON.stringify({
-      contents: [{ parts }],
+      contents: geminiContents,
+      systemInstruction: { parts: [{ text: activePrefix }] },
       tools: [{ googleSearch: {} }],
       generationConfig: { temperature: BRAIN_TEMPERATURE, maxOutputTokens: BRAIN_MAX_TOKENS }
     }));

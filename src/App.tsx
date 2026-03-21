@@ -832,6 +832,12 @@ const App = () => {
       });
     }
 
+    // Build conversation history — last 10 completed turns (5 user + 5 AI), trimmed to 2000 chars each
+    const historySnapshot = messages
+      .filter(m => !m.isStreaming && m.text && (m.type === 'user' || m.type === 'ai'))
+      .slice(-10)
+      .map(m => ({ role: m.type === 'user' ? 'user' : 'assistant', text: m.text.slice(0, 2000) }));
+
     (ipc as any).send('execute-command-stream', {
       command: newUserMsg.text,
       director: activeDirector,
@@ -839,6 +845,7 @@ const App = () => {
       messageId: aiId,
       imageBase64: attachedImage?.base64,
       imageMimeType: attachedImage?.mimeType,
+      history: historySnapshot,
     });
     setAttachedImage(null); // clear after sending
   };
