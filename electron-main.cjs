@@ -1225,6 +1225,51 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // ── End skill check — continue to AI ──────────────────────────────────────
 
+  // ── 🌐 UNIVERSAL BROWSER ACTIONS — run for ANY brain model ────────────────
+  const _cmdU = command.toLowerCase();
+  const _isCodeCtx = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(_cmdU);
+  if (!_isCodeCtx) {
+    // Browser automation: "take control", "click", "screenshot", "log in", "fill in", etc.
+    const needsBrowserBot = /\b(take control|screenshot|click|fill in|type into|search for|scroll|hover|log ?in|sign ?in|take a screen|show me (my|the) screen)\b/.test(_cmdU);
+    if (needsBrowserBot) {
+      triggerBrowserAgent(event, command, messageId);
+      return;
+    }
+    // Simple open: "open netflix", "head to youtube", "go to amazon", "launch spotify", etc.
+    const SKIP = new Set(['up','my','the','a','an','browser','chrome','internet','web','website','webpage','page','it','new','tab','tabs','some','and','then','also','please','now','me','their','this','that']);
+    const openPatterns = [
+      /(?:head\s+to|go\s+to|take\s+me\s+to|navigate\s+to|open\s+up\s+(?:my\s+)?(?:browser\s+(?:and\s+)?)?(?:head\s+to|go\s+to|navigate\s+to)?)\s+([a-z0-9.-]+)/i,
+      /(?:open|visit|launch)\s+([a-z0-9.-]+)/i,
+    ];
+    const hardcoded = { netflix:'netflix.com', youtube:'youtube.com', gmail:'gmail.com', spotify:'open.spotify.com', twitch:'twitch.tv', reddit:'reddit.com', twitter:'x.com', instagram:'instagram.com', facebook:'facebook.com', amazon:'amazon.com', google:'google.com', github:'github.com', discord:'discord.com', chatgpt:'chat.openai.com', linkedin:'linkedin.com', tiktok:'tiktok.com' };
+    const explicitUrls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
+    let resolvedUrls = [...explicitUrls];
+    if (resolvedUrls.length === 0) {
+      // Check hardcoded site names in command first
+      for (const [name, domain] of Object.entries(hardcoded)) {
+        if (new RegExp(`\\b${name}\\b`).test(_cmdU)) { resolvedUrls.push(`https://${domain}`); break; }
+      }
+      // Regex extraction fallback
+      if (resolvedUrls.length === 0) {
+        for (const pat of openPatterns) {
+          const m = _cmdU.match(pat);
+          if (m) {
+            const words = m[1].trim().split(/\s+/);
+            const site = words.find(w => !SKIP.has(w));
+            if (site && site.length > 2) { resolvedUrls.push(site.includes('.') ? `https://${site}` : `https://${site}.com`); break; }
+          }
+        }
+      }
+    }
+    if (resolvedUrls.length > 0 && /\b(open|go to|head to|visit|launch|navigate|take me to|browser|chrome)\b/.test(_cmdU)) {
+      resolvedUrls.forEach(u => shell.openExternal(u));
+      event.sender.send('command-chunk', { messageId, chunk: resolvedUrls.map(u => `🌐 Opening: **${u}**`).join('\n') });
+      event.sender.send('command-end', { messageId, code: 0 });
+      return;
+    }
+  }
+  // ── End universal browser actions ─────────────────────────────────────────
+
   // Smart context — reads only what's relevant for this specific command
   const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
