@@ -2523,8 +2523,12 @@ Generate the COMPLETE content for a file named "${fileName}". Only output the fi
     fs.writeFileSync(filePath, finalContent, 'utf-8');
     event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` on Desktop!\n📂 Path: \`${filePath}\`\n\n` });
     event.sender.send('command-chunk', { messageId, chunk: `**Preview:**\n\`\`\`${ext}\n${finalContent.slice(0, 600)}${finalContent.length > 600 ? '\n...' : ''}\n\`\`\`` });
-    // Try to open in VS Code
-    exec(`code "${filePath}"`, () => {});
+    // Open in browser if html or if user said open/launch/play
+    if (/\b(open|launch|run|start|play|show)\b/i.test(command) || ext === 'html') {
+      shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
+    } else {
+      exec(`code "${filePath}"`, () => {});
+    }
   } catch(e) {
     event.sender.send('command-chunk', { messageId, chunk: `❌ Write failed: ${e.message}` });
   }
