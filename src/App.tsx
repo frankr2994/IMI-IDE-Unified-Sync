@@ -1262,9 +1262,17 @@ const App = () => {
       </div>
 
       <div className="main-content">
-        <header style={{ marginBottom: '1.5rem' }}>
-          <h2 className="title-gradient" style={{ fontSize: '1.9rem', letterSpacing: '-0.03em' }}>Unified Orchestration</h2>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.82rem', marginTop: '4px', letterSpacing: '0.01em' }}>Antigravity · Jules · Gemini Fleet</p>
+        <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Unified Orchestration</h2>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', marginTop: '2px', letterSpacing: '0' }}>
+              {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector} · {activeEngine === 'imi-core' ? 'IMI Core' : activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>All systems running</span>
+          </div>
         </header>
 
         <AnimatePresence mode="wait">
