@@ -1110,7 +1110,7 @@ const App = () => {
                         {m.type==='ai' && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                             <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                              {m.director?m.director.toUpperCase():'SYSTEM'}
+                              {m.director ? (m.director.startsWith('ollama:') ? shortModelName(m.director.slice(7)).toUpperCase() : m.director.toUpperCase()) : 'SYSTEM'}
                             </div>
                             {m.isStreaming && <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>● LIVE</div>}
                           </div>
@@ -1195,6 +1195,11 @@ const App = () => {
                                   {ollamaModels.map(m => {
                                     const id = `ollama:${m.name}`;
                                     const label = shortModelName(m.name);
+                                    const sizeNum = parseFloat(m.size);
+                                    const sizeUnit = m.size?.toUpperCase().includes('GB') ? 'GB' : 'MB';
+                                    const sizeGB = sizeUnit === 'GB' ? sizeNum : sizeNum / 1024;
+                                    const sizeColor = sizeGB >= 15 ? '#ff416c' : sizeGB >= 8 ? '#ffa500' : '#00ff88';
+                                    const sizeWarning = sizeGB >= 15 ? '⚠️ Needs GPU' : sizeGB >= 8 ? '⚡ High RAM' : '✅ CPU OK';
                                     return (
                                       <div key={id} onClick={() => { setActiveDirector(id); setIsDropdownOpen(false); addLog('system', `Brain set to ${label} (local)`); saveConfig({ activeBrain: id }); }}
                                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeDirector === id ? 900 : 400 }}
@@ -1204,7 +1209,10 @@ const App = () => {
                                         <Database size={12} style={{ color: '#00ff88', flexShrink: 0 }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-                                          <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>Local · Ollama</div>
+                                          <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                            <span>Local · {m.size}</span>
+                                            <span style={{ color: sizeColor, fontWeight: 900 }}>{sizeWarning}</span>
+                                          </div>
                                         </div>
                                         {activeDirector === id && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                       </div>
@@ -1239,9 +1247,12 @@ const App = () => {
                                   { id: 'jules',    name: 'Jules',       desc: 'GitHub PR-based agent', icon: <Layers size={12}/>, always: false, key: julesApiKey || githubToken },
                                   { id: 'antigravity', name: 'AG AI',   desc: 'Antigravity engine',    icon: <Cpu size={12}/>,    always: false, key: customApiKey },
                                   // Ollama local models — show if any are installed
-                                  ...ollamaModels.slice(0, 5).map(m => ({
-                                    id: `ollama:${m.name}`, name: shortModelName(m.name), desc: 'Local · Ollama', icon: <Database size={12}/>, always: true, key: ''
-                                  })),
+                                  ...ollamaModels.slice(0, 5).map(m => {
+                                    const sizeNum = parseFloat(m.size);
+                                    const sizeGB = m.size?.toUpperCase().includes('GB') ? sizeNum : sizeNum / 1024;
+                                    const sizeWarn = sizeGB >= 15 ? ' · ⚠️ Needs GPU' : sizeGB >= 8 ? ' · ⚡ High RAM' : ` · ${m.size}`;
+                                    return { id: `ollama:${m.name}`, name: shortModelName(m.name), desc: `Local · Ollama${sizeWarn}`, icon: <Database size={12}/>, always: true, key: '' };
+                                  }),
                                 ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string }[])
                                 .filter(opt => opt.always || (opt.key && opt.key.trim()))
                                  .map(opt => (

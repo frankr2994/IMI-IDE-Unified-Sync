@@ -1443,11 +1443,21 @@ User message: `;
   // ── Local Ollama Brain (ollama:<model>) ──────────────────────────────────
   if (director && director.startsWith('ollama:')) {
     const ollamaModel = director.slice(7); // strip "ollama:"
+    // Detect model size to set appropriate timeout & warn user
+    const modelSizeGB = (() => { try { const out = require('child_process').execSync('ollama list', { timeout: 3000 }).toString(); const line = out.split('\n').find(l => l.toLowerCase().includes(ollamaModel.split(':')[0].toLowerCase())); if (!line) return 0; const m = line.match(/([\d.]+)\s*GB/i); return m ? parseFloat(m[1]) : 0; } catch { return 0; } })();
+    const timeoutMs = modelSizeGB >= 15 ? 120000 : modelSizeGB >= 8 ? 90000 : 60000;
     const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'look', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit'];
     const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const req = net.request({ method: 'POST', protocol: 'http:', hostname: 'localhost', port: 11434, path: '/v1/chat/completions' });
     req.setHeader('Content-Type', 'application/json');
+    let timedOut = false;
+    const ollamaTimeout = setTimeout(() => {
+      timedOut = true;
+      try { req.abort(); } catch {}
+      const sizeHint = modelSizeGB >= 15 ? ` This model is ${modelSizeGB.toFixed(0)}GB — it needs a GPU to run at usable speed.` : '';
+      event.sender.send('command-error', { messageId, error: `⏱️ Ollama timed out after ${timeoutMs/1000}s.${sizeHint}\n\n💡 Try switching to **qwen2.5-coder:7b** (4.7GB) — it runs fast on CPU.` });
+    }, timeoutMs);
     const body = JSON.stringify({
       model: ollamaModel,
       messages: [
@@ -1479,12 +1489,15 @@ User message: `;
         }
       });
       res.on('end', () => {
-        event.sender.send('command-done', { messageId, fullText });
-        tokenStats['ollama'] = (tokenStats['ollama'] || 0) + Math.ceil(fullText.length / 4);
-        saveGlobalState();
+        clearTimeout(ollamaTimeout);
+        if (!timedOut) {
+          event.sender.send('command-done', { messageId, fullText });
+          tokenStats['ollama'] = (tokenStats['ollama'] || 0) + Math.ceil(fullText.length / 4);
+          saveGlobalState();
+        }
       });
     });
-    req.on('error', (err) => event.sender.send('command-error', { messageId, error: `Ollama error: ${err.message}. Make sure Ollama is running.` }));
+    req.on('error', (err) => { clearTimeout(ollamaTimeout); if (!timedOut) event.sender.send('command-error', { messageId, error: `Ollama error: ${err.message}. Make sure Ollama is running (run: ollama serve).` }); });
     req.end();
     return;
   }
