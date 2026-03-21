@@ -1,6 +1,6 @@
 html {
   /* Explicit base — makes all rem values predictable and readable */
-  font-size: 16px;
+  font-size: 18px;
 }
 
 :root {

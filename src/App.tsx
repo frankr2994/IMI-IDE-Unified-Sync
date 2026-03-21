@@ -80,6 +80,7 @@ const App = () => {
   const [editPhaseData, setEditPhaseData] = useState<{ name: string; description: string; prompt: string }>({ name: '', description: '', prompt: '' });
   const [suggestingPhase, setSuggestingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
   const [generatingPreview, setGeneratingPreview] = useState(false);
+  const [showPreviewMenu, setShowPreviewMenu] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -1725,12 +1726,12 @@ const App = () => {
                         <button type="button" onClick={() => setAttachedImage(null)} style={{ background: 'none', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.9rem', opacity: 0.7 }}>✕</button>
                       </div>
                     )}
-                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible' }}>
+                    <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible' }}>
                         
                         {/* BRAIN */}
                         <div style={{ position: 'relative' }}>
-                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', height: '40px', cursor: 'pointer' }}>
+                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(155, 77, 255, 0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.1em', textShadow: '0 0 10px var(--primary-glow)' }}>BRAIN</div>
                             {activeDirector === 'gemini' && <Zap size={12} />}
                             {activeDirector === 'geminicli' && <Terminal size={12} />}
@@ -1832,7 +1833,7 @@ const App = () => {
 
                         {/* CODER */}
                         <div style={{ position: 'relative' }}>
-                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', height: '40px', cursor: 'pointer' }}>
+                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px', padding: '0 12px', background: 'rgba(0, 255, 136, 0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', minHeight: '40px', alignSelf: 'stretch', cursor: 'pointer' }}>
                             <div style={{ position: 'absolute', top: '-18px', left: '0px', width: '100%', textAlign: 'center', fontSize: '0.65rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.1em', textShadow: '0 0 10px rgba(0,255,136,0.5)' }}>CODER</div>
                             {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
                             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine.toUpperCase()}</span>
@@ -1886,24 +1887,44 @@ const App = () => {
                           </AnimatePresence>
                         </div>
 
-                        <input data-main value={chatInput} onChange={e => setChatInput(e.target.value)} type="text" placeholder={`Message...`} style={{ flex: 1, background: 'transparent', border: 'none', padding: '0 15px', color: 'white', fontSize: '0.9rem', outline: 'none', height: '40px' }} onPaste={e => {
-                          const items = Array.from(e.clipboardData.items);
-                          const imgItem = items.find(i => i.type.startsWith('image/'));
-                          if (imgItem) {
-                            e.preventDefault();
-                            const file = imgItem.getAsFile();
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const dataUrl = reader.result as string;
-                              const [header, base64] = dataUrl.split(',');
-                              const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
-                              setAttachedImage({ base64, mimeType, previewUrl: dataUrl });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }} />
-                        <div onClick={handleMicClick} style={{ cursor: 'pointer', padding: '0 10px', display: 'flex', alignItems: 'center', opacity: isListening ? 1 : 0.6, color: isListening ? '#ff416c' : '#ffffff' }}>
+                        <textarea
+                          data-main
+                          value={chatInput}
+                          rows={1}
+                          placeholder="Message..."
+                          style={{ flex: 1, background: 'transparent', border: 'none', padding: '10px 15px', color: 'white', fontSize: '0.9rem', outline: 'none', resize: 'none', minHeight: '40px', maxHeight: '160px', lineHeight: '1.45', overflowY: 'auto', fontFamily: 'inherit' }}
+                          onChange={e => {
+                            setChatInput(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                              // Reset height after send
+                              (e.target as HTMLTextAreaElement).style.height = '40px';
+                            }
+                          }}
+                          onPaste={e => {
+                            const items = Array.from(e.clipboardData.items);
+                            const imgItem = items.find(i => i.type.startsWith('image/'));
+                            if (imgItem) {
+                              e.preventDefault();
+                              const file = imgItem.getAsFile();
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const dataUrl = reader.result as string;
+                                const [header, base64] = dataUrl.split(',');
+                                const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
+                                setAttachedImage({ base64, mimeType, previewUrl: dataUrl });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <div onClick={handleMicClick} style={{ cursor: 'pointer', padding: '0 10px 11px', display: 'flex', alignItems: 'flex-end', opacity: isListening ? 1 : 0.6, color: isListening ? '#ff416c' : '#ffffff', flexShrink: 0 }}>
                            <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
                         </div>
                       </div>
