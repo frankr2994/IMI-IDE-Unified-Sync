@@ -75,6 +75,7 @@ const App = () => {
   const [yoloMode, setYoloMode] = useState(false);
   const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
   const planPhaseResolvers = React.useRef<Map<number, () => void>>(new Map());
+  const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'>('console');
   const [isListening, setIsListening] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<any>(null);
   const [mcpSearch, setMcpSearch] = useState('');
@@ -884,6 +885,7 @@ const App = () => {
         setMessages(prev => prev.map(m => m.id === planMsgId ? { id: planMsgId, type: 'plan', plan, planId: planMsgId } : m));
         const newAP = { messageId: planMsgId, plan, currentPhaseIdx: -1, completedPhases: new Set<number>(), running: false };
         setActivePlan(newAP);
+        setRightPanelTab('plan');
         if (yoloMode) setTimeout(() => runFullPlan(plan, planMsgId), 500);
       } catch(e: any) {
         setMessages(prev => prev.map(m => m.id === planMsgId ? { ...m, text: `❌ Plan failed: ${e.message}`, isStreaming: false } : m));
