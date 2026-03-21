@@ -1383,7 +1383,7 @@ const App = () => {
         </div>
 
         {/* Nav */}
-        <div style={{ padding: '14px 0 0', flex: 1 }}>
+        <div style={{ padding: '14px 0 0' }}>
           <div style={{ padding: '0 20px 8px', fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>MENU</div>
           {([
             { id: 'dashboard',       label: 'Dashboard',       icon: <Activity size={14}/> },
@@ -1398,15 +1398,18 @@ const App = () => {
           ))}
         </div>
 
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
         {/* Settings pinned to bottom */}
-        <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginTop: 'auto' }}>
+        <button onClick={() => setActiveTab('settings')} className={`sidebar-btn ${activeTab === 'settings' ? 'active' : ''}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <span style={{ opacity: activeTab === 'settings' ? 1 : 0.6, flexShrink: 0 }}><Settings size={14}/></span>
           System
         </button>
 
         {/* Footer — project root */}
         <div style={{ padding: '14px 20px 18px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ fontSize: '0.48rem', fontWeight: 700, color: 'rgba(255,255,255,0.18)', letterSpacing: '0.14em', marginBottom: '7px' }}>PROJECT</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: '7px' }}>PROJECT</div>
           <div
             title={stats.projectRoot || 'Not set'}
             onClick={() => setActiveTab('settings')}
