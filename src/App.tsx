@@ -2087,14 +2087,10 @@ const App = () => {
                       </div>
 
                       {/* Plan Mode */}
-                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON' : 'Plan Mode'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
-                      {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title="YOLO — auto-run all phases" style={{ height: '38px', padding: '0 9px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '9px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.05em', flexShrink: 0 }}>YOLO</button>}
+                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — break task into phases'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
 
                       {/* Send */}
                       <button type="submit" className="btn-chat-send" style={{ width: '38px', height: '38px' }}><Send size={15}/></button>
-
-                      {/* Clear */}
-                      <button type="button" title="Clear chat" onClick={async () => { setMessages([]); setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '38px', height: '38px', background: 'rgba(255,65,108,0.12)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '9px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><X size={13}/></button>
                     </form>
                 </div>
               </div>
