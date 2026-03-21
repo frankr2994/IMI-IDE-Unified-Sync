@@ -778,8 +778,9 @@ User message: `;
           tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
           saveGlobalState();
           event.sender.send('command-end', { messageId, code: 0 });
-          if (isCodingAction && payload.engine && payload.engine !== 'gemini') {
-            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ΓÜÖ∩╕Å IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+          const isClarifying = fullText.includes('\u2753') || fullText.includes('?') && fullText.includes('\u2022') && fullText.toLowerCase().includes('did you mean');
+          if (isCodingAction && payload.engine && payload.engine !== 'gemini' && !isClarifying) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- [IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()} ---` });
             setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
           }
         }
@@ -851,8 +852,9 @@ User message: `;
         else {
           tokenStats['imi-core'] = (tokenStats['imi-core'] || 0) + Math.ceil(fullText.length / 4);
           event.sender.send('command-end', { messageId, code: 0 });
-          if (isCodingAction && payload.engine && payload.engine !== director) {
-            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ΓÜÖ∩╕Å IMI ORCHESTRATOR: HANDING OFF TO ${payload.engine.toUpperCase()} ---` });
+          const isClarifying2 = fullText.includes('\u2753') || fullText.includes('?') && fullText.includes('\u2022') && fullText.toLowerCase().includes('did you mean');
+          if (isCodingAction && payload.engine && payload.engine !== director && !isClarifying2) {
+            event.sender.send('command-chunk', { messageId, chunk: `\n\n--- [IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()} ---` });
             setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
           }
         }
