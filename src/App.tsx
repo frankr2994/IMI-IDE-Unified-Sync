@@ -151,7 +151,15 @@ const App = () => {
     }
     try {
       const res = await (ipc as any).invoke('hf-search-models', q);
-      const results = res.results || [];
+      const OFFICIAL_AUTHORS = ['qwen','meta-llama','mistralai','google','deepseek-ai','microsoft','cohere','01-ai','baidu'];
+      const REPACKERS = ['unsloth','lmstudio-community','maziyarpanahi','bartowski','thebloke','mmnga','dranger003'];
+      const rankModel = (m: any) => {
+        const author = (m.name||'').split('/')[0].toLowerCase();
+        if (OFFICIAL_AUTHORS.includes(author)) return 0;
+        if (REPACKERS.includes(author)) return 2;
+        return 1;
+      };
+      const results = (res.results || []).sort((a: any, b: any) => rankModel(a) - rankModel(b));
       setHfResults(results);
       if (res.error) setHfError(res.error);
       // Batch-fetch real sizes in background, update cards as they arrive
