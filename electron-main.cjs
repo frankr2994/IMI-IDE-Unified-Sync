@@ -1574,17 +1574,27 @@ STEP 2 — WHEN ACTING:
 Generate a precise TECHNICAL SPECIFICATION for IMI-CORE. State: exact file (src/index.css or src/App.tsx), exact CSS property or JSX element, exact value change. One focused change only.
 
 User Request: `;
-  const chatPrefix = `You are a smart, fast AI assistant inside IMI — a desktop AI app. You talk like a real person, not a corporate chatbot. You understand what people mean even when they type fast, make typos, spell things wrong, or explain things badly.
+  const chatPrefix = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop developer tool built with Electron + React.
+You are smart, fast, and understand what people mean even when they type badly, use slang, or make typos.
 
-The user's name is ${GITHUB_USER || 'the user'}. Their desktop is at ${path.join(os.homedir(), 'Desktop')}.
+ABOUT THE USER:
+- GitHub: ${GITHUB_USER || 'creepybunny99'}
+- Desktop: ${path.join(os.homedir(), 'Desktop')}
+- Project: ${currentProjectRoot}
 
-CORE RULES:
+ABOUT IMI (the app you live inside):
+- Built with: Electron + React/TypeScript + Vite
+- Key files: electron-main.cjs (backend), src/App.tsx (UI), src/index.css (styles)
+- Has tabs: Dashboard, Command Center, Dev Hub, Skills, Settings
+- You can modify IMI's own code when asked
+
+RULES:
 1. UNDERSTAND INTENT, NOT WORDS. "can u make a pong game" = make a working pong game. "htlm" = html. "u" = you. "wat" = what.
 2. NEVER say "I don't understand" or "Could you clarify?" — always make your best guess and go.
 3. Be concise. No filler. No "Certainly!" or "Of course!" or "Great question!". Just answer or do it.
-4. If someone asks you to make/create/build something, describe exactly what you'd create and how. Be specific and useful.
-5. For questions, give direct answers first, then explain if needed.
-6. You can have personality — be friendly, casual, even funny when appropriate.
+4. If someone asks to make/create/build something, be specific about what you'd create and how.
+5. For questions, give direct answers first, explain only if needed.
+6. Be friendly and natural — talk like a person, not a corporate chatbot.
 
 User: `;
 
@@ -1665,12 +1675,13 @@ User: `;
       }
     }
 
-    // isCodingAction = true ONLY when the user is explicitly asking to change IMI's own code/UI.
-    // Must reference IMI-specific things AND have an action verb — NOT just any mention of "make" or "build".
-    const isCodingAction = (
-      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
-      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
-    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
+    // isCodingAction = true when user wants to change IMI itself.
+    // Needs an action verb AND an IMI-specific term. "make the sidebar better" → true. "make a pong game" → false.
+    const _cmdWords = command.toLowerCase();
+    const _hasAction = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign|restyle)\b/i.test(command);
+    const _hasIMITarget = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
+    const _isAboutDesktopFile = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
+    const isCodingAction = ((_hasAction && _hasIMITarget) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isAboutDesktopFile;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     console.log(`[ROUTE] → Gemini stream (isCodingAction=${isCodingAction})`);
     const hostname = 'generativelanguage.googleapis.com';
@@ -1757,10 +1768,10 @@ User: `;
     req.end();
     return;
   } else if (director === 'custom' || director === 'llama') {
-    const isCodingAction = (
-      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
-      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
-    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
+    const _hasAction2 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign)\b/i.test(command);
+    const _hasIMITarget2 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
+    const _isDesktopFile2 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
+    const isCodingAction = ((_hasAction2 && _hasIMITarget2) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile2;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
 
     if (!CUSTOM_API_URL) { event.sender.send('command-error', { messageId, error: "Custom Endpoint URL missing in Settings." }); return; }
@@ -1841,11 +1852,13 @@ User: `;
     // Detect model size to set appropriate timeout & warn user
     const modelSizeGB = (() => { try { const out = require('child_process').execSync('ollama list', { timeout: 3000 }).toString(); const line = out.split('\n').find(l => l.toLowerCase().includes(ollamaModel.split(':')[0].toLowerCase())); if (!line) return 0; const m = line.match(/([\d.]+)\s*GB/i); return m ? parseFloat(m[1]) : 0; } catch { return 0; } })();
     const timeoutMs = modelSizeGB >= 15 ? 120000 : modelSizeGB >= 8 ? 90000 : 60000;
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'look', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit'];
-    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const _hasAction4 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|better|nicer|polish|redesign)\b/i.test(command);
+    const _hasIMITarget4 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
+    const _isDesktopFile4 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
+    const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4;
     // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
-    const ollamaLightPrefix = `You are a helpful AI assistant built into IMI (Integrated Merge Interface), a developer desktop app. Be concise, friendly, and remember the conversation. Do NOT greet the user repeatedly — only say hello on the very first message.`;
+    const ollamaLightPrefix = chatPrefix;
     const activePrefix = isCodingAction ? blueprintPrefix : ollamaLightPrefix;
     // Warn if user sent an image but the model likely doesn't support vision
     const visionModels = ['llava', 'moondream', 'bakllava', 'minicpm', 'qwen2-vl', 'llava-phi', 'llava-llama'];
@@ -1917,10 +1930,10 @@ User: `;
   // ── Claude (Anthropic) Brain ──────────────────────────────────────────────
   if (director === 'claude') {
     if (!CLAUDE_KEY) { event.sender.send('command-error', { messageId, error: 'Claude API key missing. Add it in Settings → APIs.' }); return; }
-    const isCodingAction = (
-      /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify)\b/i.test(command)
-      && /\b(imi|app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx)\b/i.test(command)
-    ) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command);
+    const _hasAction3 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|setup|better|nicer|polish|redesign)\b/i.test(command);
+    const _hasIMITarget3 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
+    const _isDesktopFile3 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
+    const isCodingAction = ((_hasAction3 && _hasIMITarget3) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile3;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.anthropic.com', path: '/v1/messages' });
     req.setHeader('Content-Type', 'application/json');
@@ -1995,8 +2008,10 @@ User: `;
     const cfg = openAICompatMap[director];
     const apiKey = cfg.key();
     if (!apiKey) { event.sender.send('command-error', { messageId, error: `${cfg.label} missing. Add it in Settings → APIs.` }); return; }
-    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit', 'look'];
-    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const _hasAction5 = /\b(fix|update|change|improve|add|remove|refactor|rewrite|implement|edit|modify|make|build|create|better|nicer|polish|redesign)\b/i.test(command);
+    const _hasIMITarget5 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
+    const _isDesktopFile5 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
+    const isCodingAction = ((_hasAction5 && _hasIMITarget5) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile5;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
     // Build messages with full history
     const msgs = [{ role: 'system', content: activePrefix }];
