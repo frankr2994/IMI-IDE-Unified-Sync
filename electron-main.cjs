@@ -600,7 +600,11 @@ User message: `;
 
     // ── Desktop operations ──────────────────────────────────────────────────
     const cmdL = command.toLowerCase();
-    const isDesktopOp = /\b(desktop|my desktop)\b/.test(cmdL) && /\b(create|make|new|add|build)\b/.test(cmdL) && /\b(folder|directory|file)\b/.test(cmdL);
+    // Require create/make/new/add to be CLOSE to folder (within 25 chars), not just anywhere in sentence
+    const isDesktopOp = (
+      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory|file)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
+      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory|file)\b/i.test(command)
+    );
     if (isDesktopOp) {
       triggerDesktopTask(event, command, cmdL, messageId);
       return;
@@ -1184,10 +1188,11 @@ RULES:
 }
 
 async function triggerDesktopTask(event, command, cmdL, messageId) {
-  // Extract folder name — stop at sentence boundaries (. , then and)
-  const folderMatch = command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?\s+it)\s+["']?([^"'.,\n]+?)["']?\s*(?=[.,]|\bthen\b|\band\b|$)/i)
-    || command.match(/folder\s+(?:called?|named?)?\s*["']?([^"'.,\n]+?)["']?\s*(?=[.,]|\bthen\b|\band\b|$)/i);
-  const folderName = folderMatch ? folderMatch[1].trim() : 'New Folder';
+  // Extract folder name — must appear immediately after "called/named" or be quoted
+  // Strictly: stop at "and", "then", punctuation, or after max 40 chars
+  const folderMatch = command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+["']([^"']+)["']/i)   // quoted: called "My Folder"
+    || command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+([\w\s-]{2,40?})(?=[.,]|\bthen\b|\band\b|\bwith\b|$)/i); // unquoted: called My Folder
+  const folderName = (folderMatch?.[1] || '').trim().replace(/\s+/g, ' ') || 'New Folder';
   const desktopPath = path.join(os.homedir(), 'Desktop', folderName);
 
   // Step 1: create folder
