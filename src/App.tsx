@@ -92,6 +92,15 @@ const App = () => {
   const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'|'mcp'|'tools'|'ai'|'agent'>('mcp');
   const [agentStats, setAgentStats] = useState<any>(null);
 
+  // 🎨 Style Analyzer
+  const [styleProfile, setStyleProfile] = useState<any>(null);
+  const [styleLoading, setStyleLoading] = useState(false);
+
+  // 🔭 Impact Analyzer
+  const [impactData, setImpactData] = useState<{ filePath: string; affected: Array<{ path: string; depth: number; label: string }> } | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
+  const [impactTarget, setImpactTarget] = useState('');
+
   // ⚔ Debate Mode
   const [debateMode, setDebateMode] = useState(false);
   const [debateRounds, setDebateRounds] = useState<Array<{ round: number; role: string; label: string; content: string; status: string }>>([]);
@@ -1139,6 +1148,18 @@ const App = () => {
       document.removeEventListener('mouseup', onUp);
     };
   }, []);
+
+  // Load style profile on startup
+  useEffect(() => {
+    (ipc as any).invoke('get-style-profile').then((p: any) => { if (p) setStyleProfile(p); }).catch(() => {});
+  }, []);
+
+  // Re-load style profile whenever stats (project root) refresh
+  useEffect(() => {
+    if (stats.projectRoot) {
+      (ipc as any).invoke('get-style-profile').then((p: any) => { if (p) setStyleProfile(p); }).catch(() => {});
+    }
+  }, [stats.projectRoot]);
 
   // Auto-scan project navigator when the tab opens
   useEffect(() => {
@@ -2219,6 +2240,12 @@ const App = () => {
 
                       {/* Debate Mode */}
                       <button type="button" onClick={() => { setDebateMode(d => !d); if (planMode) setPlanMode(false); }} title={debateMode ? 'Debate Mode ON — Brain & Coder debate then execute' : 'Debate Mode — Brain plans, Coder critiques, then apply'} style={{ height: '38px', width: '38px', background: debateMode ? 'rgba(255,160,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debateMode ? 'rgba(255,160,0,0.55)' : 'var(--glass-border)'}`, borderRadius: '9px', color: debateMode ? '#ffa000' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚔</button>
+
+                      {/* Style Profile indicator */}
+                      <button type="button" title={styleProfile ? `Style learned: ${styleProfile.filesAnalyzed} files · ${styleProfile.indent}, ${styleProfile.quotes} quotes${styleProfile.semicolons ? ', semi' : ', no-semi'}` : 'No style profile — go to Settings → Style & Impact to learn'} onClick={async () => { setActiveTab('settings'); setSettingsActiveSubTab('style'); }} style={{ height: '38px', width: '38px', background: styleProfile ? 'rgba(79,172,254,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleProfile ? 'rgba(79,172,254,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: styleProfile ? '#4facfe' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                        🎨
+                        {styleProfile && <span style={{ position: 'absolute', top: '4px', right: '4px', width: '5px', height: '5px', borderRadius: '50%', background: '#4facfe' }} />}
+                      </button>
 
                       {/* Terminal toggle */}
                       <button type="button" onClick={() => { setTerminalOpen(t => !t); setTimeout(() => terminalInputRef.current?.focus(), 80); }} title="Toggle Terminal" style={{ height: '38px', width: '38px', background: terminalOpen ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${terminalOpen ? 'rgba(0,255,136,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: terminalOpen ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -4328,6 +4355,7 @@ const App = () => {
                     { id: 'general',    label: 'PREFERENCES',   icon: <Settings2 size={14}/> },
                     { id: 'appearance', label: 'APPEARANCE',    icon: <Palette size={14}/> },
                     { id: 'apis',       label: 'APIs & KEYS',   icon: <Key size={14}/> },
+                    { id: 'style',      label: 'STYLE & IMPACT', icon: <GitBranch size={14}/> },
                     { id: 'sync',       label: 'GITHUB & SYNC', icon: <RefreshCw size={14}/> },
                     { id: 'telemetry',  label: 'TELEMETRY',     icon: <Gauge size={14}/> },
                     { id: 'automation', label: 'AUTOMATION',    icon: <ShieldCheck size={14}/> }
