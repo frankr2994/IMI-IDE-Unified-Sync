@@ -2360,9 +2360,10 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
   if (!query || query.trim().length < 1) return { results: [], total: 0 };
   return new Promise((resolve) => {
     const q = encodeURIComponent(query.trim());
+    // full=true returns siblings (file list with sizes) — limit reduced to keep response manageable
     const req = net.request({
       method: 'GET', protocol: 'https:', hostname: 'huggingface.co',
-      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=24&full=false`
+      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=12&full=true`
     });
     req.setHeader('Accept', 'application/json');
     req.setHeader('User-Agent', 'IMI-DevHub/1.0');
@@ -2372,18 +2373,34 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
       res.on('end', () => {
         try {
           const models = JSON.parse(raw);
-          const results = (Array.isArray(models) ? models : []).map(m => ({
-            id: m.modelId || m.id,
-            name: m.modelId || m.id,
-            author: (m.modelId || m.id || '').split('/')[0],
-            downloads: m.downloads || 0,
-            likes: m.likes || 0,
-            tags: m.tags || [],
-            pipeline: m.pipeline_tag || 'text-generation',
-            updatedAt: m.lastModified || m.createdAt,
-            hfUrl: `https://huggingface.co/${m.modelId || m.id}`,
-            ollamaCmd: `hf.co/${m.modelId || m.id}`,
-          }));
+          const fmtBytes = (b) => b >= 1e9 ? `${(b/1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b/1e6).toFixed(0)} MB` : `${b} B`;
+          const results = (Array.isArray(models) ? models : []).map(m => {
+            // Parse GGUF file sizes from siblings
+            const siblings = m.siblings || [];
+            const ggufFiles = siblings.filter(s => s.rfilename && s.rfilename.toLowerCase().endsWith('.gguf') && s.size > 0);
+            let sizeLabel = '';
+            if (ggufFiles.length === 1) {
+              sizeLabel = fmtBytes(ggufFiles[0].size);
+            } else if (ggufFiles.length > 1) {
+              const smallest = Math.min(...ggufFiles.map(f => f.size));
+              const largest = Math.max(...ggufFiles.map(f => f.size));
+              sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
+            }
+            return {
+              id: m.modelId || m.id,
+              name: m.modelId || m.id,
+              author: (m.modelId || m.id || '').split('/')[0],
+              downloads: m.downloads || 0,
+              likes: m.likes || 0,
+              tags: m.tags || [],
+              pipeline: m.pipeline_tag || 'text-generation',
+              updatedAt: m.lastModified || m.createdAt,
+              hfUrl: `https://huggingface.co/${m.modelId || m.id}`,
+              ollamaCmd: `hf.co/${m.modelId || m.id}`,
+              sizeLabel,
+              ggufCount: ggufFiles.length,
+            };
+          });
           resolve({ results, total: results.length });
         } catch(e) { resolve({ results: [], total: 0, error: e.message }); }
       });

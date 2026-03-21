@@ -1522,9 +1522,14 @@ const App = () => {
                               <div style={{ marginBottom: '5px' }}>
                                 <span style={{ fontWeight: 800, fontSize: '0.82rem', wordBreak: 'break-word' }}>{model.name}</span>
                               </div>
-                              <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px' }}>
+                              <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <span>⬇ {formatNum(model.downloads)}</span>
                                 <span>❤️ {formatNum(model.likes)}</span>
+                                {model.sizeLabel && (
+                                  <span style={{ padding: '1px 7px', background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '4px', color: '#00ff88', fontWeight: 700 }}>
+                                    💾 {model.sizeLabel}{model.ggufCount > 1 ? ` (${model.ggufCount} files)` : ''}
+                                  </span>
+                                )}
                                 {model.pipeline && <span style={{ padding: '1px 6px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '4px', color: '#4facfe' }}>{model.pipeline}</span>}
                               </div>
                               {isPulling && (() => {
