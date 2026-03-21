@@ -1067,7 +1067,7 @@ ipcMain.handle('generate-plan', async (_e, { command }) => {
   const relevantCode = isDesktopOrExternal ? '' : smartContext.getRelevantCode(command, currentProjectRoot);
 
   const desktopContext = isDesktopOrExternal
-    ? `Desktop path: ${require('path').join(require('os').homedir(), 'Desktop')}\nThis task involves creating files or folders on the user's system — NOT editing IMI's own code.`
+    ? `WHAT IS CURRENTLY ON THE DESKTOP (live scan — use this to avoid recreating existing files and to build accurate full paths):\n${getDesktopSnapshot(1)}\n\nThis task involves creating files or folders on the user's system — NOT editing IMI's own code.`
     : `Project structure:\n${projectMap}\n\nRelevant code:\n${relevantCode}`;
 
   const systemPrompt = `You are a task planner for IMI — an AI desktop assistant that can create files, create folders, open websites, open files in the browser, write HTML/CSS/JS, and edit code.
@@ -1790,6 +1790,9 @@ ABOUT THE USER:
 - GitHub: ${GITHUB_USER || 'creepybunny99'}
 - Desktop: ${path.join(os.homedir(), 'Desktop')}
 - Project: ${currentProjectRoot}
+
+LIVE DESKTOP SNAPSHOT (scanned right now — this is what is ACTUALLY on the user's desktop):
+${getDesktopSnapshot(1)}
 
 ABOUT IMI (the app you live inside):
 - Built with: Electron + React/TypeScript + Vite
@@ -2910,6 +2913,38 @@ Rules:
   }
 }
 
+// ── Desktop awareness — scan what's actually on the desktop ──────────────────
+function getDesktopSnapshot(maxDepth = 1) {
+  const DESKTOP = path.join(os.homedir(), 'Desktop');
+  const lines = [];
+  const MAX_FILES = 60; // don't flood the prompt
+  let count = 0;
+
+  function scan(dir, depth, prefix) {
+    if (depth > maxDepth || count >= MAX_FILES) return;
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (count >= MAX_FILES) break;
+      if (e.name.startsWith('.') || e.name === 'desktop.ini') continue;
+      const fullPath = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        lines.push(`${prefix}📁 ${e.name}/  [${fullPath}]`);
+        if (depth < maxDepth) scan(fullPath, depth + 1, prefix + '  ');
+      } else {
+        let size = '';
+        try { size = ` (${Math.round(fs.statSync(fullPath).size / 1024)}KB)`; } catch {}
+        lines.push(`${prefix}📄 ${e.name}${size}  [${fullPath}]`);
+      }
+      count++;
+    }
+  }
+
+  scan(DESKTOP, 0, '');
+  if (lines.length === 0) return 'Desktop is empty.';
+  return `Desktop (${DESKTOP}):\n${lines.join('\n')}`;
+}
+
 // ── Auto-create any file/program on desktop using AI ─────────────────────────
 async function triggerAutoCreateFile(event, command, messageId, overrides = {}) {
   const DESKTOP = path.join(os.homedir(), 'Desktop');
@@ -2965,16 +3000,39 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   const displayName = path.basename(filePath);
   event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${displayName}\`...` });
 
+  // Read existing file if it exists — so Gemini improves it rather than generating blind
+  let existingContent = '';
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      // Cap at 12000 chars to avoid blowing the prompt budget
+      existingContent = raw.length > 12000 ? raw.slice(0, 12000) + '\n... [truncated for context]' : raw;
+      event.sender.send('command-chunk', { messageId, chunk: `\n📖 Found existing \`${displayName}\` — reading it first...\n` });
+    }
+  } catch(_) {}
+
+  const existingBlock = existingContent
+    ? `\nEXISTING FILE CONTENT (the current version — improve this, don't start from scratch unless told to rewrite):\n\`\`\`\n${existingContent}\n\`\`\`\n`
+    : '';
+
+  // Also inject desktop snapshot so Gemini knows full context
+  const desktopSnap = getDesktopSnapshot(1);
+
   // Ask Gemini to generate the file content
   if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
   const prompt = `The user asked: "${command}"
+
+TARGET FILE: ${filePath}
+${existingBlock}
+WHAT IS ON THE USER'S DESKTOP RIGHT NOW:
+${desktopSnap}
 
 Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
 - If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
 - If it's an app/tool: make it polished with a clean modern UI.
 - Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
 - Everything must be in a single file — inline CSS and JS. No external dependencies.
-- Output ONLY the raw file content inside a code block. No explanation.`;
+- Output ONLY the raw file content. No markdown fences, no explanation, no preamble — just the code.`;
 
   let generatedContent = '';
   try {
@@ -3189,14 +3247,31 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
 
   event.sender.send('command-chunk', { messageId, chunk: `🧠 Generating ${fileName}...\n` });
 
+  // Read existing file if it already exists
+  let existingFileContent = '';
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      existingFileContent = raw.length > 12000 ? raw.slice(0, 12000) + '\n... [truncated]' : raw;
+    }
+  } catch(_) {}
+  const existingFileBlock = existingFileContent
+    ? `\nEXISTING FILE (improve this):\n\`\`\`\n${existingFileContent}\n\`\`\`\n`
+    : '';
+
   const codePrompt = `The user asked: "${fileDesc}"
+
+TARGET FILE: ${filePath}
+${existingFileBlock}
+DESKTOP CONTENTS:
+${getDesktopSnapshot(1)}
 
 Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${fileExt.toUpperCase()} file.
 - If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
 - If it's an app/tool: make it polished with a clean modern UI.
 - Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
 - Everything in one file — inline CSS and JS. No external dependencies.
-- Output ONLY the raw code. No markdown fences, no explanation.`;
+- Output ONLY the raw code. No markdown fences, no explanation, no preamble.`;
 
   const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
     path: `/v1beta/models/${BRAIN_MODEL}:generateContent?key=${GEMINI_KEY}` });
