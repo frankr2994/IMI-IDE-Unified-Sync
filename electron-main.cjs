@@ -1394,7 +1394,9 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   // ── 🌐 UNIVERSAL BROWSER ACTIONS — run for ANY brain model ────────────────
   const _cmdU = command.toLowerCase();
-  const _isCodeCtx = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(_cmdU);
+  // _isCodeCtx = true means the command is about IMI's own code/UI, not about creating files on desktop
+  const _isCodeCtx = /\b(function|component|variable|class|import|export|the app|imi|electron|react|code|style|json|package|sidebar|dashboard|settings|tab|button|panel|header|modal|theme|font|color|layout|animation)\b/.test(_cmdU)
+    && !/\b(desktop|my desktop|game|pong|snake|tetris|calculator|todo|timer|clock)\b/.test(_cmdU);
   if (!_isCodeCtx) {
     // Browser automation: "take control", "click", "screenshot", "log in", "fill in", etc.
     const needsBrowserBot = /\b(take control|screenshot|click|fill in|type into|search for|scroll|hover|log ?in|sign ?in|take a screen|show me (my|the) screen)\b/.test(_cmdU);
