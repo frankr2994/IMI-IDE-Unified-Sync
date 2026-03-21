@@ -2366,6 +2366,156 @@ const App = () => {
                    </div>
                  )}
 
+                 {/* ⚔ DEBATE PANEL */}
+                 {rightPanelTab === 'debate' && (
+                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
+                     {debateRounds.length === 0 && !debatingActive && !debateComplete ? (
+                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '14px', opacity: 0.45 }}>
+                         <span style={{ fontSize: '2.2rem' }}>⚔</span>
+                         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6 }}>
+                           No active debate.<br/>
+                           Enable <strong style={{ color: '#ffa000' }}>Debate Mode ⚔</strong> and send a task.<br/>
+                           <span style={{ fontSize: '0.62rem', opacity: 0.7 }}>Brain plans → Coder critiques → Brain refines → Apply</span>
+                         </div>
+                         {/* How-it-works mini guide */}
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', marginTop: '8px' }}>
+                           {[
+                             { round: 1, color: '#9b4dff', icon: '🧠', label: 'Brain', desc: 'High-level strategic plan' },
+                             { round: 2, color: '#00ff88', icon: '⚙️', label: 'Coder', desc: 'Implementation critique' },
+                             { round: 3, color: '#9b4dff', icon: '🧠', label: 'Brain', desc: 'Refined final plan' },
+                             { round: 4, color: '#00ff88', icon: '⚙️', label: 'Coder', desc: 'Surgical patch output' },
+                           ].map(s => (
+                             <div key={s.round} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                               <span style={{ fontSize: '0.55rem', fontWeight: 900, color: s.color, minWidth: '44px' }}>R{s.round} {s.icon}</span>
+                               <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>{s.label}</span>
+                               <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)' }}>{s.desc}</span>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     ) : (
+                       <>
+                         {/* Header */}
+                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255,160,0,0.15)' }}>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                             <span style={{ fontSize: '0.9rem' }}>⚔</span>
+                             <div>
+                               <div style={{ fontSize: '0.55rem', fontWeight: 900, color: '#ffa000', letterSpacing: '0.1em' }}>DEBATE SESSION</div>
+                               <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>
+                                 {activeDirector.toUpperCase()} Brain · {debateRounds.length}/4 rounds
+                               </div>
+                             </div>
+                           </div>
+                           {debatingActive && (
+                             <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}
+                               style={{ fontSize: '0.55rem', fontWeight: 800, color: '#ffa000', letterSpacing: '0.06em' }}>
+                               DEBATING…
+                             </motion.div>
+                           )}
+                           {!debatingActive && debateRounds.length > 0 && (
+                             <button onClick={() => { setDebateRounds([]); setDebateComplete(null); setDebatingActive(false); }}
+                               style={{ fontSize: '0.52rem', padding: '2px 7px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '5px', color: 'rgba(255,255,255,0.3)', cursor: 'pointer' }}>
+                               Clear
+                             </button>
+                           )}
+                         </div>
+
+                         {/* Round cards */}
+                         {debateRounds.filter(r => r.round > 0).map(r => {
+                           const isBrain = r.role === 'brain';
+                           const isStream = r.status === 'streaming';
+                           const accentRgb = isBrain ? '155,77,255' : '0,255,136';
+                           const accentHex = isBrain ? '#9b4dff' : '#00ff88';
+                           const isCollapsed = debateCollapsed.has(r.round) && r.status === 'done';
+                           return (
+                             <div key={r.round} style={{ borderRadius: '9px', background: `rgba(${accentRgb},0.04)`, border: `1px solid rgba(${accentRgb},0.22)`, overflow: 'hidden', transition: 'all 0.25s' }}>
+                               <div
+                                 onClick={() => {
+                                   if (r.status !== 'done') return;
+                                   setDebateCollapsed(prev => {
+                                     const next = new Set(prev);
+                                     next.has(r.round) ? next.delete(r.round) : next.add(r.round);
+                                     return next;
+                                   });
+                                 }}
+                                 style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 11px', cursor: r.status === 'done' ? 'pointer' : 'default', userSelect: 'none' }}
+                               >
+                                 <span style={{ fontSize: '0.5rem', fontWeight: 900, color: accentHex, letterSpacing: '0.1em', minWidth: '42px' }}>R{r.round}</span>
+                                 <span style={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', lineHeight: 1.2 }}>{r.label}</span>
+                                 {isStream && (
+                                   <motion.span animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.9, repeat: Infinity }}
+                                     style={{ color: accentHex, fontSize: '0.55rem', fontWeight: 800 }}>●</motion.span>
+                                 )}
+                                 {r.status === 'done' && (
+                                   <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.6rem' }}>{isCollapsed ? '▼' : '▲'}</span>
+                                 )}
+                               </div>
+                               {!isCollapsed && r.content && (
+                                 <div style={{ margin: '0 11px 10px', padding: '8px 10px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', fontSize: '0.66rem', color: 'rgba(255,255,255,0.72)', lineHeight: 1.65, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '200px', overflowY: 'auto', borderTop: `1px solid rgba(${accentRgb},0.1)` }}>
+                                   {r.content}
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })}
+
+                         {/* Completion card */}
+                         {debateComplete && !debateComplete.error && (
+                           <div style={{ borderRadius: '9px', background: 'rgba(255,160,0,0.06)', border: '1px solid rgba(255,160,0,0.35)', padding: '13px' }}>
+                             <div style={{ fontSize: '0.55rem', fontWeight: 900, color: '#ffa000', letterSpacing: '0.1em', marginBottom: '8px' }}>
+                               ✅ CONSENSUS REACHED — READY TO APPLY
+                             </div>
+                             <div style={{ fontSize: '0.64rem', color: 'rgba(255,255,255,0.55)', marginBottom: '11px', lineHeight: 1.55 }}>
+                               Brain & Coder agreed on the approach. Apply the refined command to execute it, or view the full implementation output in Round 4.
+                             </div>
+                             {debateComplete.refinedCommand && debateComplete.refinedCommand !== '' && (
+                               <div style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,160,0,0.2)', borderRadius: '6px', padding: '7px 10px', marginBottom: '10px', fontSize: '0.63rem', fontFamily: 'monospace', color: 'rgba(255,255,255,0.8)', wordBreak: 'break-word' }}>
+                                 <span style={{ color: '#ffa000', marginRight: '6px' }}>▶</span>{debateComplete.refinedCommand}
+                               </div>
+                             )}
+                             <div style={{ display: 'flex', gap: '7px' }}>
+                               <button
+                                 onClick={() => {
+                                   if (!debateComplete?.refinedCommand) return;
+                                   const messageId = Date.now();
+                                   const aiId = messageId + 1;
+                                   setMessages(prev => [...prev,
+                                     { id: messageId, type: 'user', text: `⚔ [Debate Applied]\n${debateComplete.refinedCommand}` },
+                                     { id: aiId, type: 'ai', director: activeDirector, text: '', isStreaming: true }
+                                   ]);
+                                   setIsSyncing(true);
+                                   (ipc as any).send('execute-command-stream', {
+                                     command: debateComplete.refinedCommand,
+                                     director: activeDirector,
+                                     engine: activeEngine,
+                                     messageId: aiId
+                                   });
+                                   setDebateComplete(null);
+                                   setDebateRounds([]);
+                                 }}
+                                 style={{ flex: 1, padding: '8px', background: 'rgba(255,160,0,0.18)', border: '1px solid rgba(255,160,0,0.5)', borderRadius: '7px', color: '#ffa000', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+                                 ⚡ Apply Agreed Command
+                               </button>
+                               <button
+                                 onClick={() => { setDebateRounds([]); setDebateComplete(null); }}
+                                 style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '7px', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '0.65rem' }}>
+                                 Discard
+                               </button>
+                             </div>
+                           </div>
+                         )}
+
+                         {/* Error card */}
+                         {debateComplete?.error && (
+                           <div style={{ borderRadius: '9px', background: 'rgba(255,65,108,0.07)', border: '1px solid rgba(255,65,108,0.3)', padding: '12px', fontSize: '0.67rem', color: '#ff416c', lineHeight: 1.5 }}>
+                             ❌ {debateComplete.error}
+                           </div>
+                         )}
+                       </>
+                     )}
+                   </div>
+                 )}
+
                  {/* PARALLEL RESULTS PANEL */}
                  {rightPanelTab === 'parallel' && (
                    <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
