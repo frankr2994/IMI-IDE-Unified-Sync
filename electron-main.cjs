@@ -1056,15 +1056,27 @@ async function triggerGitSync() {
 // ── PLAN MODE — generate a phased implementation spec ─────────────────────
 ipcMain.handle('generate-plan', async (_e, { command }) => {
   if (!GEMINI_KEY) throw new Error('Gemini key missing — add it in Settings → APIs');
-  const projectMap = smartContext.getProjectMap(currentProjectRoot);
-  const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
-  const systemPrompt = `You are a senior software architect planning changes to this project.
-Project structure:\n${projectMap}
 
-Relevant code:\n${relevantCode}
+  // Detect task type — desktop/file tasks must NOT get IMI project code injected
+  // (Gemini would think "make a pong game" = edit App.tsx)
+  const isDesktopTask = /\b(desktop|my desktop)\b/i.test(command) && /\b(create|make|build|write|generate|folder|file|directory|html|script|game|app)\b/i.test(command);
+  const isExternalFileTask = /\b(create|make|write|generate|build)\b.{0,50}\b(html|css|python|javascript|js|script|file|folder|directory|game|app|webpage|website)\b/i.test(command) && !/\b(imi|app\.tsx|index\.css|electron)\b/i.test(command);
+  const isDesktopOrExternal = isDesktopTask || isExternalFileTask;
 
-The user wants to make a change. Generate a concise phased implementation plan.
+  const projectMap = isDesktopOrExternal ? '' : smartContext.getProjectMap(currentProjectRoot);
+  const relevantCode = isDesktopOrExternal ? '' : smartContext.getRelevantCode(command, currentProjectRoot);
+
+  const desktopContext = isDesktopOrExternal
+    ? `Desktop path: ${require('path').join(require('os').homedir(), 'Desktop')}\nThis task involves creating files or folders on the user's system — NOT editing IMI's own code.`
+    : `Project structure:\n${projectMap}\n\nRelevant code:\n${relevantCode}`;
+
+  const systemPrompt = `You are a senior software architect planning a task for IMI (an AI desktop app).
+${desktopContext}
+
+The user wants to: "${command}"
+Generate a concise phased implementation plan.
 Keep phase "prompt" fields under 200 words each. Keep "description" under 50 words.
+IMPORTANT: Each phase "prompt" must be a self-contained instruction that IMI can execute — be specific about file paths, folder names, and what to create.
 Respond with ONLY valid JSON matching exactly:
 {
   "title": "short title (max 60 chars)",

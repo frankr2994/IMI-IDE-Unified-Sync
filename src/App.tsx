@@ -985,13 +985,7 @@ const App = () => {
     if (!chatInput.trim()) return;
 
     // ── PLAN MODE ────────────────────────────────────────────────────────────
-    // Skip planning for desktop/filesystem tasks — they don't need a multi-phase plan,
-    // and the project context confuses Gemini into patching App.tsx instead.
-    const isDesktopTask = /\b(desktop|my desktop)\b/i.test(chatInput) && /\b(create|make|build|write|generate|folder|file|directory|html|script|game|app)\b/i.test(chatInput);
-    const isFileTask   = /\b(create|make|write|generate)\b.{0,40}\b(html|python|javascript|script|file|folder|directory)\b/i.test(chatInput);
-
-
-    if (planMode && !isDesktopTask && !isFileTask) {
+    if (planMode) {
       const userText = chatInput;
       const messageId = Date.now();
       setMessages(prev => [...prev, { id: messageId, type: 'user', text: userText }]);
