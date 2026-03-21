@@ -1876,10 +1876,23 @@ const App = () => {
                         {hfResults.map(model => {
                           const isPulling = ollamaPulling === model.ollamaCmd;
                           const isInstalled = ollamaModels.some(m => m.name.includes(model.name.split('/').pop() || ''));
+                          // Determine if official or community repack
+                          const author = (model.name || '').split('/')[0].toLowerCase();
+                          const modelBase = (model.name || '').split('/')[1]?.toLowerCase() || '';
+                          const OFFICIAL_AUTHORS: Record<string, string[]> = {
+                            'qwen': ['qwen'], 'meta-llama': ['llama','meta'], 'mistralai': ['mistral'],
+                            'google': ['gemma'], 'deepseek-ai': ['deepseek'], 'microsoft': ['phi'],
+                            'cohere': ['command'], '01-ai': ['yi'], 'baidu': ['ernie'],
+                          };
+                          const COMMUNITY_REPACKERS = ['unsloth','lmstudio-community','maziyarpanahi','bartowski','thebloke','mmnga','dranger003'];
+                          const isOfficial = Object.entries(OFFICIAL_AUTHORS).some(([auth, keywords]) => author === auth && keywords.some(k => modelBase.includes(k)));
+                          const isRepack = COMMUNITY_REPACKERS.includes(author);
                           return (
-                            <div key={model.id} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
-                              <div style={{ marginBottom: '5px' }}>
-                                <span style={{ fontWeight: 800, fontSize: '0.82rem', wordBreak: 'break-word' }}>{model.name}</span>
+                            <div key={model.id} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : isOfficial ? 'rgba(0,200,255,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.82rem', wordBreak: 'break-word', flex: 1 }}>{model.name}</span>
+                                {isOfficial && <span style={{ fontSize: '0.52rem', fontWeight: 900, padding: '2px 7px', borderRadius: '5px', background: 'rgba(0,200,255,0.15)', color: '#00c8ff', border: '1px solid rgba(0,200,255,0.3)', whiteSpace: 'nowrap', letterSpacing: '0.08em' }}>✓ OFFICIAL</span>}
+                                {isRepack && !isOfficial && <span style={{ fontSize: '0.52rem', fontWeight: 900, padding: '2px 7px', borderRadius: '5px', background: 'rgba(155,77,255,0.12)', color: '#b07aff', border: '1px solid rgba(155,77,255,0.25)', whiteSpace: 'nowrap', letterSpacing: '0.08em' }}>⚙ REPACK</span>}
                               </div>
                               <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                                 <span>⬇ {formatNum(model.downloads)}</span>
