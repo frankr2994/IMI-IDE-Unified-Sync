@@ -2718,7 +2718,16 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
       req.end();
     });
     generatedContent = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    imiLog('INFO', `[AutoCreate] API response length=${generatedContent.length} | finishReason=${data?.candidates?.[0]?.finishReason} | error=${JSON.stringify(data?.error)}`);
+    if (!generatedContent) {
+      const errMsg = data?.error?.message || data?.candidates?.[0]?.finishReason || 'empty response';
+      imiLog('WARN', `[AutoCreate] Gemini returned empty content: ${errMsg}`);
+      event.sender.send('command-chunk', { messageId, chunk: `❌ AI returned empty content: ${errMsg}` });
+      event.sender.send('command-end', { messageId, code: 1 });
+      return;
+    }
   } catch(e) {
+    imiLog('ERROR', `[AutoCreate] generation failed: ${e.message}`);
     event.sender.send('command-chunk', { messageId, chunk: `❌ AI generation failed: ${e.message}` });
     event.sender.send('command-end', { messageId, code: 1 });
     return;
@@ -2727,6 +2736,14 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   // Extract code block content
   const codeMatch = generatedContent.match(/```(?:[a-z]*\n)?([\s\S]+?)```/);
   const finalContent = codeMatch ? codeMatch[1].trim() : generatedContent.trim();
+
+  if (!finalContent) {
+    imiLog('WARN', `[AutoCreate] finalContent empty after extraction`);
+    event.sender.send('command-chunk', { messageId, chunk: `❌ Generated content was empty after extraction.` });
+    event.sender.send('command-end', { messageId, code: 1 });
+    return;
+  }
+  imiLog('INFO', `[AutoCreate] writing ${finalContent.length} chars to ${filePath}`);
 
   // Write file
   try {
