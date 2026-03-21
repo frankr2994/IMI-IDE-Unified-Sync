@@ -1801,7 +1801,7 @@ const App = () => {
                     </div>
                   ))}
                 </div>
-                <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
+                <div style={{ padding: '2rem 1rem 1rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
                     {attachedImage && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'rgba(155,77,255,0.08)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '10px', marginBottom: '6px' }}>
                         <img src={attachedImage.previewUrl} alt="preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px' }} />
