@@ -95,6 +95,7 @@ const App = () => {
   // 🎨 Style Analyzer
   const [styleProfile, setStyleProfile] = useState<any>(null);
   const [styleLoading, setStyleLoading] = useState(false);
+  const [styleMsg, setStyleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // 🔭 Impact Analyzer
   const [impactData, setImpactData] = useState<{ filePath: string; affected: Array<{ path: string; depth: number; label: string }> } | null>(null);
