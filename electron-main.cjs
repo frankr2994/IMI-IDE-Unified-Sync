@@ -1465,6 +1465,42 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // ── End desktop / file creation ────────────────────────────────────────────
 
+  // ── SMART INTENT CLASSIFIER — AI-powered fallback for anything that didn't match regexes ──
+  // Catches typos, vague descriptions, indirect phrasing, missing "desktop" keyword, etc.
+  // Triggers when command looks like it could be a creation/desktop task but regex didn't catch it.
+  const _looksLikeCreationTask = !_isCodeCtx && (
+    // Has "desktop" + any action/object vibe
+    (/\b(desktop|my desktop)\b/i.test(command) && /\b(make|create|build|write|generate|want|need|give|put|place|can you|could you|a |an )\b/i.test(command))
+    // OR sounds like wanting a specific game/app/tool without saying desktop (default to desktop)
+    || /\b(make|create|build|write|give me|i want|i need|can you make|put)\b.{0,70}\b(game|pong|snake|tetris|chess|calculator|todo|timer|clock|stopwatch|quiz|app|program|tool|website|chatbot|utility)\b/i.test(command)
+  );
+  if (_looksLikeCreationTask) {
+    console.log(`[ROUTE] → classifyCommandIntent (ambiguous creation task)`);
+    const intent = await classifyCommandIntent(command);
+    if (intent && intent.confidence >= 55) {
+      if (intent.intent === 'desktop_file') {
+        console.log(`[ROUTE] smartRoute → desktop_file (${intent.fileType}, name: ${intent.fileName})`);
+        triggerAutoCreateFile(event, command, messageId, { fileName: intent.fileName, fileType: intent.fileType });
+        return;
+      }
+      if (intent.intent === 'desktop_folder') {
+        console.log(`[ROUTE] smartRoute → desktop_folder`);
+        triggerDesktopTask(event, command, command.toLowerCase(), messageId);
+        return;
+      }
+      if (intent.intent === 'open_browser' && intent.url) {
+        const url = intent.url.startsWith('http') ? intent.url : `https://${intent.url}`;
+        console.log(`[ROUTE] smartRoute → open_browser (${url})`);
+        shell.openExternal(url);
+        event.sender.send('command-chunk', { messageId, chunk: `🌐 Opening: **${url}**` });
+        event.sender.send('command-end', { messageId, code: 0 });
+        return;
+      }
+      // intent is imi_change or chat — fall through to AI
+    }
+  }
+  // ── End smart intent classifier ────────────────────────────────────────────
+
   // Smart context — reads only what's relevant for this specific command
   const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
@@ -1496,6 +1532,15 @@ USER IDENTITY (never ask the user for this — you already know it):
 When the user says "IMI" = this app. "Settings" = Settings tab. "make it look better" = edit src/index.css or src/App.tsx.
 When the user says "my github" / "my repo" — use the USER IDENTITY above, never ask.
 You know the real code. Use it. Be precise. Act like you built this yourself.
+
+UNDERSTANDING IMPERFECT REQUESTS:
+Users often type fast, make typos, or describe things indirectly. Always infer their intent:
+- "htlm" = html, "pythno" = python, "pyton" = python, "javascipt" = javascript
+- "something cool", "a fun thing", "a game" = create an HTML file with that game/app
+- "on my desktop", "for my desktop", "put it on my desktop" = create a file at Desktop path
+- "make it nicer", "looks bad", "fix the ui" = edit src/index.css or src/App.tsx
+- "it broke", "not working" = debug whatever they're talking about
+Never say "I'm not sure what you mean" — always make a reasonable interpretation and act.
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
 GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE to IMI.
@@ -2489,38 +2534,100 @@ If no code change needed, return [].`;
   });
 }
 
+// ── Smart intent classifier — used when regex routing doesn't match ───────────────────────────
+// Sends a tiny fast Gemini call to understand what the user wants, then routes accordingly.
+async function classifyCommandIntent(command) {
+  if (!GEMINI_KEY) return null;
+  try {
+    const prompt = `You are an intent classifier for a desktop AI assistant. Analyze this command and return ONLY valid JSON.
+
+Command: "${command}"
+
+Return JSON with this exact structure:
+{
+  "intent": "desktop_file" | "desktop_folder" | "open_browser" | "imi_change" | "chat",
+  "fileType": "html" | "py" | "js" | "ts" | "txt" | null,
+  "fileName": "descriptive_snake_case_name_no_extension" | null,
+  "url": "site.com" | null,
+  "wantsOpen": true | false,
+  "confidence": 0-100
+}
+
+Rules:
+- "desktop_file" = user wants any file/game/app/program/script/tool created
+- "desktop_folder" = user wants a folder made on the desktop
+- "open_browser" = user wants to open a website or web app
+- "imi_change" = user wants to change the IMI application's own UI or code
+- "chat" = general question, conversation, or explanation request
+- fileName: infer a good snake_case descriptive name (e.g. "pong_game", "calculator", "todo_list")
+- fileType: infer from context — games/apps/websites = html, data/automation = py, default = html
+- confidence: how sure you are (0-100)
+- IGNORE spelling mistakes, understand intent despite typos`;
+
+    const data = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }, res => {
+        let raw = '';
+        res.on('data', d => raw += d);
+        res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.write(JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 200, responseMimeType: 'application/json' }
+      }));
+      req.end();
+    });
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    const result = JSON.parse(cleaned);
+    console.log('[classifyIntent]', JSON.stringify(result));
+    return result;
+  } catch(e) {
+    console.warn('[classifyIntent] failed:', e.message);
+    return null;
+  }
+}
+
 // ── Auto-create any file/program on desktop using AI ─────────────────────────
-async function triggerAutoCreateFile(event, command, messageId) {
+async function triggerAutoCreateFile(event, command, messageId, overrides = {}) {
   const DESKTOP = path.join(os.homedir(), 'Desktop');
 
-  // Detect file type from command
+  // Detect file type — overrides take priority (from AI classifier), then regex on command
   const extMap = { python: 'py', py: 'py', javascript: 'js', js: 'js', html: 'html', css: 'css',
     typescript: 'ts', ts: 'ts', json: 'json', markdown: 'md', md: 'md', bash: 'sh', shell: 'sh',
     text: 'txt', txt: 'txt', react: 'tsx', node: 'js', script: 'py', program: 'py', app: 'html' };
   const cmdL = command.toLowerCase();
-  let ext = 'txt';
-  for (const [key, val] of Object.entries(extMap)) {
-    if (cmdL.includes(key)) { ext = val; break; }
+  let ext = overrides.fileType || 'html'; // default html (most common for games/apps)
+  if (!overrides.fileType) {
+    for (const [key, val] of Object.entries(extMap)) {
+      if (cmdL.includes(key)) { ext = val; break; }
+    }
   }
 
-  // Extract file name — priority: "called X" → smart extraction → fallback
-  const nameMatch = command.match(/(?:called?|named?)\s+["']?([a-zA-Z0-9_\- ]{2,40})["']?/i)
-    || command.match(/["']([a-zA-Z0-9_\-\.]{2,40})["']/);
-  let baseName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, '_') : null;
+  // Extract file name — priority: AI override → "called X" / "named X" → smart extraction → fallback
+  let baseName = overrides.fileName || null;
+  if (!baseName) {
+    const nameMatch = command.match(/(?:called?|named?)\s+["']?([a-zA-Z0-9_\- ]{2,40})["']?/i)
+      || command.match(/["']([a-zA-Z0-9_\-\.]{2,40})["']/);
+    baseName = nameMatch ? nameMatch[1].trim().replace(/\s+/g, '_') : null;
+  }
   if (!baseName) {
     // Smart extraction: "make a html pong game" → "pong_game", "create a calculator" → "calculator"
-    // Grabs the descriptive words between the action verb and any transition word (on/and/put/for/etc)
     const smartMatch = command.match(
       /\b(?:make|create|build|write|generate)\b\s+(?:a\s+|an\s+)?(?:(?:html|css|js|python|javascript|typescript|simple|basic|small|fun|cool)\s+)?([a-zA-Z][a-zA-Z0-9 ]{1,30}?)(?=\s+(?:and|put|on|in|for|from|that|using|with|then|after|open)\b|\s*$)/i
     );
     if (smartMatch) {
-      // Take first 3 words max, lowercase with underscores
       baseName = smartMatch[1].trim().split(/\s+/).slice(0, 3).join('_').toLowerCase();
     }
   }
   if (!baseName) {
     const purposeMatch = command.match(/(?:that|which|to|for)\s+([a-zA-Z\s]{4,30})/i);
-    baseName = purposeMatch ? purposeMatch[1].trim().replace(/\s+/g, '_').slice(0, 20) : 'new_file';
+    baseName = purposeMatch ? purposeMatch[1].trim().replace(/\s+/g, '_').slice(0, 20) : 'project';
   }
   // Ensure it has extension
   const fileName = baseName.includes('.') ? baseName : `${baseName}.${ext}`;
