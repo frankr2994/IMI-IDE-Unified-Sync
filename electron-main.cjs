@@ -2270,6 +2270,64 @@ ipcMain.handle('github-search', async (_e, query, sort) => {
 });
 
 // Clone a GitHub repo to local project folder
+// GitHub URL lookup — fetch a PR, issue, or repo directly from a URL
+ipcMain.handle('github-fetch-url', async (_e, url) => {
+  try {
+    // Parse URL: github.com/{owner}/{repo}/pull/{n} | /issues/{n} | just /{owner}/{repo}
+    const match = url.match(/github\.com\/([^/]+)\/([^/]+?)(?:\/(pull|pulls|issues?)\/(\d+))?(?:[/?#].*)?$/i);
+    if (!match) return { error: 'Not a valid GitHub URL' };
+    const [, owner, repo, typeRaw, number] = match;
+    const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'IMI-GitHub-Hub/1.0' };
+    if (GITHUB_TOKEN) headers['Authorization'] = `token ${GITHUB_TOKEN}`;
+    const ghGet = (path) => new Promise((resolve, reject) => {
+      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com', path });
+      req.setHeader('Accept', headers['Accept']);
+      req.setHeader('User-Agent', headers['User-Agent']);
+      if (GITHUB_TOKEN) req.setHeader('Authorization', headers['Authorization']);
+      let raw = '';
+      req.on('response', res => { res.on('data', d => raw += d.toString()); res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } }); });
+      req.on('error', reject);
+      req.end();
+    });
+    const type = typeRaw ? (typeRaw.startsWith('pull') ? 'pr' : 'issue') : 'repo';
+    if (type === 'pr') {
+      const pr = await ghGet(`/repos/${owner}/${repo}/pulls/${number}`);
+      if (pr.message) return { error: pr.message };
+      return { type: 'pr', data: {
+        number: pr.number, title: pr.title, body: pr.body || '',
+        state: pr.state, draft: pr.draft, merged: pr.merged,
+        author: pr.user?.login, authorAvatar: pr.user?.avatar_url,
+        createdAt: pr.created_at, updatedAt: pr.updated_at, mergedAt: pr.merged_at,
+        additions: pr.additions, deletions: pr.deletions, changedFiles: pr.changed_files,
+        commits: pr.commits, comments: pr.comments + pr.review_comments,
+        htmlUrl: pr.html_url, repoName: `${owner}/${repo}`,
+        baseBranch: pr.base?.ref, headBranch: pr.head?.ref,
+        labels: (pr.labels || []).map(l => ({ name: l.name, color: l.color })),
+      }};
+    } else if (type === 'issue') {
+      const issue = await ghGet(`/repos/${owner}/${repo}/issues/${number}`);
+      if (issue.message) return { error: issue.message };
+      return { type: 'issue', data: {
+        number: issue.number, title: issue.title, body: issue.body || '',
+        state: issue.state, author: issue.user?.login, authorAvatar: issue.user?.avatar_url,
+        createdAt: issue.created_at, updatedAt: issue.updated_at,
+        comments: issue.comments, htmlUrl: issue.html_url, repoName: `${owner}/${repo}`,
+        labels: (issue.labels || []).map(l => ({ name: l.name, color: l.color })),
+      }};
+    } else {
+      const r = await ghGet(`/repos/${owner}/${repo}`);
+      if (r.message) return { error: r.message };
+      return { type: 'repo', data: {
+        name: r.full_name, description: r.description || '', stars: r.stargazers_count,
+        forks: r.forks_count, language: r.language, license: r.license?.spdx_id,
+        topics: r.topics || [], htmlUrl: r.html_url, cloneUrl: r.clone_url,
+        ownerAvatar: r.owner?.avatar_url, updatedAt: r.updated_at, defaultBranch: r.default_branch,
+        openIssues: r.open_issues_count, watchers: r.watchers_count,
+      }};
+    }
+  } catch(e) { return { error: e.message }; }
+});
+
 ipcMain.handle('github-clone', async (_e, cloneUrl, folderName) => {
   try {
     const dest = path.join(currentProjectRoot, folderName || path.basename(cloneUrl, '.git'));
