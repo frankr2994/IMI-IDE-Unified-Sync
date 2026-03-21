@@ -2014,11 +2014,12 @@ const App = () => {
                 {/* Sub-Navigation */}
                 <div style={{ display: 'flex', gap: '20px', padding: '0 2rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
                   {[
-                    { id: 'general', label: 'PREFERENCES', icon: <Settings2 size={14}/> },
-                    { id: 'apis', label: 'APIs & KEYS', icon: <Key size={14}/> },
-                    { id: 'sync', label: 'GITHUB & SYNC', icon: <RefreshCw size={14}/> },
-                    { id: 'telemetry', label: 'TELEMETRY', icon: <Gauge size={14}/> },
-                    { id: 'automation', label: 'AUTOMATION', icon: <ShieldCheck size={14}/> }
+                    { id: 'general',    label: 'PREFERENCES',   icon: <Settings2 size={14}/> },
+                    { id: 'appearance', label: 'APPEARANCE',    icon: <Palette size={14}/> },
+                    { id: 'apis',       label: 'APIs & KEYS',   icon: <Key size={14}/> },
+                    { id: 'sync',       label: 'GITHUB & SYNC', icon: <RefreshCw size={14}/> },
+                    { id: 'telemetry',  label: 'TELEMETRY',     icon: <Gauge size={14}/> },
+                    { id: 'automation', label: 'AUTOMATION',    icon: <ShieldCheck size={14}/> }
                   ].map(tab => (
                     <button 
                       key={tab.id}
@@ -2304,6 +2305,107 @@ const App = () => {
                               <option value="stash">Stash & Pull (Safe)</option>
                             </select>
                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* CATEGORY: APPEARANCE & UI */}
+                  {settingsActiveSubTab === 'appearance' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                        {/* Accent Color */}
+                        <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '16px' }}>ACCENT COLOR</div>
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            {[
+                              { name: 'Purple',  value: '#9b4dff' },
+                              { name: 'Blue',    value: '#4facfe' },
+                              { name: 'Cyan',    value: '#00f2ff' },
+                              { name: 'Green',   value: '#00ff88' },
+                              { name: 'Pink',    value: '#f857a6' },
+                              { name: 'Orange',  value: '#ffa500' },
+                              { name: 'Red',     value: '#ff416c' },
+                            ].map(c => (
+                              <button key={c.value} onPointerDown={e => {
+                                e.preventDefault();
+                                document.documentElement.style.setProperty('--primary', c.value);
+                                document.documentElement.style.setProperty('--primary-glow', c.value + '99');
+                              }} style={{ width: '36px', height: '36px', background: c.value, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.15)', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.15s' }}
+                                title={c.name}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1.2)'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Font Size */}
+                        <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '16px' }}>FONT SIZE</div>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            {[
+                              { label: 'Small',   size: '14px', zoom: 0.9 },
+                              { label: 'Normal',  size: '16px', zoom: 1.0 },
+                              { label: 'Large',   size: '18px', zoom: 1.1 },
+                              { label: 'X-Large', size: '20px', zoom: 1.2 },
+                            ].map(opt => (
+                              <button key={opt.label} onPointerDown={e => {
+                                e.preventDefault();
+                                document.documentElement.style.fontSize = opt.size;
+                                (window as any).electronAPI?.setZoom?.(opt.zoom);
+                              }} style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                {opt.label}
+                                <div style={{ fontSize: '0.6rem', opacity: 0.5, marginTop: '3px' }}>{opt.size}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Sidebar Width */}
+                        <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '16px' }}>SIDEBAR WIDTH</div>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            {[
+                              { label: 'Compact', width: '220px' },
+                              { label: 'Normal',  width: '260px' },
+                              { label: 'Wide',    width: '300px' },
+                            ].map(opt => (
+                              <button key={opt.label} onPointerDown={e => {
+                                e.preventDefault();
+                                const el = document.querySelector('.dashboard-container') as HTMLElement;
+                                if (el) el.style.gridTemplateColumns = `${opt.width} 1fr`;
+                              }} style={{ flex: 1, padding: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                {opt.label}
+                                <div style={{ fontSize: '0.6rem', opacity: 0.5, marginTop: '3px' }}>{opt.width}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Glass Effect */}
+                        <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '16px' }}>GLASS CARD STYLE</div>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            {[
+                              { label: 'Subtle',  bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)' },
+                              { label: 'Normal',  bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.12)' },
+                              { label: 'Strong',  bg: 'rgba(255,255,255,0.09)', border: 'rgba(255,255,255,0.22)' },
+                            ].map(opt => (
+                              <button key={opt.label} onPointerDown={e => {
+                                e.preventDefault();
+                                document.documentElement.style.setProperty('--card-bg', opt.bg);
+                                document.documentElement.style.setProperty('--glass-border', opt.border);
+                              }} style={{ flex: 1, padding: '10px', background: opt.bg, border: `1px solid ${opt.border}`, borderRadius: '10px', color: 'white', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', padding: '8px 12px', background: 'rgba(155,77,255,0.06)', borderRadius: '8px', border: '1px solid rgba(155,77,255,0.15)' }}>
+                          💡 Changes apply instantly. Reload the app to reset to defaults.
                         </div>
                       </div>
                     </motion.div>
