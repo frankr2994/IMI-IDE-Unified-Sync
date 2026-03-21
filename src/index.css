@@ -25,6 +25,17 @@ html {
   --text-xl:   1.3rem;   /* 20.8px — tab titles                          */
 }
 
+.light-mode {
+  --primary: #6200ee;
+  --primary-glow: rgba(98, 0, 238, 0.3);
+  --secondary: #03dac6;
+  --bg-dark: #f0f2f5; /* Changed from dark to a light background */
+  --card-bg: rgba(0, 0, 0, 0.05); /* Lighter card background */
+  --glass-border: rgba(0, 0, 0, 0.1); /* Lighter glass border */
+  --text-main: #1a1a1a; /* Dark text for light mode */
+  --text-dim: #5c5c5c; /* Dimmed dark text */
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
