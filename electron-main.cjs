@@ -2670,7 +2670,7 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   const fileName = baseName.includes('.') ? baseName : `${baseName}.${ext}`;
   const filePath = path.join(DESKTOP, fileName);
 
-  event.sender.send('command-chunk', { messageId, chunk: `🤖 **Creating** \`${fileName}\` on your Desktop...\n\n` });
+  event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${fileName}\`...` });
 
   // Ask Gemini to generate the file content
   if (!GEMINI_KEY) { event.sender.send('command-chunk', { messageId, chunk: '❌ Gemini key missing.' }); event.sender.send('command-end', { messageId, code: 1 }); return; }
@@ -2883,12 +2883,12 @@ Output ONLY the raw file content with no markdown fences, no explanation — jus
         let code = JSON.parse(raw)?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         code = code.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
         fs.writeFileSync(filePath, code, 'utf-8');
-        event.sender.send('command-chunk', { messageId, chunk: `✅ Created ${fileName} inside "${folderName}".\n` });
-        // Step 3: open the file if requested ("open it", "open it up", "open it after", etc.)
-        if (/\b(open|launch|run|start|play|show)\b/i.test(cmdL)) {
+        const willOpenFolder = fileExt === 'html' || /\b(open|launch|run|start|play|show)\b/i.test(cmdL);
+        if (willOpenFolder) {
           shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
-          event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening ${fileName}...\n` });
         }
+        const openNoteFolder = willOpenFolder ? `\n🚀 Opening in browser...` : '';
+        event.sender.send('command-chunk', { messageId, chunk: `✅ **Created** \`${fileName}\` inside "${folderName}".${openNoteFolder}` });
       } catch(e) {
         event.sender.send('command-chunk', { messageId, chunk: `❌ File generation error: ${e.message}\n` });
       }
