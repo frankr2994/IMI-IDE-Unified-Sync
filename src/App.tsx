@@ -1244,26 +1244,22 @@ const App = () => {
                                   {ollamaModels.map(m => {
                                     const id = `ollama:${m.name}`;
                                     const label = shortModelName(m.name);
-                                    const sizeNum = parseFloat(m.size);
-                                    const sizeUnit = m.size?.toUpperCase().includes('GB') ? 'GB' : 'MB';
-                                    const sizeGB = sizeUnit === 'GB' ? sizeNum : sizeNum / 1024;
-                                    const sizeColor = sizeGB >= 15 ? '#ff416c' : sizeGB >= 8 ? '#ffa500' : '#00ff88';
-                                    const sizeWarning = sizeGB >= 15 ? '⚠️ Needs GPU' : sizeGB >= 8 ? '⚡ High RAM' : '✅ CPU OK';
                                     return (
-                                      <div key={id} onClick={() => { setActiveDirector(id); setIsDropdownOpen(false); addLog('system', `Brain set to ${label} (local)`); saveConfig({ activeBrain: id }); }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeDirector === id ? 900 : 400 }}
-                                        onMouseEnter={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                      <div key={id}
+                                        onClick={() => { if (m.tooLarge) { alert(`⚠️ "${label}" is too large for your GPU (${m.vramGB?.toFixed(0)}GB VRAM).\n\nThis model won't respond. Delete it and pull a smaller one like qwen2.5-coder:7b.`); return; } setActiveDirector(id); setIsDropdownOpen(false); addLog('system', `Brain set to ${label} (local)`); saveConfig({ activeBrain: id }); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: m.tooLarge ? '#ff416c' : activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: m.tooLarge ? 'not-allowed' : 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', opacity: m.tooLarge ? 0.7 : 1, fontWeight: activeDirector === id ? 900 : 400 }}
+                                        onMouseEnter={e => { if (activeDirector !== id && !m.tooLarge) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                                         onMouseLeave={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                       >
-                                        <Database size={12} style={{ color: '#00ff88', flexShrink: 0 }} />
+                                        <Database size={12} style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', flexShrink: 0 }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-                                          <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                            <span>Local · {m.size}</span>
-                                            <span style={{ color: sizeColor, fontWeight: 900 }}>{sizeWarning}</span>
+                                          <div style={{ fontSize: '0.55rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                            <span style={{ color: m.tooLarge ? '#ff416c' : 'var(--text-dim)' }}>Local · {m.size}</span>
+                                            <span style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 900 }}>{m.tooLarge ? "⚠️ Can't Run" : '✅ Ready'}</span>
                                           </div>
                                         </div>
-                                        {activeDirector === id && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
+                                        {activeDirector === id && !m.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                       </div>
                                     );
                                   })}
@@ -1296,12 +1292,15 @@ const App = () => {
                                   { id: 'jules',    name: 'Jules',       desc: 'GitHub PR-based agent', icon: <Layers size={12}/>, always: false, key: julesApiKey || githubToken },
                                   { id: 'antigravity', name: 'AG AI',   desc: 'Antigravity engine',    icon: <Cpu size={12}/>,    always: false, key: customApiKey },
                                   // Ollama local models — show if any are installed
-                                  ...ollamaModels.slice(0, 5).map(m => {
-                                    const sizeNum = parseFloat(m.size);
-                                    const sizeGB = m.size?.toUpperCase().includes('GB') ? sizeNum : sizeNum / 1024;
-                                    const sizeWarn = sizeGB >= 15 ? ' · ⚠️ Needs GPU' : sizeGB >= 8 ? ' · ⚡ High RAM' : ` · ${m.size}`;
-                                    return { id: `ollama:${m.name}`, name: shortModelName(m.name), desc: `Local · Ollama${sizeWarn}`, icon: <Database size={12}/>, always: true, key: '' };
-                                  }),
+                                  ...ollamaModels.slice(0, 5).map(m => ({
+                                    id: `ollama:${m.name}`,
+                                    name: shortModelName(m.name),
+                                    desc: m.tooLarge ? `⚠️ Can't Run · Too large for your GPU` : `✅ Ready · ${m.size}`,
+                                    icon: <Database size={12}/>,
+                                    always: true, key: '',
+                                    tooLarge: m.tooLarge,
+                                    vramGB: m.vramGB,
+                                  })),
                                 ] as { id: string; name: string; desc: string; icon: React.ReactNode; always: boolean; key: string }[])
                                 .filter(opt => opt.always || (opt.key && opt.key.trim()))
                                  .map(opt => (
@@ -1805,13 +1804,14 @@ const App = () => {
                         </div>
                       : <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {ollamaModels.map(m => (
-                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px' }}>
-                              <span style={{ fontSize: '1.2rem' }}>🦙</span>
+                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.04)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '10px' }}>
+                              <span style={{ fontSize: '1.2rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
                               <div style={{ flex: 1 }}>
                                 <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{m.name}</span>
                                 <span style={{ marginLeft: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
+                                {m.tooLarge && <div style={{ fontSize: '0.62rem', color: '#ff416c', marginTop: '2px', fontWeight: 700 }}>⚠️ Too large for your GPU ({m.vramGB?.toFixed(0)}GB VRAM) — won't run. Delete and pull a smaller model.</div>}
                               </div>
-                              <span style={{ fontSize: '0.6rem', padding: '2px 8px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '4px', color: '#00ff88' }}>Ready</span>
+                              <span style={{ fontSize: '0.6rem', padding: '2px 8px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "Can't Run" : 'Ready'}</span>
                               <button onClick={async () => { if(confirm(`Delete ${m.name}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', opacity: 0.6, fontSize: '1rem' }}>✕</button>
                             </div>
                           ))}
