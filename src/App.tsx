@@ -101,6 +101,7 @@ const App = () => {
 
   // Feature states
   const [debuggerEnabled, setDebuggerEnabled] = useState(false);
+  const debuggerEnabledRef = React.useRef(false); // ref so onEnd closure always sees latest value
   const [debugResults, setDebugResults] = useState<Record<number, { analysis: string; loading: boolean }>>({});
   const [benchmarkData, setBenchmarkData] = useState<Record<string, { requests: number; totalMs: number; successes: number }>>({});
   const [parallelMode, setParallelMode] = useState(false);
