@@ -2816,16 +2816,19 @@ ipcMain.handle('ollama-update', async (event) => {
 
   // Fallback: download latest OllamaSetup.exe and run silently
   try {
-    // Unique filename each run to avoid EBUSY locked file errors
     const installerPath = path.join(require('os').tmpdir(), `imi-ollama-update-${Date.now()}.exe`);
-    const fakeEvent = { sender: { send: () => {} } };
-    await downloadFile(fakeEvent, 'ollama', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
+    // Send real progress so UI can show download %
+    event.sender.send('ollama-update-progress', { status: 'downloading', percent: 0, label: '⬇ Downloading Ollama…' });
+    await downloadFile(event, 'ollama-update', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
+    event.sender.send('ollama-update-progress', { status: 'installing', percent: 95, label: '⚙️ Installing…' });
     await new Promise((resolve, reject) => {
       exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP-`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
     });
     try { require('fs').unlinkSync(installerPath); } catch {}
+    event.sender.send('ollama-update-progress', { status: 'done', percent: 100, label: '✅ Updated!' });
     return { success: true, upToDate: false };
   } catch(e) {
+    event.sender.send('ollama-update-progress', { status: 'error', percent: 0, label: '❌ Failed' });
     return { success: false, message: e.message };
   }
 });

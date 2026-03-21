@@ -1879,17 +1879,28 @@ const App = () => {
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                   {isOllama && tool.installed && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                                      <button onClick={async () => {
-                                        setUpdatingTool('ollama');
-                                        setUpdateResult(p => ({ ...p, ollama: '' }));
-                                        const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
-                                        setUpdatingTool(null);
-                                        setUpdateResult(p => ({ ...p, ollama: res?.upToDate ? '✅ Latest' : res?.success ? '✅ Updated!' : '❌ Failed' }));
-                                        if (res?.success && !res?.upToDate) setTimeout(loadTools, 2000);
-                                        setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 4000);
-                                      }} style={{ height: '24px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: updatingTool === 'ollama' ? '#4facfe' : updateResult['ollama'] ? (updateResult['ollama'].startsWith('✅') ? '#00ff88' : '#ff416c') : '#4facfe', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                        {updatingTool === 'ollama' ? '⏳ Checking…' : updateResult['ollama'] || '⬆ Update'}
-                                      </button>
+                                      {(() => {
+                                        const upd = depInstalling['ollama-update'];
+                                        const label = updatingTool === 'ollama'
+                                          ? upd?.status === 'downloading' ? `⬇ ${upd.percent}% (${upd.received||0}/${upd.total||0}MB)`
+                                          : upd?.status === 'installing' ? '⚙️ Installing…'
+                                          : '⏳ Connecting…'
+                                          : updateResult['ollama'] || '⬆ Update';
+                                        const color = updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe';
+                                        return (
+                                          <button onClick={async () => {
+                                            setUpdatingTool('ollama');
+                                            setUpdateResult(p => ({ ...p, ollama: '' }));
+                                            const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
+                                            setUpdatingTool(null);
+                                            setUpdateResult(p => ({ ...p, ollama: res?.upToDate ? '✅ Latest' : res?.success ? '✅ Updated!' : '❌ Failed' }));
+                                            if (res?.success && !res?.upToDate) setTimeout(loadTools, 2000);
+                                            setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 4000);
+                                          }} disabled={updatingTool === 'ollama'} style={{ height: '24px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color, cursor: updatingTool === 'ollama' ? 'default' : 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap', minWidth: '80px', textAlign: 'center' }}>
+                                            {label}
+                                          </button>
+                                        );
+                                      })()}
                                       <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '24px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                         {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
                                       </button>
