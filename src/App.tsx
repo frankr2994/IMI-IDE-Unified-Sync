@@ -405,6 +405,9 @@ const App = () => {
   const [mistralKey, setMistralKey] = useState('');
   const [llamaKey, setLlamaKey] = useState('');
   const [perplexityKey, setPerplexityKey] = useState('');
+  const [groqKey, setGroqKey] = useState('');
+  const [grokKey, setGrokKey] = useState('');
+  const [cohereKey, setCohereKey] = useState('');
   const [customApiKey, setCustomApiKey] = useState('');
   const [customApiUrl, setCustomApiUrl] = useState('');
   const [customApiModel, setCustomApiModel] = useState('');
@@ -629,6 +632,9 @@ const App = () => {
       setMistralKey((config.mistralKey || '').trim());
       setLlamaKey((config.llamaKey || '').trim());
       setPerplexityKey((config.perplexityKey || '').trim());
+      setGroqKey((config.groqKey || '').trim());
+      setGrokKey((config.grokKey || '').trim());
+      setCohereKey((config.cohereKey || '').trim());
       setCustomApiKey((config.customApiKey || '').trim());
       setCustomApiUrl((config.customApiUrl || '').trim());
       setCustomApiModel((config.customApiModel || '').trim());
@@ -695,6 +701,7 @@ const App = () => {
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
       openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey,
+      groqKey, grokKey, cohereKey,
       customApiKey, customApiUrl, customApiModel, julesApiKey, googleMapsKey, 
       activeBrain: activeDirector,
       activeCoder: activeEngine,

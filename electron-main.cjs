@@ -824,6 +824,9 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.mistralKey !== undefined) MISTRAL_KEY = config.mistralKey;
   if (config.llamaKey !== undefined) LLAMA_KEY = config.llamaKey;
   if (config.perplexityKey !== undefined) PERPLEXITY_KEY = config.perplexityKey;
+  if (config.groqKey !== undefined) GROQ_KEY = config.groqKey;
+  if (config.grokKey !== undefined) GROK_KEY = config.grokKey;
+  if (config.cohereKey !== undefined) COHERE_KEY = config.cohereKey;
   if (config.customApiKey !== undefined) CUSTOM_API_KEY = config.customApiKey;
   if (config.customApiUrl !== undefined) CUSTOM_API_URL = config.customApiUrl;
   if (config.customApiModel !== undefined) CUSTOM_API_MODEL = config.customApiModel;
@@ -1751,6 +1754,9 @@ User message: `;
     deepseek:   { hostname: 'api.deepseek.com',      path: '/v1/chat/completions', model: 'deepseek-chat',                       key: () => DEEPSEEK_KEY,    label: 'DeepSeek API key' },
     mistral:    { hostname: 'api.mistral.ai',         path: '/v1/chat/completions', model: 'mistral-large-latest',                key: () => MISTRAL_KEY,     label: 'Mistral API key' },
     perplexity: { hostname: 'api.perplexity.ai',      path: '/chat/completions',   model: 'llama-3.1-sonar-large-128k-online',   key: () => PERPLEXITY_KEY,  label: 'Perplexity API key' },
+    groq:       { hostname: 'api.groq.com',           path: '/openai/v1/chat/completions', model: 'llama-3.3-70b-versatile',     key: () => GROQ_KEY,        label: 'Groq API key' },
+    grok:       { hostname: 'api.x.ai',               path: '/v1/chat/completions', model: 'grok-3',                             key: () => GROK_KEY,        label: 'xAI (Grok) API key' },
+    cohere:     { hostname: 'api.cohere.com',          path: '/v2/chat',            model: 'command-r-plus',                      key: () => COHERE_KEY,      label: 'Cohere API key' },
   };
 
   if (openAICompatMap[director]) {
