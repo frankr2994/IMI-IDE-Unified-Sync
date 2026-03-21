@@ -1810,10 +1810,10 @@ const App = () => {
                       </div>
                     )}
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '5px', alignItems: 'flex-end' }}>
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
                         {/* BRAIN */}
                         <div style={{ position: 'relative', flexShrink: 0 }}>
-                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', padding: '0 8px', background: 'rgba(155,77,255,0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', height: '100%' }}>
+                          <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', height: '64px', padding: '0 8px', background: 'rgba(155,77,255,0.1)', borderRight: '1px solid var(--glass-border)', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
                             <span style={{ fontSize: '0.48rem', opacity: 0.6, letterSpacing: '0.1em' }}>BRAIN</span>
                             {activeDirector === 'gemini' && <Zap size={12} />}
                             {activeDirector === 'geminicli' && <Terminal size={12} />}
@@ -1915,7 +1915,7 @@ const App = () => {
 
                         {/* CODER */}
                         <div style={{ position: 'relative', flexShrink: 0 }}>
-                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', padding: '0 8px', background: 'rgba(0,255,136,0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', height: '100%' }}>
+                          <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', height: '64px', padding: '0 8px', background: 'rgba(0,255,136,0.05)', borderRight: '1px solid var(--glass-border)', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
                             <span style={{ fontSize: '0.48rem', opacity: 0.6, letterSpacing: '0.1em' }}>CODER</span>
                             {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
                             <span style={{ fontSize: '0.6rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '62px', textAlign: 'center' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine.toUpperCase()}</span>
