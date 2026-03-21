@@ -2362,7 +2362,7 @@ ipcMain.handle('hf-search-models', async (_e, query) => {
     // full=true returns siblings (file list with sizes) — limit reduced to keep response manageable
     const req = net.request({
       method: 'GET', protocol: 'https:', hostname: 'huggingface.co',
-      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=12&full=true`
+      path: `/api/models?search=${q}&filter=gguf&sort=downloads&direction=-1&limit=12&full=true&blobs=true`
     });
     req.setHeader('Accept', 'application/json');
     req.setHeader('User-Agent', 'IMI-DevHub/1.0');
