@@ -1262,98 +1262,207 @@ const App = () => {
       </div>
 
       <div className="main-content">
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
-          <div>
-            <h2 className="title-gradient" style={{ fontSize: '2.2rem' }}>Unified Orchestration</h2>
-            <p style={{ color: 'var(--text-dim)', fontSize: '1rem' }}>Managing Antigravity + Jules + Gemini Fleet</p>
-          </div>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-            <div className="glass-card" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px', borderRadius: '15px' }}>
-              <div className="status-indicator status-online"></div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#00ff88' }}>SAFE MODE: ACTIVE</span>
-            </div>
-          </div>
+        <header style={{ marginBottom: '1.5rem' }}>
+          <h2 className="title-gradient" style={{ fontSize: '1.9rem', letterSpacing: '-0.03em' }}>Unified Orchestration</h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.82rem', marginTop: '4px', letterSpacing: '0.01em' }}>Antigravity · Jules · Gemini Fleet</p>
         </header>
 
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
-            <motion.div key="db" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '25px', marginBottom: '40px' }}>
-                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Zap size={16} color="#4facfe" />
-                        <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>BRAIN</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#4facfe' }}>{(tokenUsage[activeDirector] || 0).toLocaleString()} USED</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED QUOTA</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase()} ACTIVE</div>
-                 </div>
-                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Cpu size={16} color="#00ff88" />
-                        <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>CODER</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#00ff88' }}>{(tokenUsage[activeEngine] || 0).toLocaleString()} USED</div>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.05em', marginTop: '2px' }}>UNLIMITED QUOTA</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</div>
-                 </div>
-                 <div className="glass-card" style={{ padding: '20px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <RefreshCw size={18} color="var(--primary)" />
-                      <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.1em', opacity: 0.6 }}>CLOUD BRIDGE</span>
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>SYNCHRONIZED</div>
-                 </div>
+            <motion.div key="db" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+              {/* ── STATUS BANNER ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 10px #00ff88' }} className="pulse-slow" />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em' }}>ALL SYSTEMS NOMINAL</span>
+                </div>
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldCheck size={13} color="rgba(255,255,255,0.4)" />
+                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>SAFE MODE</span>
+                    <span style={{ fontSize: '0.72rem', color: '#00ff88', fontWeight: 800 }}>ON</span>
+                  </div>
+                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={13} color="rgba(255,255,255,0.4)" />
+                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>LAST SYNC:</span>
+                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)', fontWeight: 800 }}>{lastSyncTime || '—'}</span>
+                  </div>
+                  <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.1)' }} />
+                  <button onClick={fetchStats} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '8px', padding: '5px 12px', color: 'var(--primary)', fontSize: '0.72rem', fontWeight: 800, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.25)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.12)'; }}>
+                    <RefreshCw size={11} /> REFRESH
+                  </button>
+                </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 350px', gap: '25px', marginBottom: '40px' }}>
-                  <div className="glass-card" style={{ padding: '2rem', position: 'relative', overflow: 'hidden', minHeight: '350px' }}>
-                     <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', background: activeEngine === 'jules' ? '#ff416c' : '#00ff88' }}></div>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>MASTER ENGINE OVERSIGHT</div>
-                          <h3 style={{ fontSize: '2.4rem', fontWeight: 900, marginTop: '5px' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</h3>
-                        </div>
-                        <div className="glass-card" style={{ padding: '10px 15px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #00ff8844' }}>
-                          <div style={{ width: '10px', height: '10px', background: '#00ff88', borderRadius: '50%', boxShadow: '0 0 10px #00ff88' }}></div>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>LIVE SYNCED</span>
-                        </div>
-                     </div>
-                     <div style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
-                        <div>
-                           <div style={{ opacity: 0.5, fontSize: '0.7rem', fontWeight: 700, marginBottom: '10px' }}>ACTIVE SESSIONS</div>
-                           <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeEngine === 'jules' ? 'Cloud Context Enabled' : 'Local Heartbeat Active'}</div>
-                        </div>
-                        <div>
-                           <div style={{ opacity: 0.5, fontSize: '0.7rem', fontWeight: 700, marginBottom: '10px' }}>SYNC LATENCY</div>
-                           <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{activeEngine === 'jules' ? '450ms' : '1ms'}</div>
-                        </div>
-                     </div>
+              {/* ── KPI ROW ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+                {[
+                  { label: 'BRAIN MODEL', value: activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase(), sub: `${(tokenUsage[activeDirector] || 0).toLocaleString()} tokens used`, icon: <Zap size={15} />, color: '#4facfe', glow: 'rgba(79,172,254,0.2)' },
+                  { label: 'CODER ENGINE', value: activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase(), sub: `${(tokenUsage[activeEngine] || 0).toLocaleString()} tokens used`, icon: <Cpu size={15} />, color: '#00ff88', glow: 'rgba(0,255,136,0.18)' },
+                  { label: 'PROJECT FILES', value: stats.fileCount || '—', sub: `${stats.sizeMB || '0'} MB on disk`, icon: <Database size={15} />, color: '#f093fb', glow: 'rgba(240,147,251,0.18)' },
+                  { label: 'FREE MEMORY', value: `${stats.freeMem || '—'}`, sub: `${usage.threads || 0} active threads`, icon: <Activity size={15} />, color: '#ffd700', glow: 'rgba(255,215,0,0.15)' },
+                ].map((kpi, i) => (
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '18px 20px', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s, box-shadow 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = kpi.color + '55'; (e.currentTarget as HTMLElement).style.boxShadow = `0 4px 20px ${kpi.glow}`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
+                    {/* top accent bar */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${kpi.color}, transparent)`, borderRadius: '16px 16px 0 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '0.64rem', fontWeight: 800, color: 'rgba(255,255,255,0.38)', letterSpacing: '0.12em' }}>{kpi.label}</span>
+                      <div style={{ color: kpi.color, opacity: 0.8 }}>{kpi.icon}</div>
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1, marginBottom: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kpi.value}</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.38)', fontWeight: 600 }}>{kpi.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── MAIN BODY: Engine + Resource ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '16px' }}>
+
+                {/* Engine Overview */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '28px 28px 24px', position: 'relative', overflow: 'hidden' }}>
+                  {/* colored left rail */}
+                  <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '3px', background: `linear-gradient(180deg, transparent, ${activeEngine === 'jules' ? '#ff416c' : '#9b4dff'}, transparent)`, borderRadius: '4px' }} />
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em', marginBottom: '6px' }}>ORCHESTRATION ENGINE</div>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.02em' }}>
+                        {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector.toUpperCase()}
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginLeft: '8px' }}>→</span>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#9b4dff', marginLeft: '6px' }}>{activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine === 'imi-core' ? 'IMI-CORE' : activeEngine.toUpperCase()}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,255,136,0.07)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px', padding: '8px 14px' }}>
+                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#00ff88', boxShadow: '0 0 8px #00ff88' }} className="pulse-slow" />
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.06em' }}>LIVE</span>
+                    </div>
                   </div>
 
-                  <div className="glass-card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                     <div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em' }}>RESOURCE TELEMETRY</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
-                           <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>CPU THRESHOLD</div>
-                           <div style={{ color: '#00d2ff', fontWeight: 900 }}>{usage.cpu}%</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                    {[
+                      { label: 'Bridge Mode', value: activeEngine === 'jules' ? 'Cloud' : 'Local', ok: true },
+                      { label: 'Session Type', value: activeEngine === 'jules' ? 'Cloud Context' : 'Heartbeat', ok: true },
+                      { label: 'Sync Latency', value: activeEngine === 'jules' ? '450ms' : '< 1ms', ok: activeEngine !== 'jules' },
+                      { label: 'Skill Engine', value: `${skills.length} skills`, ok: skills.length > 0 },
+                      { label: 'MCP Servers', value: `${mcpServers.filter(s => s.status === 'online').length} online`, ok: mcpServers.some(s => s.status === 'online') },
+                      { label: 'Snapshot', value: lastSnapshot ? 'Loaded' : 'None', ok: !!lastSnapshot },
+                    ].map((item, i) => (
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', marginBottom: '6px' }}>{item.label}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: item.ok ? '#00ff88' : '#ff6b6b', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: item.ok ? '#fff' : '#ff9999' }}>{item.value}</span>
                         </div>
-                        <div className="quota-bar" style={{ height: '8px', marginTop: '10px' }}><div className="quota-fill" style={{ width: `${usage.cpu}%`, background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)' }}></div></div>
-                     </div>
-                     <button onClick={fetchStats} className="btn-premium" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}>
-                        <RefreshCw size={14} /> RE-SCAN
-                     </button>
+                      </div>
+                    ))}
                   </div>
+                </div>
+
+                {/* Resource Telemetry */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>RESOURCE TELEMETRY</div>
+
+                  {[
+                    { label: 'CPU', value: Number(usage.cpu) || 0, color: '#4facfe', unit: '%' },
+                    { label: 'RAM', value: Number(usage.ram) || 0, color: '#9b4dff', unit: '%' },
+                    { label: 'SKILL HIT RATE', value: skillEfficiency || 0, color: '#00ff88', unit: '%' },
+                  ].map((metric, i) => (
+                    <div key={i}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>{metric.label}</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 900, color: metric.color }}>{metric.value}{metric.unit}</span>
+                      </div>
+                      <div style={{ height: '5px', background: 'rgba(255,255,255,0.06)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(metric.value, 100)}%`, background: metric.color, borderRadius: '99px', boxShadow: `0 0 8px ${metric.color}88`, transition: 'width 0.8s ease' }} />
+                      </div>
+                    </div>
+                  ))}
+
+                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '2px 0' }} />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    {[
+                      { label: 'PLATFORM', value: stats.platform || '—' },
+                      { label: 'THREADS', value: String(usage.threads || '—') },
+                      { label: 'DIRS', value: stats.dirCount || '—' },
+                      { label: 'LOAD', value: usage.load ? `${usage.load}` : '—' },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '9px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', marginBottom: '3px' }}>{s.label}</div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#fff' }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={fetchStats} style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '10px', color: 'var(--primary)', fontWeight: 800, fontSize: '0.74rem', letterSpacing: '0.06em', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.22)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.1)'; }}>
+                    <RefreshCw size={12} /> RESCAN SYSTEM
+                  </button>
+                </div>
               </div>
+
+              {/* ── BOTTOM ROW: MCP Services + Activity Log ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+                {/* MCP Services */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '22px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>LINKED SERVICES</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#00ff88' }}>{mcpServers.filter(s => s.status === 'online').length} / {mcpServers.length} ONLINE</span>
+                  </div>
+                  {mcpServers.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(255,255,255,0.2)', fontSize: '0.78rem', fontWeight: 600 }}>No services linked yet</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                      {mcpServers.slice(0, 8).map((srv: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: srv.status === 'online' ? '#00ff88' : '#ff6b6b', flexShrink: 0, boxShadow: srv.status === 'online' ? '0 0 6px #00ff88' : 'none' }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{srv.name.replace(/^[●○✗\s]+/, '')}</span>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 800, color: srv.status === 'online' ? '#00ff88' : '#ff6b6b', letterSpacing: '0.05em', flexShrink: 0 }}>{srv.status.toUpperCase()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={() => setActiveTab('settings')} style={{ marginTop: '14px', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(155,77,255,0.35)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}>
+                    MANAGE IN SYSTEM →
+                  </button>
+                </div>
+
+                {/* Activity Feed */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '22px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.14em' }}>SYSTEM ACTIVITY</span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'rgba(255,255,255,0.25)' }}>{logs.length} events</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                    {[...logs].reverse().map((log: any) => {
+                      const typeColor: Record<string, string> = { ag: '#9b4dff', system: '#4facfe', error: '#ff6b6b', success: '#00ff88' };
+                      const dot = typeColor[log.type] || 'rgba(255,255,255,0.3)';
+                      return (
+                        <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '7px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: dot, flexShrink: 0, marginTop: '4px' }} />
+                          <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.45, fontFamily: 'var(--font-mono)' }}>{log.msg}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => setActiveTab('command center')} style={{ marginTop: '14px', width: '100%', padding: '9px', background: 'transparent', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.2s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(79,172,254,0.35)'; (e.currentTarget as HTMLElement).style.color = '#4facfe'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}>
+                    OPEN COMMAND CENTER →
+                  </button>
+                </div>
+              </div>
+
             </motion.div>
           )}
 

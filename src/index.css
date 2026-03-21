@@ -570,6 +570,11 @@ button:disabled {
   to { transform: rotate(360deg); }
 }
 
+.spin {
+  animation: spin 1.8s linear infinite;
+  display: inline-flex;
+}
+
 /* Themes */
 body.theme-dark {
   --bg-dark: #050507;
