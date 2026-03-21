@@ -3915,6 +3915,260 @@ ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
     return { success: false, error: err.message };
   }
 });
+// ══════════════════════════════════════════════════════════
+// 📊 BENCHMARK TRACKER — per-model performance metrics
+// ══════════════════════════════════════════════════════════
+const BENCH_PATH = path.join(os.homedir(), '.imi', 'benchmarks.json');
+class BenchmarkTracker {
+  constructor() {
+    this._data = {};
+    try { if (fs.existsSync(BENCH_PATH)) this._data = JSON.parse(fs.readFileSync(BENCH_PATH, 'utf-8')); } catch {}
+  }
+  record(model, durationMs, success) {
+    if (!this._data[model]) this._data[model] = { requests: 0, totalMs: 0, successes: 0 };
+    const m = this._data[model];
+    m.requests++;
+    m.totalMs += durationMs;
+    if (success) m.successes++;
+    try { fs.writeFileSync(BENCH_PATH, JSON.stringify(this._data), 'utf-8'); } catch {}
+  }
+  getAll() { return this._data; }
+  reset() { this._data = {}; try { fs.writeFileSync(BENCH_PATH, '{}', 'utf-8'); } catch {} }
+}
+const benchTracker = new BenchmarkTracker();
+ipcMain.handle('get-benchmarks', () => benchTracker.getAll());
+ipcMain.on('record-benchmark', (e, { model, durationMs, success }) => benchTracker.record(model, durationMs, success));
+ipcMain.on('reset-benchmarks', () => benchTracker.reset());
+
+// ══════════════════════════════════════════════════════════
+// 🗂 FILE CACHE — 60s TTL in-memory cache for project files
+// ══════════════════════════════════════════════════════════
+const fileCache = new Map(); // key → { content, ts }
+const FILE_CACHE_TTL = 60_000;
+function cachedReadFile(filePath, limit = 500) {
+  const now = Date.now();
+  if (fileCache.has(filePath)) {
+    const e = fileCache.get(filePath);
+    if (now - e.ts < FILE_CACHE_TTL) {
+      e.hits = (e.hits || 0) + 1;
+      return { content: e.content, fromCache: true };
+    }
+  }
+  try {
+    const lines = fs.readFileSync(filePath, 'utf-8').split('\n').slice(0, limit).join('\n');
+    fileCache.set(filePath, { content: lines, ts: now, hits: 0 });
+    return { content: lines, fromCache: false };
+  } catch { return { content: '', fromCache: false }; }
+}
+ipcMain.handle('get-cache-stats', () => {
+  let total = 0, hits = 0;
+  for (const [, v] of fileCache) { total++; hits += v.hits || 0; }
+  return { files: total, hits, ttlSeconds: FILE_CACHE_TTL / 1000 };
+});
+ipcMain.on('clear-file-cache', () => fileCache.clear());
+
+// ══════════════════════════════════════════════════════════
+// 🗺 PROJECT NAVIGATOR — scan imports & build dependency tree
+// ══════════════════════════════════════════════════════════
+ipcMain.handle('scan-project-imports', async (e, projectRoot) => {
+  if (!projectRoot || !fs.existsSync(projectRoot)) return { error: 'No project root' };
+  const results = [];
+  const extensions = ['.ts', '.tsx', '.js', '.jsx'];
+  function walk(dir, depth = 0) {
+    if (depth > 6) return;
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const ent of entries) {
+      if (['node_modules', '.git', 'dist', 'build', '.next', 'coverage'].includes(ent.name)) continue;
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) { walk(full, depth + 1); continue; }
+      if (!extensions.some(x => ent.name.endsWith(x))) continue;
+      try {
+        const content = fs.readFileSync(full, 'utf-8');
+        const imports = [];
+        const re = /(?:import|from)\s+['"]([^'"]+)['"]/g;
+        let m;
+        while ((m = re.exec(content)) !== null) {
+          const imp = m[1];
+          if (imp.startsWith('.') || imp.startsWith('/')) {
+            imports.push({ type: 'local', path: imp });
+          } else {
+            const pkg = imp.startsWith('@') ? imp.split('/').slice(0,2).join('/') : imp.split('/')[0];
+            imports.push({ type: 'package', path: pkg });
+          }
+        }
+        const rel = path.relative(projectRoot, full).replace(/\\/g, '/');
+        results.push({ file: rel, imports, size: content.split('\n').length });
+      } catch {}
+    }
+  }
+  walk(projectRoot);
+  // Build package usage frequency
+  const pkgFreq = {};
+  for (const r of results) {
+    for (const imp of r.imports) {
+      if (imp.type === 'package') pkgFreq[imp.path] = (pkgFreq[imp.path] || 0) + 1;
+    }
+  }
+  return { files: results, packageFrequency: pkgFreq, totalFiles: results.length };
+});
+
+// ══════════════════════════════════════════════════════════
+// 📦 DOC HELPER — fetch npm package info for project deps
+// ══════════════════════════════════════════════════════════
+ipcMain.handle('fetch-package-docs', async (e, packages) => {
+  const results = [];
+  const fetchPkg = (pkg) => new Promise((resolve) => {
+    const req = net.request({
+      method: 'GET', protocol: 'https:',
+      hostname: 'registry.npmjs.org',
+      path: `/${encodeURIComponent(pkg)}/latest`
+    });
+    req.setHeader('Accept', 'application/json');
+    let body = '';
+    req.on('response', res => {
+      res.on('data', d => body += d);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(body);
+          resolve({
+            name: j.name,
+            version: j.version,
+            description: j.description || '',
+            homepage: j.homepage || `https://www.npmjs.com/package/${pkg}`,
+            license: j.license || '',
+            keywords: (j.keywords || []).slice(0, 5)
+          });
+        } catch { resolve({ name: pkg, error: true }); }
+      });
+    });
+    req.on('error', () => resolve({ name: pkg, error: true }));
+    req.end();
+  });
+  for (const pkg of (packages || []).slice(0, 20)) {
+    try { results.push(await fetchPkg(pkg)); } catch { results.push({ name: pkg, error: true }); }
+  }
+  return results;
+});
+
+// ══════════════════════════════════════════════════════════
+// 🐛 DEBUG PASS — post-coder AI review for bugs
+// ══════════════════════════════════════════════════════════
+ipcMain.handle('run-debug-pass', async (e, { code, context, model, messageId, geminiKey: gKey }) => {
+  const key = gKey || GEMINI_KEY;
+  if (!key) return { error: 'No Gemini key' };
+  const debugPrompt = `You are a code reviewer and debugger. Review the following code changes and identify any bugs, errors, or improvements needed.
+
+Context: ${context || 'Recent code changes'}
+
+Code to review:
+\`\`\`
+${(code || '').slice(0, 4000)}
+\`\`\`
+
+Respond with:
+1. BUGS FOUND (list any actual bugs with line references)
+2. WARNINGS (potential issues)
+3. VERDICT: PASS / FAIL / WARNINGS
+Keep it concise and actionable.`;
+
+  const postData = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: debugPrompt }] }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+  });
+  return new Promise((resolve) => {
+    const req = net.request({
+      method: 'POST', protocol: 'https:',
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`
+    });
+    req.setHeader('Content-Type', 'application/json');
+    let body = '';
+    req.on('response', res => {
+      res.on('data', d => body += d);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(body);
+          const text = j.candidates?.[0]?.content?.parts?.[0]?.text || 'No analysis returned.';
+          resolve({ analysis: text });
+        } catch { resolve({ error: 'Parse error' }); }
+      });
+    });
+    req.on('error', err => resolve({ error: err.message }));
+    req.write(postData);
+    req.end();
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+// ⚡ PARALLEL ORCHESTRATION — query multiple models at once
+// ══════════════════════════════════════════════════════════
+ipcMain.handle('parallel-brain-query', async (e, { prompt, models, keys }) => {
+  const { geminiKey: gKey, openaiKey, claudeKey, groqKey } = keys || {};
+  const results = {};
+  const makeGeminiCall = (model, key, promptText) => new Promise((resolve) => {
+    const postData = JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: promptText }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
+    });
+    const req = net.request({
+      method: 'POST', protocol: 'https:',
+      hostname: 'generativelanguage.googleapis.com',
+      path: `/v1beta/models/${model}:generateContent?key=${key}`
+    });
+    req.setHeader('Content-Type', 'application/json');
+    const start = Date.now();
+    let body = '';
+    req.on('response', res => {
+      res.on('data', d => body += d);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(body);
+          const text = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          resolve({ text, ms: Date.now() - start, model });
+        } catch { resolve({ text: '', ms: Date.now() - start, model, error: true }); }
+      });
+    });
+    req.on('error', () => resolve({ text: '', ms: 0, model, error: true }));
+    req.write(postData);
+    req.end();
+  });
+
+  const promises = [];
+  if ((models || []).includes('gemini') && gKey) {
+    promises.push(makeGeminiCall('gemini-2.5-pro', gKey, prompt).then(r => { results['gemini'] = r; }));
+  }
+  if ((models || []).includes('gemini-flash') && gKey) {
+    promises.push(makeGeminiCall('gemini-2.5-flash', gKey, prompt).then(r => { results['gemini-flash'] = r; }));
+  }
+  // OpenAI
+  if ((models || []).includes('chatgpt') && openaiKey) {
+    promises.push(new Promise((resolve) => {
+      const postData = JSON.stringify({ model: 'gpt-4o', messages: [{ role: 'user', content: prompt }], max_tokens: 4096 });
+      const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'api.openai.com', path: '/v1/chat/completions' });
+      req.setHeader('Content-Type', 'application/json');
+      req.setHeader('Authorization', `Bearer ${openaiKey}`);
+      const start = Date.now();
+      let body = '';
+      req.on('response', res => {
+        res.on('data', d => body += d);
+        res.on('end', () => {
+          try {
+            const j = JSON.parse(body);
+            results['chatgpt'] = { text: j.choices?.[0]?.message?.content || '', ms: Date.now() - start, model: 'gpt-4o' };
+          } catch { results['chatgpt'] = { text: '', ms: 0, error: true }; }
+          resolve(null);
+        });
+      });
+      req.on('error', () => { results['chatgpt'] = { text: '', ms: 0, error: true }; resolve(null); });
+      req.write(postData);
+      req.end();
+    }));
+  }
+  await Promise.all(promises);
+  return results;
+});
+
 ipcMain.on('open-external-url', (e, url) => { shell.openExternal(url); });
 
 

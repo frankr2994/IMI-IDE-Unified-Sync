@@ -29,7 +29,8 @@ import {
   History,
   Mic,
   Wifi,
-  Copy
+  Copy,
+  GitBranch
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -75,7 +76,7 @@ const App = () => {
   const [yoloMode, setYoloMode] = useState(false);
   const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
   const planPhaseResolvers = React.useRef<Map<number, () => void>>(new Map());
-  const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'>('console');
+  const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'|'parallel'|'docs'>('console');
   const [editingPhase, setEditingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
   const [editPhaseData, setEditPhaseData] = useState<{ name: string; description: string; prompt: string }>({ name: '', description: '', prompt: '' });
   const [suggestingPhase, setSuggestingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
@@ -97,6 +98,21 @@ const App = () => {
   const [ghSort, setGhSort] = useState('stars');
   const [ghUrlPreview, setGhUrlPreview] = useState<any>(null);
   const [cloningRepo, setCloningRepo] = useState('');
+
+  // Feature states
+  const [debuggerEnabled, setDebuggerEnabled] = useState(false);
+  const [debugResults, setDebugResults] = useState<Record<number, { analysis: string; loading: boolean }>>({});
+  const [benchmarkData, setBenchmarkData] = useState<Record<string, { requests: number; totalMs: number; successes: number }>>({});
+  const [parallelMode, setParallelMode] = useState(false);
+  const [parallelResults, setParallelResults] = useState<Record<string, { text: string; ms: number; model: string; error?: boolean }> | null>(null);
+  const [parallelLoading, setParallelLoading] = useState(false);
+  const [navigatorData, setNavigatorData] = useState<{ files: any[]; packageFrequency: Record<string, number>; totalFiles: number } | null>(null);
+  const [navigatorLoading, setNavigatorLoading] = useState(false);
+  const [navigatorSearch, setNavigatorSearch] = useState('');
+  const [docPackages, setDocPackages] = useState<any[]>([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [cacheStats, setCacheStats] = useState<{ files: number; hits: number } | null>(null);
+  const [rightPanelExtraTab, setRightPanelExtraTab] = useState<'console' | 'plan' | 'parallel' | 'docs'>('console');
 
   // 🛠 Installed Tools
   const [toolsList, setToolsList] = useState<any[]>([]);
@@ -447,7 +463,7 @@ const App = () => {
   const [newSkillPattern, setNewSkillPattern] = useState('');
   const [newSkillResponse, setNewSkillResponse] = useState('');
   const [skillLibSearch, setSkillLibSearch] = useState('');
-  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'>('mine');
+  const [skillsSubTab, setSkillsSubTab] = useState<'mine'|'library'|'optimizer'|'benchmarks'>('mine');
   const [installedSkillIds, setInstalledSkillIds] = useState<Set<string>>(new Set());
   const [optimizerHistory, setOptimizerHistory] = useState<any[]>([]);
   const [optimizerLastResult, setOptimizerLastResult] = useState<{ efficiency: number; removed: number } | null>(null);
@@ -1390,6 +1406,7 @@ const App = () => {
             { id: 'command center',  label: 'Command Center',  icon: <TerminalIcon size={14}/> },
             { id: 'tools',           label: 'Dev Hub',         icon: <Layers size={14}/> },
             { id: 'skills',          label: 'Skills',          icon: <Zap size={14}/> },
+            { id: 'navigator',       label: 'Navigator',       icon: <GitBranch size={14}/> },
           ] as { id: string; label: string; icon: React.ReactNode }[]).map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`sidebar-btn ${activeTab === item.id ? 'active' : ''}`}>
               <span style={{ opacity: activeTab === item.id ? 1 : 0.6, flexShrink: 0 }}>{item.icon}</span>
@@ -1429,10 +1446,10 @@ const App = () => {
         <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', marginBottom: '5px' }}>
-              {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : 'SYSTEM'}
+              {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : activeTab === 'navigator' ? 'NAVIGATOR' : 'SYSTEM'}
             </div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: '#fff' }}>
-              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'command center' ? 'Command Center' : activeTab === 'tools' ? 'Dev Hub' : activeTab === 'skills' ? 'Skills' : 'System'}
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'command center' ? 'Command Center' : activeTab === 'tools' ? 'Dev Hub' : activeTab === 'skills' ? 'Skills' : activeTab === 'navigator' ? 'Navigator' : 'System'}
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -1653,6 +1670,10 @@ const App = () => {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {isSyncing && <span style={{ fontSize: '0.65rem', color: 'rgba(155,77,255,0.7)', display: 'flex', alignItems: 'center', gap: '4px' }}><RefreshCw size={10} className="spin" /> Processing</span>}
+                    {/* Parallel mode toggle */}
+                    <button onClick={() => setParallelMode(p => !p)} title="Parallel Orchestration — query all models simultaneously" style={{ height: '28px', padding: '0 10px', background: parallelMode ? 'rgba(79,172,254,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${parallelMode ? 'rgba(79,172,254,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: parallelMode ? '#4facfe' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
+                      ⚡ PARALLEL {parallelMode ? 'ON' : 'OFF'}
+                    </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
                       <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Connected</span>
@@ -1968,6 +1989,14 @@ const App = () => {
                             )}
                           </AnimatePresence>
                         </div>
+                        {/* DEBUG - standalone box */}
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <div onClick={() => setDebuggerEnabled(!debuggerEnabled)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '64px', height: '64px', padding: '0 8px', background: debuggerEnabled ? 'rgba(255,65,108,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debuggerEnabled ? 'rgba(255,65,108,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: debuggerEnabled ? '#ff416c' : 'rgba(255,255,255,0.4)', fontWeight: 900, fontSize: '0.55rem', cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}>
+                            <span style={{ fontSize: '0.45rem', opacity: 0.7, letterSpacing: '0.1em' }}>DEBUG</span>
+                            <AlertCircle size={12} />
+                            <span style={{ fontSize: '0.55rem' }}>{debuggerEnabled ? 'ON' : 'OFF'}</span>
+                          </div>
+                        </div>
                         {/* ── Textarea box ── */}
                         <div style={{ display: 'flex', flex: 1, alignItems: 'flex-end', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'hidden' }}>
                         <textarea
@@ -2049,10 +2078,12 @@ const App = () => {
                  {/* Tab switcher header */}
                  <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
                    {[
-                     { id: 'console', label: 'SYS CONSOLE' },
-                     { id: 'plan',    label: activePlan ? `📋 PLAN${activePlan.running ? ' ⚙' : ''}` : '📋 PLAN' },
+                     { id: 'console',  label: 'SYS CONSOLE' },
+                     { id: 'plan',     label: activePlan ? `📋 PLAN${activePlan.running ? ' ⚙' : ''}` : '📋 PLAN' },
+                     { id: 'parallel', label: '⚡ PARALLEL' },
+                     { id: 'docs',     label: '📦 DOCS' },
                    ].map(tab => (
-                     <button key={tab.id} onClick={() => setRightPanelTab(tab.id as any)} style={{ flex: 1, padding: '8px 10px', background: 'transparent', border: 'none', borderBottom: rightPanelTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: rightPanelTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.08em', transition: 'all 0.2s', position: 'relative' }}>
+                     <button key={tab.id} onClick={() => setRightPanelTab(tab.id as any)} style={{ flex: 1, padding: '8px 6px', background: 'transparent', border: 'none', borderBottom: rightPanelTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: rightPanelTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.05em', transition: 'all 0.2s', position: 'relative' }}>
                        {tab.label}
                        {tab.id === 'plan' && activePlan && !activePlan.running && activePlan.completedPhases.size < activePlan.plan.phases.length && rightPanelTab !== 'plan' && (
                          <span style={{ position: 'absolute', top: '5px', right: '8px', width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }} />
@@ -2180,6 +2211,105 @@ const App = () => {
                          )}
                        </>;
                      })()}
+                   </div>
+                 )}
+
+                 {/* PARALLEL RESULTS PANEL */}
+                 {rightPanelTab === 'parallel' && (
+                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                       <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.12em' }}>⚡ PARALLEL RESULTS</div>
+                       <button onClick={async () => {
+                         if (!chatInput.trim()) { alert('Type a prompt first, then run parallel.'); return; }
+                         setParallelLoading(true);
+                         const models = ['gemini', 'gemini-flash'];
+                         if (openaiKey) models.push('chatgpt');
+                         const res = await (ipc as any).invoke('parallel-brain-query', {
+                           prompt: chatInput,
+                           models,
+                           keys: { geminiKey, openaiKey, claudeKey, groqKey }
+                         });
+                         setParallelResults(res);
+                         setParallelLoading(false);
+                       }} style={{ padding: '5px 12px', background: 'rgba(79,172,254,0.15)', border: '1px solid rgba(79,172,254,0.35)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900 }}>
+                         {parallelLoading ? '⏳ Running…' : '▶ RUN PARALLEL'}
+                       </button>
+                     </div>
+                     {!parallelResults && !parallelLoading && (
+                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.4 }}>
+                         <span style={{ fontSize: '2rem' }}>⚡</span>
+                         <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center' }}>Enable Parallel mode and run to see side-by-side results from all models</div>
+                       </div>
+                     )}
+                     {parallelLoading && (
+                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100px', gap: '8px', color: '#4facfe', fontSize: '0.72rem' }}>
+                         <RefreshCw size={14} className="spin" /> Querying all models simultaneously…
+                       </div>
+                     )}
+                     {parallelResults && Object.entries(parallelResults).map(([modelKey, result]: [string, any]) => (
+                       <div key={modelKey} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '9px', padding: '10px 12px' }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                           <span style={{ fontSize: '0.6rem', fontWeight: 900, color: result.error ? '#ff416c' : '#4facfe', letterSpacing: '0.08em' }}>{modelKey.toUpperCase()}</span>
+                           <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)' }}>{result.ms}ms</span>
+                         </div>
+                         <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.5, maxHeight: '120px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
+                           {result.error ? '⚠ Error or no key configured' : result.text || '(empty)'}
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+
+                 {/* DOCS PANEL */}
+                 {rightPanelTab === 'docs' && (
+                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px', height: '515px' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                       <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em' }}>📦 PROJECT DOCS</div>
+                       <button onClick={async () => {
+                         if (!stats.projectRoot) { alert('Set a project root in System → Preferences first.'); return; }
+                         setDocLoading(true);
+                         try {
+                           const pkgJsonPath = stats.projectRoot + '/package.json';
+                           const pkgContent = await (ipc as any).invoke('read-file', pkgJsonPath).catch(() => null);
+                           let packages: string[] = [];
+                           if (pkgContent) {
+                             try {
+                               const parsed = JSON.parse(pkgContent);
+                               packages = Object.keys({ ...(parsed.dependencies || {}), ...(parsed.devDependencies || {}) });
+                             } catch {}
+                           }
+                           if (packages.length === 0) { alert('No package.json found or no dependencies.'); setDocLoading(false); return; }
+                           const docs = await (ipc as any).invoke('fetch-package-docs', packages.slice(0, 20));
+                           setDocPackages(docs);
+                         } catch {}
+                         setDocLoading(false);
+                       }} style={{ padding: '5px 12px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900 }}>
+                         {docLoading ? '⏳ Loading…' : '📖 LOAD DOCS'}
+                       </button>
+                     </div>
+                     {docPackages.length === 0 && !docLoading && (
+                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.4 }}>
+                         <span style={{ fontSize: '2rem' }}>📦</span>
+                         <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center' }}>Click LOAD DOCS to fetch npm info for your project dependencies</div>
+                       </div>
+                     )}
+                     {docLoading && (
+                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80px', gap: '8px', color: '#00ff88', fontSize: '0.72rem' }}>
+                         <RefreshCw size={14} className="spin" /> Fetching package data…
+                       </div>
+                     )}
+                     {docPackages.map((pkg: any) => (
+                       <div key={pkg.name} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '10px 12px' }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                           <span style={{ fontSize: '0.7rem', fontWeight: 900, color: pkg.error ? '#ff416c' : '#00ff88', fontFamily: 'monospace' }}>{pkg.name}</span>
+                           {pkg.version && <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.05)', padding: '1px 6px', borderRadius: '4px' }}>v{pkg.version}</span>}
+                         </div>
+                         {pkg.description && <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.4, marginBottom: '5px' }}>{pkg.description}</div>}
+                         {pkg.license && <div style={{ fontSize: '0.52rem', color: 'var(--text-dim)' }}>License: {pkg.license}</div>}
+                         {pkg.homepage && <a href={pkg.homepage} onClick={e => { e.preventDefault(); (ipc as any).send('open-external-url', pkg.homepage); }} style={{ fontSize: '0.55rem', color: '#4facfe', cursor: 'pointer', textDecoration: 'none' }}>🔗 {pkg.homepage.slice(0, 50)}{pkg.homepage.length > 50 ? '…' : ''}</a>}
+                         {pkg.error && <div style={{ fontSize: '0.6rem', color: '#ff416c' }}>⚠ Failed to fetch</div>}
+                       </div>
+                     ))}
                    </div>
                  )}
               </div>
@@ -2983,9 +3113,10 @@ const App = () => {
               {/* Sub-tab switcher */}
               <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.15)' }}>
                 {[
-                  { id: 'mine' as const,      label: '⚡ MY SKILLS',    badge: String(skills.length) },
-                  { id: 'library' as const,   label: '📚 LIBRARY',      badge: String(SKILL_LIBRARY.length) },
-                  { id: 'optimizer' as const, label: '🧠 OPTIMIZER',    badge: `${skillEfficiency}%` },
+                  { id: 'mine' as const,       label: '⚡ MY SKILLS',    badge: String(skills.length) },
+                  { id: 'library' as const,    label: '📚 LIBRARY',      badge: String(SKILL_LIBRARY.length) },
+                  { id: 'optimizer' as const,  label: '🧠 OPTIMIZER',    badge: `${skillEfficiency}%` },
+                  { id: 'benchmarks' as const, label: '📊 BENCHMARKS',   badge: String(Object.keys(benchmarkData).length) },
                 ].map(tab => (
                   <button key={tab.id} onClick={async () => {
                     setSkillsSubTab(tab.id);
@@ -3333,6 +3464,156 @@ const App = () => {
                 </div>
               )}
 
+              {/* BENCHMARKS SUB-TAB */}
+              {skillsSubTab === 'benchmarks' && (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>📊 PER-MODEL PERFORMANCE METRICS</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={async () => { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }} style={{ padding: '6px 14px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900 }}>🔄 REFRESH</button>
+                      <button onClick={() => { (ipc as any).send('reset-benchmarks'); setBenchmarkData({}); }} style={{ padding: '6px 14px', background: 'rgba(255,65,108,0.08)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '7px', color: '#ff416c', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 900 }}>🗑 RESET</button>
+                    </div>
+                  </div>
+                  {Object.keys(benchmarkData).length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '60px 0', opacity: 0.4 }}>
+                      <span style={{ fontSize: '3rem' }}>📊</span>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>No benchmark data yet.<br/>Click REFRESH to load, or send AI requests to start tracking.</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {Object.entries(benchmarkData).map(([model, data]: [string, any]) => {
+                        const avgMs = data.requests > 0 ? Math.round(data.totalMs / data.requests) : 0;
+                        const successRate = data.requests > 0 ? Math.round((data.successes / data.requests) * 100) : 0;
+                        return (
+                          <div key={model} style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'white', marginBottom: '10px', fontFamily: 'monospace' }}>{model}</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                              {[
+                                { label: 'REQUESTS', value: data.requests, color: '#4facfe' },
+                                { label: 'AVG RESPONSE', value: `${avgMs}ms`, color: '#00ff88' },
+                                { label: 'SUCCESS RATE', value: `${successRate}%`, color: successRate >= 90 ? '#00ff88' : successRate >= 60 ? '#ffa500' : '#ff416c' },
+                              ].map(s => (
+                                <div key={s.label} style={{ textAlign: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '7px' }}>
+                                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color }}>{s.value}</div>
+                                  <div style={{ fontSize: '0.48rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.08em', marginTop: '2px' }}>{s.label}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </motion.div>
+          )}
+
+          {activeTab === 'navigator' && (
+            <motion.div key="navigator" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Header */}
+              <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>🗺 PROJECT NAVIGATOR</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>File dependency tree · Import relationships · Package usage</div>
+                </div>
+                <button onClick={async () => {
+                  if (!stats.projectRoot) { alert('Set a project root in System → Preferences first.'); return; }
+                  setNavigatorLoading(true);
+                  const data = await (ipc as any).invoke('scan-project-imports', stats.projectRoot);
+                  setNavigatorData(data);
+                  setNavigatorLoading(false);
+                }} className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.65rem' }}>
+                  {navigatorLoading ? '⏳ Scanning…' : '🔍 SCAN PROJECT'}
+                </button>
+              </div>
+
+              {/* Cache stats bar */}
+              {cacheStats && (
+                <div style={{ display: 'flex', gap: '1px', background: 'var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+                  {[
+                    { label: 'CACHED FILES', value: cacheStats.files, color: '#4facfe' },
+                    { label: 'CACHE HITS', value: cacheStats.hits, color: '#00ff88' },
+                    { label: 'TTL', value: '60s', color: 'rgba(255,255,255,0.5)' },
+                  ].map(s => (
+                    <div key={s.label} style={{ flex: 1, padding: '10px 16px', background: 'rgba(0,0,0,0.2)' }}>
+                      <div style={{ fontSize: '0.52rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{s.label}</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color, marginTop: '2px' }}>{s.value}</div>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px' }}>
+                    <button onClick={() => { (ipc as any).send('clear-file-cache'); setCacheStats(null); }} style={{ fontSize: '0.6rem', padding: '4px 10px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>CLEAR CACHE</button>
+                  </div>
+                </div>
+              )}
+              <button onClick={async () => { const s = await (ipc as any).invoke('get-cache-stats'); setCacheStats(s); }} style={{ margin: '8px 20px 0', padding: '6px 12px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', width: 'fit-content' }}>📊 Refresh Cache Stats</button>
+
+              {!navigatorData && !navigatorLoading && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', opacity: 0.4 }}>
+                  <span style={{ fontSize: '3rem' }}>🗺</span>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>Click SCAN PROJECT to build your dependency map</div>
+                </div>
+              )}
+
+              {navigatorData && (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+                  {/* Stats */}
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'FILES SCANNED', value: navigatorData.totalFiles, color: 'var(--primary)' },
+                      { label: 'PACKAGES USED', value: Object.keys(navigatorData.packageFrequency).length, color: '#4facfe' },
+                      { label: 'TOTAL IMPORTS', value: navigatorData.files.reduce((a: number, f: any) => a + f.imports.length, 0), color: '#00ff88' },
+                    ].map(s => (
+                      <div key={s.label} style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', minWidth: '120px' }}>
+                        <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{s.label}</div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Search */}
+                  <input value={navigatorSearch} onChange={e => setNavigatorSearch(e.target.value)} placeholder="Filter files…" style={{ width: '100%', padding: '8px 12px', marginBottom: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }} />
+
+                  {/* Top packages */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '8px' }}>TOP DEPENDENCIES BY USAGE</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {Object.entries(navigatorData.packageFrequency).sort((a: any, b: any) => b[1] - a[1]).slice(0, 15).map(([pkg, count]: [string, any]) => (
+                        <div key={pkg} style={{ padding: '3px 10px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', fontSize: '0.65rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          {pkg} <span style={{ opacity: 0.6, fontSize: '0.55rem' }}>×{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* File list */}
+                  <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.12em', marginBottom: '8px' }}>FILE DEPENDENCY MAP</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {navigatorData.files.filter((f: any) => !navigatorSearch || f.file.toLowerCase().includes(navigatorSearch.toLowerCase())).map((f: any) => (
+                      <div key={f.file} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: f.imports.length > 0 ? '6px' : '0' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>{f.file}</span>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(79,172,254,0.1)', color: '#4facfe', padding: '2px 6px', borderRadius: '4px' }}>{f.size} lines</span>
+                            <span style={{ fontSize: '0.52rem', background: 'rgba(155,77,255,0.1)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '4px' }}>{f.imports.length} imports</span>
+                          </div>
+                        </div>
+                        {f.imports.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {f.imports.slice(0, 8).map((imp: any, i: number) => (
+                              <span key={i} style={{ fontSize: '0.58rem', padding: '2px 7px', background: imp.type === 'local' ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.05)', border: `1px solid ${imp.type === 'local' ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '4px', color: imp.type === 'local' ? '#00ff88' : 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
+                                {imp.type === 'local' ? '↳' : '📦'} {imp.path}
+                              </span>
+                            ))}
+                            {f.imports.length > 8 && <span style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>+{f.imports.length - 8} more</span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
