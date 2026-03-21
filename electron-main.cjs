@@ -2277,17 +2277,32 @@ ipcMain.handle('github-fetch-url', async (_e, url) => {
     const match = url.match(/github\.com\/([^/]+)\/([^/]+?)(?:\/(pull|pulls|issues?)\/(\d+))?(?:[/?#].*)?$/i);
     if (!match) return { error: 'Not a valid GitHub URL' };
     const [, owner, repo, typeRaw, number] = match;
-    const headers = { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'IMI-GitHub-Hub/1.0' };
-    if (GITHUB_TOKEN) headers['Authorization'] = `token ${GITHUB_TOKEN}`;
-    const ghGet = (path) => new Promise((resolve, reject) => {
-      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com', path });
-      req.setHeader('Accept', headers['Accept']);
-      req.setHeader('User-Agent', headers['User-Agent']);
-      if (GITHUB_TOKEN) req.setHeader('Authorization', headers['Authorization']);
-      let raw = '';
-      req.on('response', res => { res.on('data', d => raw += d.toString()); res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { reject(e); } }); });
-      req.on('error', reject);
-      req.end();
+    const token = (GITHUB_TOKEN || '').trim();
+    // ghGet tries with token first, falls back to unauthenticated for public repos
+    const ghGet = (apiPath) => new Promise((resolve, reject) => {
+      const makeReq = (useAuth) => {
+        const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'api.github.com', path: apiPath });
+        req.setHeader('Accept', 'application/vnd.github.v3+json');
+        req.setHeader('User-Agent', 'IMI-GitHub-Hub/1.0');
+        if (useAuth && token) req.setHeader('Authorization', `Bearer ${token}`);
+        let raw = '';
+        req.on('response', res => {
+          res.on('data', d => raw += d.toString());
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(raw);
+              // If bad credentials and we used auth, retry without
+              if (useAuth && (data.message === 'Bad credentials' || res.statusCode === 401)) {
+                return makeReq(false);
+              }
+              resolve(data);
+            } catch(e) { reject(e); }
+          });
+        });
+        req.on('error', reject);
+        req.end();
+      };
+      makeReq(!!token);
     });
     const type = typeRaw ? (typeRaw.startsWith('pull') ? 'pr' : 'issue') : 'repo';
     if (type === 'pr') {
