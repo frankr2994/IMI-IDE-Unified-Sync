@@ -1668,6 +1668,74 @@ User message: `;
   }
 
 
+  // ── Direct OpenAI-compatible API handlers (ChatGPT / DeepSeek / Mistral / Perplexity) ─────
+  // These all share the same streaming format — only hostname, model, and key differ
+  const openAICompatMap = {
+    chatgpt:    { hostname: 'api.openai.com',        path: '/v1/chat/completions', model: 'gpt-4o',                              key: () => OPENAI_KEY,      label: 'OpenAI API key' },
+    deepseek:   { hostname: 'api.deepseek.com',      path: '/v1/chat/completions', model: 'deepseek-chat',                       key: () => DEEPSEEK_KEY,    label: 'DeepSeek API key' },
+    mistral:    { hostname: 'api.mistral.ai',         path: '/v1/chat/completions', model: 'mistral-large-latest',                key: () => MISTRAL_KEY,     label: 'Mistral API key' },
+    perplexity: { hostname: 'api.perplexity.ai',      path: '/chat/completions',   model: 'llama-3.1-sonar-large-128k-online',   key: () => PERPLEXITY_KEY,  label: 'Perplexity API key' },
+  };
+
+  if (openAICompatMap[director]) {
+    const cfg = openAICompatMap[director];
+    const apiKey = cfg.key();
+    if (!apiKey) { event.sender.send('command-error', { messageId, error: `${cfg.label} missing. Add it in Settings → APIs.` }); return; }
+    const codingKeywords = ['add', 'create', 'file', 'update', 'change', 'build', 'implement', 'fix', 'refactor', 'make', 'improve', 'edit', 'look'];
+    const isCodingAction = codingKeywords.some(w => command.toLowerCase().includes(w));
+    const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
+    // Build messages with full history
+    const msgs = [{ role: 'system', content: activePrefix }];
+    for (const h of history) msgs.push({ role: h.role, content: h.text });
+    // Add current message (with optional image for vision-capable models like gpt-4o)
+    if (imageBase64 && imageMimeType && director === 'chatgpt') {
+      msgs.push({ role: 'user', content: [{ type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } }, { type: 'text', text: command }] });
+    } else {
+      msgs.push({ role: 'user', content: command });
+    }
+    const req = net.request({ method: 'POST', protocol: 'https:', hostname: cfg.hostname, path: cfg.path });
+    req.setHeader('Content-Type', 'application/json');
+    req.setHeader('Authorization', `Bearer ${apiKey.trim()}`);
+    req.write(JSON.stringify({ model: cfg.model, messages: msgs, stream: true, temperature: BRAIN_TEMPERATURE }));
+    let fullText = '', buf = '';
+    req.on('response', (res) => {
+      if (res.statusCode !== 200) {
+        let errBody = '';
+        res.on('data', d => errBody += d.toString());
+        res.on('end', () => { try { const j = JSON.parse(errBody); event.sender.send('command-error', { messageId, error: `${director} Error: ${j.error?.message || errBody}` }); } catch { event.sender.send('command-error', { messageId, error: `${director} HTTP ${res.statusCode}` }); } });
+        return;
+      }
+      res.on('data', chunk => {
+        buf += chunk.toString();
+        const lines = buf.split('\n'); buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const json = line.slice(5).trim();
+          if (!json || json === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(json);
+            const delta = parsed.choices?.[0]?.delta?.content || '';
+            if (delta) { fullText += delta; event.sender.send('command-chunk', { messageId, chunk: delta }); }
+          } catch {}
+        }
+      });
+      res.on('end', () => {
+        tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
+        saveGlobalState();
+        event.sender.send('command-end', { messageId, code: 0 });
+        const isClarifying = fullText.includes('\u2753') || (fullText.includes('?') && fullText.includes('\u2022'));
+        if (isCodingAction && payload.engine && payload.engine !== director && !isClarifying) {
+          event.sender.send('command-chunk', { messageId, chunk: `\n\n--- [IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()} ---` });
+          setTimeout(() => triggerCoderImplementation(event, payload.engine, fullText, messageId), 1000);
+        }
+      });
+    });
+    req.on('error', err => event.sender.send('command-error', { messageId, error: `${director} network error: ${err.message}` }));
+    req.end();
+    return;
+  }
+
+  // ── CLI-based fallback (geminicli, jules, etc.) ───────────────────────────
   const commandName = director === 'geminicli' ? 'gemini' : director;
   let binPath = await checkCommand(commandName);
   if (!binPath && process.platform === 'win32') binPath = await checkCommand(`${commandName}.cmd`);
@@ -1675,7 +1743,13 @@ User message: `;
 
   const safeEnv = { ...process.env, ...getMCPEnv(), GEMINI_API_KEY: GEMINI_KEY, JULES_API_KEY: JULES_KEY };
   delete safeEnv.ELECTRON_RUN_AS_NODE;
-  const argsString = director === 'geminicli' ? `-p ${shellEscape(command)}` : `chat ${shellEscape(command)}`;
+  // Inject conversation history as context into CLI prompt
+  let historyContext = '';
+  if (history.length > 0) {
+    historyContext = '\n[CONVERSATION HISTORY]\n' + history.map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`).join('\n') + '\n[END HISTORY]\n\nCurrent message: ';
+  }
+  const promptWithHistory = historyContext + command;
+  const argsString = director === 'geminicli' ? `-p ${shellEscape(promptWithHistory)}` : `chat ${shellEscape(promptWithHistory)}`;
 
   // Cleanup output: Strip ANSI codes and filter out diagnostic/stacktrace noise
   const cleanOutput = (str) => {
