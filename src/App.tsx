@@ -794,6 +794,13 @@ const App = () => {
     document.body.className = theme === 'glass' ? '' : `theme-${theme}`;
   }, [theme]);
 
+  // Auto-refresh installed models whenever AI Models tab is opened
+  useEffect(() => {
+    if (activeTab === 'tools' && mcpHubTab === 'ai') {
+      loadOllamaModels();
+    }
+  }, [activeTab, mcpHubTab]);
+
   const renderContent = (text: string) => {
     if (!text) return null;
 
