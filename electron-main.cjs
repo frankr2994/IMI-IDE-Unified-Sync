@@ -150,16 +150,25 @@ class SkillEngine {
   }
 
   // Record a skill was used + how many tokens it saved
-  recordHit(skillId, tokensSaved = 500) {
+  recordHit(skillId, tokensSaved = 500, model = null) {
     const skill = this.skills.find(s => s.id === skillId);
     if (skill) {
       skill.uses++;
       skill.tokensSaved += tokensSaved;
       skill.score = Math.min(100, Math.round((skill.tokensSaved / Math.max(1, skill.uses * 500)) * 100));
       skill.lastUsed = Date.now();
+      if (model) {
+        if (!skill.modelUsage) skill.modelUsage = {};
+        skill.modelUsage[model] = (skill.modelUsage[model] || 0) + 1;
+      }
     }
     this.stats.skillHits++;
     this.stats.tokensSaved += tokensSaved;
+    // Track global per-model token savings
+    if (model) {
+      if (!this.stats.modelSavings) this.stats.modelSavings = {};
+      this.stats.modelSavings[model] = (this.stats.modelSavings[model] || 0) + tokensSaved;
+    }
     this._save();
   }
 
