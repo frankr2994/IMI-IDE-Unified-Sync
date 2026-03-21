@@ -2810,7 +2810,11 @@ ipcMain.handle('hf-batch-sizes', async (_e, modelIds) => {
 ipcMain.handle('hf-search-models', async (_e, query) => {
   if (!query || query.trim().length < 1) return { results: [], total: 0 };
   return new Promise((resolve) => {
-    const q = encodeURIComponent(query.trim());
+    // Normalize spaces: "qwen 3" → "qwen3", "deep seek" → "deepseek", "llama 3" → "llama3"
+    const normalized = query.trim()
+      .replace(/\bdeep\s+seek\b/gi, 'deepseek')
+      .replace(/\b(qwen|llama|gemma|mistral|phi|falcon|wizard|stable|code)\s+(\d)/gi, '$1$2');
+    const q = encodeURIComponent(normalized);
     // full=true returns siblings (file list with sizes) — limit reduced to keep response manageable
     const req = net.request({
       method: 'GET', protocol: 'https:', hostname: 'huggingface.co',
