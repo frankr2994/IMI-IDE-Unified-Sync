@@ -4357,6 +4357,47 @@ ipcMain.handle('get-cache-stats', () => {
 ipcMain.on('clear-file-cache', () => fileCache.clear());
 
 // ══════════════════════════════════════════════════════════
+// 💻 EMBEDDED TERMINAL — run shell commands from the UI
+// ══════════════════════════════════════════════════════════
+let terminalCwd = os.homedir();
+
+ipcMain.handle('terminal-run', async (event, { cmd, cwd }) => {
+  if (cwd && fs.existsSync(cwd)) terminalCwd = cwd;
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32';
+    // cd commands update the tracked cwd
+    const cdMatch = cmd.match(/^\s*cd\s+(.+)/i);
+    if (cdMatch) {
+      const target = cdMatch[1].trim().replace(/^["']|["']$/g, '');
+      const resolved = path.resolve(terminalCwd, target);
+      if (fs.existsSync(resolved)) {
+        terminalCwd = resolved;
+        resolve({ output: '', cwd: terminalCwd, error: false });
+      } else {
+        resolve({ output: `cd: The directory "${target}" does not exist.`, cwd: terminalCwd, error: true });
+      }
+      return;
+    }
+    // clear command
+    if (/^\s*cls\s*$|^\s*clear\s*$/i.test(cmd)) {
+      resolve({ output: '__CLEAR__', cwd: terminalCwd, error: false });
+      return;
+    }
+    exec(cmd, {
+      cwd: terminalCwd,
+      timeout: 30000,
+      env: { ...process.env, FORCE_COLOR: '0' },
+      shell: isWin ? 'cmd.exe' : '/bin/bash'
+    }, (err, stdout, stderr) => {
+      const output = (stdout + (stderr ? '\n' + stderr : '')).trimEnd();
+      resolve({ output: output || (err ? err.message : ''), cwd: terminalCwd, error: !!err });
+    });
+  });
+});
+
+ipcMain.handle('terminal-get-cwd', () => terminalCwd);
+
+// ══════════════════════════════════════════════════════════
 // 🗺 PROJECT NAVIGATOR — scan imports & build dependency tree
 // ══════════════════════════════════════════════════════════
 ipcMain.handle('scan-project-imports', async (e, projectRoot) => {

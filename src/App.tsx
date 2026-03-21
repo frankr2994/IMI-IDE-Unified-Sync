@@ -115,6 +115,15 @@ const App = () => {
   const [docLoading, setDocLoading] = useState(false);
   const [cacheStats, setCacheStats] = useState<{ files: number; hits: number } | null>(null);
   const [rightPanelExtraTab, setRightPanelExtraTab] = useState<'console' | 'plan' | 'parallel' | 'docs'>('console');
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  const [terminalLines, setTerminalLines] = useState<{ text: string; type: 'cmd'|'out'|'err'|'info' }[]>([{ text: 'IMI Terminal — type a command and press Enter', type: 'info' }]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const [terminalCwd, setTerminalCwd] = useState('');
+  const [terminalHistory, setTerminalHistory] = useState<string[]>([]);
+  const [terminalHistoryIdx, setTerminalHistoryIdx] = useState(-1);
+  const [terminalRunning, setTerminalRunning] = useState(false);
+  const terminalInputRef = React.useRef<HTMLInputElement>(null);
+  const terminalOutputRef = React.useRef<HTMLDivElement>(null);
 
   // 🛠 Installed Tools
   const [toolsList, setToolsList] = useState<any[]>([]);
@@ -1055,6 +1064,36 @@ const App = () => {
     });
     setAttachedImage(null); // clear after sending
   };
+
+  // Load terminal cwd when terminal opens
+  useEffect(() => {
+    if (!terminalOpen || terminalCwd) return;
+    (ipc as any).invoke('terminal-get-cwd').then((cwd: string) => { if (cwd) setTerminalCwd(cwd); }).catch(() => {});
+    if (terminalInputRef.current) terminalInputRef.current.focus();
+  }, [terminalOpen]);
+
+  // Scroll terminal to bottom when new lines added
+  useEffect(() => {
+    if (terminalOutputRef.current) terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
+  }, [terminalLines]);
+
+  // Auto-scan project navigator when the tab opens
+  useEffect(() => {
+    if (activeTab !== 'navigator') return;
+    const doScan = async () => {
+      setNavigatorLoading(true);
+      try {
+        // Always fetch fresh project root directly from backend — don't rely on stale stats state
+        const freshStats = await (ipc as any).invoke('get-project-stats');
+        const root = freshStats?.projectRoot;
+        if (!root) { setNavigatorLoading(false); return; }
+        const data = await (ipc as any).invoke('scan-project-imports', root);
+        if (data && !data.error) setNavigatorData(data);
+      } catch(e) { /* silent fail */ }
+      setNavigatorLoading(false);
+    };
+    doScan();
+  }, [activeTab]);
 
   useEffect(() => {
     loadConfig();
@@ -2094,10 +2133,100 @@ const App = () => {
                       {/* Plan Mode */}
                       <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — break task into phases'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
 
+                      {/* Terminal toggle */}
+                      <button type="button" onClick={() => { setTerminalOpen(t => !t); setTimeout(() => terminalInputRef.current?.focus(), 80); }} title="Toggle Terminal" style={{ height: '38px', width: '38px', background: terminalOpen ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${terminalOpen ? 'rgba(0,255,136,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: terminalOpen ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Terminal size={15}/>
+                      </button>
+
                       {/* Send */}
                       <button type="submit" className="btn-chat-send" style={{ width: '38px', height: '38px' }}><Send size={15}/></button>
                     </form>
                 </div>
+
+                {/* ── EMBEDDED TERMINAL ─────────────────────────────── */}
+                <AnimatePresence>
+                {terminalOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 220, opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    style={{ overflow: 'hidden', borderTop: '1px solid rgba(0,255,136,0.2)', background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}
+                  >
+                    {/* Terminal header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 12px', background: 'rgba(0,255,136,0.06)', borderBottom: '1px solid rgba(0,255,136,0.12)', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Terminal size={11} color="#00ff88"/>
+                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em' }}>TERMINAL</span>
+                        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{terminalCwd}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => setTerminalLines([{ text: 'Cleared.', type: 'info' }])} style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer' }}>CLEAR</button>
+                        <button onClick={() => setTerminalOpen(false)} style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.2)', borderRadius: '4px', color: '#ff416c', cursor: 'pointer' }}>✕</button>
+                      </div>
+                    </div>
+
+                    {/* Output */}
+                    <div ref={terminalOutputRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 12px', fontFamily: 'monospace', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                      {terminalLines.map((line, i) => (
+                        <div key={i} style={{ color: line.type === 'cmd' ? '#00ff88' : line.type === 'err' ? '#ff4d4d' : line.type === 'info' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.75)', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                          {line.type === 'cmd' && <span style={{ color: 'rgba(0,255,136,0.5)', marginRight: '6px' }}>❯</span>}
+                          {line.text}
+                        </div>
+                      ))}
+                      {terminalRunning && <div style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>running…</div>}
+                    </div>
+
+                    {/* Input */}
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '6px 12px', borderTop: '1px solid rgba(0,255,136,0.1)', background: 'rgba(0,0,0,0.3)', flexShrink: 0 }}>
+                      <span style={{ color: '#00ff88', fontSize: '0.72rem', marginRight: '8px', fontFamily: 'monospace', flexShrink: 0 }}>❯</span>
+                      <input
+                        ref={terminalInputRef}
+                        value={terminalInput}
+                        onChange={e => setTerminalInput(e.target.value)}
+                        onKeyDown={async e => {
+                          if (e.key === 'Enter' && terminalInput.trim() && !terminalRunning) {
+                            const cmd = terminalInput.trim();
+                            setTerminalHistory(h => [cmd, ...h.slice(0, 49)]);
+                            setTerminalHistoryIdx(-1);
+                            setTerminalInput('');
+                            setTerminalLines(l => [...l, { text: cmd, type: 'cmd' }]);
+                            setTerminalRunning(true);
+                            try {
+                              const result: any = await (ipc as any).invoke('terminal-run', { cmd, cwd: terminalCwd });
+                              if (result.output === '__CLEAR__') {
+                                setTerminalLines([{ text: '', type: 'info' }]);
+                              } else if (result.output) {
+                                setTerminalLines(l => [...l, { text: result.output, type: result.error ? 'err' : 'out' }]);
+                              }
+                              if (result.cwd) setTerminalCwd(result.cwd);
+                            } catch(err: any) {
+                              setTerminalLines(l => [...l, { text: err?.message || 'Error', type: 'err' }]);
+                            }
+                            setTerminalRunning(false);
+                            setTimeout(() => terminalInputRef.current?.focus(), 50);
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            const next = Math.min(terminalHistoryIdx + 1, terminalHistory.length - 1);
+                            setTerminalHistoryIdx(next);
+                            if (terminalHistory[next] !== undefined) setTerminalInput(terminalHistory[next]);
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            const next = Math.max(terminalHistoryIdx - 1, -1);
+                            setTerminalHistoryIdx(next);
+                            setTerminalInput(next === -1 ? '' : terminalHistory[next] || '');
+                          }
+                        }}
+                        placeholder="type a command…"
+                        style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace', fontSize: '0.72rem', caretColor: '#00ff88' }}
+                        spellCheck={false}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+                </AnimatePresence>
+
               </div>
 
               <div className="devtools-panel">
@@ -3099,181 +3228,162 @@ const App = () => {
                 </div>
                 )}
 
-                {/* ── AGENT SDK TAB ── */}
+                {/* ── AGENT MONITOR TAB ── */}
                 {mcpHubTab === 'agent' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                    {/* Header banner */}
-                    <div style={{ background: 'linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,212,255,0.08))', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* Header */}
+                    <div style={{ background: 'linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,212,255,0.08))', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--primary)', marginBottom: '6px' }}>ANTHROPIC · CLAUDE AGENT SDK</div>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'white' }}>How Claude Thinks & Acts</div>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>Event system · Tool use · Reasoning patterns · Agentic loop</div>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--primary)', marginBottom: '4px' }}>IMI · AGENT MONITOR</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white' }}>Agent Mode Dashboard</div>
+                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginTop: '3px' }}>Multi-step AI reasoning — reads files, patches code, runs builds, fixes errors</div>
                       </div>
-                      <div style={{ textAlign: 'right', fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)' }}>
-                        <div>Model: claude-sonnet-4-5</div>
-                        <div style={{ marginTop: '2px' }}>API: api.anthropic.com/v1</div>
-                        <div style={{ marginTop: '2px' }}>Version: 2023-06-01</div>
-                      </div>
+                      <button onClick={() => (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {})}
+                        style={{ background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', padding: '8px 14px', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
+                        🔄 Refresh
+                      </button>
                     </div>
 
-                    {/* Row 1: SSE Events + Tool Use Flow */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {/* Config + Stats row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
 
-                      {/* SSE Event Stream */}
-                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00d4ff', marginBottom: '14px' }}>SSE EVENT STREAM</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>Every response streams these events in order:</div>
+                      {/* Current Config */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00d4ff', marginBottom: '12px' }}>CURRENT CONFIGURATION</div>
                         {[
-                          { event: 'message_start',        color: '#9b4dff', note: 'New message ID + model info' },
-                          { event: 'content_block_start',  color: '#00d4ff', note: 'New block — text or tool_use' },
-                          { event: 'content_block_delta',  color: '#00ff88', note: 'Chunk arrives — text_delta or input_json_delta' },
-                          { event: 'content_block_stop',   color: '#00d4ff', note: 'Block complete' },
-                          { event: 'message_delta',        color: '#ff9b4d', note: 'Stop reason + token usage' },
-                          { event: 'message_stop',         color: '#9b4dff', note: 'Stream finished' },
-                        ].map(e => (
-                          <div key={e.event} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', marginBottom: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: `3px solid ${e.color}` }}>
-                            <code style={{ fontSize: '0.68rem', color: e.color, fontFamily: 'monospace', minWidth: '185px' }}>{e.event}</code>
-                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{e.note}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Tool Use Flow */}
-                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#ff9b4d', marginBottom: '14px' }}>TOOL USE FLOW</div>
-                        <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginBottom: '10px' }}>How Claude calls tools and loops:</div>
-                        {[
-                          { step: '1', label: 'User sends message', detail: 'role: user → messages array', color: '#9b4dff' },
-                          { step: '2', label: 'Claude picks tool', detail: 'stop_reason: tool_use  content_block type: tool_use', color: '#00d4ff' },
-                          { step: '3', label: 'Tool JSON streams in', detail: 'input_json_delta events build the args', color: '#00ff88' },
-                          { step: '4', label: 'Tool executes', detail: 'Your code runs — file read, bash, web fetch, etc.', color: '#ff9b4d' },
-                          { step: '5', label: 'Result sent back', detail: 'role: user  type: tool_result  tool_use_id', color: '#ff4d8d' },
-                          { step: '6', label: 'Loop continues', detail: 'Claude sees result → picks next tool or gives final answer', color: '#9b4dff' },
-                        ].map(s => (
-                          <div key={s.step} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '7px 10px', marginBottom: '4px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, flexShrink: 0, marginTop: '1px' }}>{s.step}</div>
-                            <div>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'white' }}>{s.label}</div>
-                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', marginTop: '2px' }}>{s.detail}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Row 2: Reasoning Patterns */}
-                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00ff88', marginBottom: '14px' }}>HOW CLAUDE REASONS — BAKED INTO IMI'S BRAIN</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                        {[
-                          { title: 'Read Before Edit', rule: 'Always reads a file before modifying it. Never guesses existing content.', icon: '📖' },
-                          { title: 'Parallel When Independent', rule: 'Launches multiple tool calls in one turn when they don\'t depend on each other. Faster.', icon: '⚡' },
-                          { title: 'Infer Intent', rule: 'Never says "I don\'t understand." Always makes the most reasonable interpretation and acts.', icon: '🎯' },
-                          { title: 'Minimal Footprint', rule: 'Only touches what needs to change. No full rewrites when a surgical edit will do.', icon: '✂️' },
-                          { title: 'Verify Before Destroy', rule: 'Asks before deleting, publishing, or sending. Shows what will happen. Waits for yes.', icon: '🛡️' },
-                          { title: 'Sequential When Dependent', rule: 'Waits for a tool result before calling the next tool that needs it. Never guesses outputs.', icon: '🔗' },
-                          { title: 'No Unnecessary Questions', rule: 'If the answer can be found by looking at the code/files, looks first. Only asks when truly unknown.', icon: '🔍' },
-                          { title: 'Trust the Code', rule: 'Reads the actual live code rather than assuming. What\'s in the file is the ground truth.', icon: '💻' },
-                          { title: 'Best-Effort Fallback', rule: 'If an optional step fails (like web grounding), continues anyway. Never blocks on non-critical paths.', icon: '🔄' },
+                          { label: 'Active Brain', value: agentStats?.currentDirector || activeDirector || '—', color: '#9b4dff' },
+                          { label: 'Model', value: agentStats?.currentBrain || '—', color: '#00d4ff' },
+                          { label: 'Max Steps', value: agentStats?.maxSteps ?? 15, color: '#00ff88' },
+                          { label: 'Temperature', value: agentStats?.temperature ?? '—', color: '#ff9b4d' },
+                          { label: 'Max Tokens', value: agentStats?.maxTokens?.toLocaleString() ?? '—', color: '#ff4d8d' },
                         ].map(r => (
-                          <div key={r.title} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '12px' }}>
-                            <div style={{ fontSize: '1.1rem', marginBottom: '6px' }}>{r.icon}</div>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'white', marginBottom: '4px' }}>{r.title}</div>
-                            <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{r.rule}</div>
+                          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>{r.label}</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: r.color, fontFamily: 'monospace' }}>{r.value}</span>
                           </div>
                         ))}
-                      </div>
-                    </div>
-
-                    {/* Row 3: Model Reference + Request Format */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
-                      {/* Models */}
-                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#ff4d8d', marginBottom: '14px' }}>CLAUDE MODEL REFERENCE</div>
-                        {[
-                          { model: 'claude-opus-4-5',        ctx: '200K', best: 'Complex reasoning, architecture', speed: '🐢' },
-                          { model: 'claude-sonnet-4-5',      ctx: '200K', best: 'Balanced — IMI default brain',   speed: '⚡' },
-                          { model: 'claude-haiku-3-5',       ctx: '200K', best: 'Fast, cheap, high-volume tasks', speed: '🚀' },
-                        ].map(m => (
-                          <div key={m.model} style={{ padding: '10px 12px', marginBottom: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                              <code style={{ fontSize: '0.7rem', color: '#ff4d8d', fontFamily: 'monospace' }}>{m.model}</code>
-                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{m.best}</div>
-                            </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.6rem' }}>
-                              <div style={{ color: 'rgba(255,255,255,0.5)' }}>{m.ctx} ctx</div>
-                              <div>{m.speed}</div>
-                            </div>
-                          </div>
-                        ))}
-                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(155,77,255,0.08)', borderRadius: '8px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>
-                          All models support: tool use · vision · streaming · prompt caching · 200K context
+                        <div style={{ marginTop: '10px', padding: '8px 10px', background: 'rgba(0,212,255,0.07)', borderRadius: '6px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)' }}>
+                          💡 Change brain in the selector above the chat. Agent mode works with any model.
                         </div>
                       </div>
 
-                      {/* Request skeleton */}
-                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#9b4dff', marginBottom: '14px' }}>API REQUEST SKELETON</div>
-                        <pre style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '8px' }}>{`POST api.anthropic.com/v1/messages
-x-api-key: YOUR_KEY
-anthropic-version: 2023-06-01
-content-type: application/json
-
-{
-  "model": "claude-sonnet-4-5",
-  "max_tokens": 8096,
-  "stream": true,
-  "system": "You are...",
-  "tools": [ { "name": "...", "input_schema": {...} } ],
-  "messages": [
-    { "role": "user", "content": "..." },
-    { "role": "assistant", "content": [...] },
-    { "role": "user", "content": [
-        { "type": "tool_result", ... }
-    ]}
-  ]
-}`}</pre>
-                      </div>
-                    </div>
-
-                    {/* Row 4: Tool Schema format */}
-                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00d4ff', marginBottom: '14px' }}>TOOL DEFINITION FORMAT — HOW TO GIVE CLAUDE TOOLS</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                        <div>
-                          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>Every tool needs this exact shape:</div>
-                          <pre style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap', background: 'rgba(0,0,0,0.4)', padding: '12px', borderRadius: '8px' }}>{`{
-  "name": "read_file",
-  "description": "Reads a file. Use this before editing.",
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "path": {
-        "type": "string",
-        "description": "Absolute path to the file"
-      }
-    },
-    "required": ["path"]
-  }
-}`}</pre>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>Best practices for tool definitions:</div>
+                      {/* Run Stats */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00ff88', marginBottom: '12px' }}>SESSION STATS</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
                           {[
-                            ['name',        'Short, snake_case, verb+noun — read_file, bash, web_search'],
-                            ['description', 'Tell Claude WHEN to use it, not just what it does'],
-                            ['required',    'Only mark truly required params. Optional = smarter calls'],
-                            ['enum',        'Add enum arrays to constrain string inputs when possible'],
-                            ['description', 'Each property description is context Claude uses to fill it'],
-                          ].map(([field, tip], i) => (
-                            <div key={i} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', borderLeft: '3px solid rgba(0,212,255,0.4)' }}>
-                              <code style={{ fontSize: '0.65rem', color: '#00d4ff' }}>{field}</code>
-                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>{tip}</div>
+                            { label: 'Total Runs', value: agentStats?.totalRuns ?? 0, icon: '🤖' },
+                            { label: 'Total Steps', value: agentStats?.totalSteps ?? 0, icon: '⚡' },
+                          ].map(s => (
+                            <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.4rem', marginBottom: '4px' }}>{s.icon}</div>
+                              <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'white' }}>{s.value}</div>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{s.label}</div>
                             </div>
                           ))}
                         </div>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)', marginBottom: '8px' }}>TOOLS CALLED</div>
+                        {Object.entries((agentStats?.toolsUsed || { read_file: 0, search_code: 0, write_patch: 0, run_build: 0, run_command: 0 })).map(([tool, count]) => (
+                          <div key={tool} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
+                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>{tool}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: `${Math.min(100, ((count as number) / Math.max(1, agentStats?.totalSteps || 1)) * 100)}%`, height: '100%', background: 'var(--primary)', borderRadius: '2px' }}/>
+                              </div>
+                              <span style={{ fontSize: '0.65rem', color: 'white', fontWeight: 700, minWidth: '16px', textAlign: 'right' }}>{count as number}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Last Run */}
+                    {agentStats?.lastRun ? (
+                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#ff9b4d', marginBottom: '12px' }}>LAST AGENT RUN</div>
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                          {[
+                            { label: 'Model', value: agentStats.lastRun.model },
+                            { label: 'Steps', value: agentStats.lastRun.steps },
+                            { label: 'Duration', value: `${((agentStats.lastRun.duration || 0) / 1000).toFixed(1)}s` },
+                            { label: 'Time', value: new Date(agentStats.lastRun.ts).toLocaleTimeString() },
+                          ].map(d => (
+                            <div key={d.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '6px', padding: '8px 12px', minWidth: '80px' }}>
+                              <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)', marginBottom: '3px' }}>{d.label}</div>
+                              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'white', fontFamily: 'monospace' }}>{d.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ padding: '8px 12px', background: 'rgba(155,77,255,0.08)', borderRadius: '6px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.6)', marginBottom: '12px' }}>
+                          <span style={{ color: 'rgba(255,255,255,0.35)' }}>Task: </span>{agentStats.lastRun.command}
+                        </div>
+                        {agentStats.lastRunSteps?.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginBottom: '8px', letterSpacing: '0.1em' }}>STEP TRACE</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {agentStats.lastRunSteps.map((s: any, i: number) => (
+                                <div key={i} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
+                                  <span style={{ color: 'rgba(155,77,255,0.8)', marginRight: '4px' }}>#{s.step}</span>{s.tool}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🤖</div>
+                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>No agent runs yet this session</div>
+                        <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>Trigger agent mode by asking IMI to fix a bug, refactor code, or add a feature to the app</div>
+                      </div>
+                    )}
+
+                    {/* Available Tools */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#9b4dff', marginBottom: '12px' }}>AVAILABLE AGENT TOOLS</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                        {[
+                          { name: 'read_file',      icon: '📖', desc: 'Read any file contents — always called before patching', color: '#00d4ff' },
+                          { name: 'search_code',    icon: '🔍', desc: 'Regex search across all project files to find exact code', color: '#00ff88' },
+                          { name: 'write_patch',    icon: '✏️', desc: 'Surgical search-and-replace — only changes what needs changing', color: '#ff9b4d' },
+                          { name: 'run_build',      icon: '🔨', desc: 'Run npm build after every patch — catches errors immediately', color: '#ff4d8d' },
+                          { name: 'list_dir',       icon: '📁', desc: 'List files in any directory to understand project structure', color: '#9b4dff' },
+                          { name: 'run_command',    icon: '⚡', desc: 'Run git, npm, node, python — any terminal command', color: '#00d4ff' },
+                          { name: 'take_screenshot',icon: '📸', desc: 'Capture the current screen — see the real UI state', color: '#00ff88' },
+                          { name: 'read_error',     icon: '🔎', desc: 'Jump to a specific file:line from an error trace', color: '#ff9b4d' },
+                          { name: 'open_browser',   icon: '🌐', desc: 'Open a URL — preview, docs, GitHub PRs', color: '#ff4d8d' },
+                          { name: 'done',           icon: '✅', desc: 'Signal task complete — agent stops looping', color: '#00ff88' },
+                        ].map(t => (
+                          <div key={t.name} style={{ display: 'flex', gap: '10px', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: `3px solid ${t.color}` }}>
+                            <span style={{ fontSize: '1rem', flexShrink: 0 }}>{t.icon}</span>
+                            <div>
+                              <code style={{ fontSize: '0.68rem', color: t.color, fontFamily: 'monospace', fontWeight: 700 }}>{t.name}</code>
+                              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', marginTop: '2px', lineHeight: 1.4 }}>{t.desc}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* How to trigger */}
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.18em', color: '#00ff88', marginBottom: '12px' }}>HOW TO TRIGGER AGENT MODE</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                        {[
+                          { trigger: '"fix the bug in the sidebar"', note: 'Searches code → finds cause → patches → builds', icon: '🐛' },
+                          { trigger: '"why is X not working"', note: 'Reads relevant files → traces error → explains + fixes', icon: '🔎' },
+                          { trigger: '"add a feature to the dashboard"', note: 'Reads existing code → writes minimal patch → verifies build', icon: '⚡' },
+                          { trigger: '"refactor the chat component"', note: 'Reads full component → rewrites surgically → confirms', icon: '✂️' },
+                          { trigger: '"agent mode: <any task>"', note: 'Force agent mode explicitly for any request', icon: '🤖' },
+                          { trigger: '"debug X"', note: 'Reads error trace → finds root cause → applies fix', icon: '🔨' },
+                        ].map(t => (
+                          <div key={t.trigger} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '12px' }}>
+                            <div style={{ fontSize: '0.65rem', marginBottom: '4px' }}>{t.icon}</div>
+                            <code style={{ fontSize: '0.62rem', color: '#00ff88', fontFamily: 'monospace', display: 'block', marginBottom: '5px' }}>{t.trigger}</code>
+                            <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.35)', lineHeight: 1.4 }}>{t.note}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -3703,13 +3813,18 @@ content-type: application/json
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>File dependency tree · Import relationships · Package usage</div>
                 </div>
                 <button onClick={async () => {
-                  if (!stats.projectRoot) { alert('Set a project root in System → Preferences first.'); return; }
                   setNavigatorLoading(true);
-                  const data = await (ipc as any).invoke('scan-project-imports', stats.projectRoot);
-                  setNavigatorData(data);
+                  try {
+                    const freshStats = await (ipc as any).invoke('get-project-stats');
+                    const root = freshStats?.projectRoot;
+                    if (!root) { alert('No project root found. Set one in System → Preferences.'); setNavigatorLoading(false); return; }
+                    const data = await (ipc as any).invoke('scan-project-imports', root);
+                    if (data && !data.error) setNavigatorData(data);
+                    else if (data?.error) alert(`Scan error: ${data.error}`);
+                  } catch(e: any) { alert(`Scan failed: ${e?.message}`); }
                   setNavigatorLoading(false);
                 }} className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.65rem' }}>
-                  {navigatorLoading ? '⏳ Scanning…' : '🔍 SCAN PROJECT'}
+                  {navigatorLoading ? '⏳ Scanning…' : '🔄 RESCAN'}
                 </button>
               </div>
 
@@ -3733,10 +3848,16 @@ content-type: application/json
               )}
               <button onClick={async () => { const s = await (ipc as any).invoke('get-cache-stats'); setCacheStats(s); }} style={{ margin: '8px 20px 0', padding: '6px 12px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', width: 'fit-content' }}>📊 Refresh Cache Stats</button>
 
+              {navigatorLoading && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', opacity: 0.7 }}>
+                  <span style={{ fontSize: '3rem' }}>🔍</span>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>Scanning project files…</div>
+                </div>
+              )}
               {!navigatorData && !navigatorLoading && (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', opacity: 0.4 }}>
                   <span style={{ fontSize: '3rem' }}>🗺</span>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>Click SCAN PROJECT to build your dependency map</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>No project files found — click RESCAN to try again</div>
                 </div>
               )}
 
