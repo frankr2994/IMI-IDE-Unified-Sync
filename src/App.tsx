@@ -1787,7 +1787,7 @@ const App = () => {
                       <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — generate a phased plan before executing'} style={{ height: '44px', width: '44px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.05)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '10px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
                       {planMode && <button type="button" onClick={() => setYoloMode(y => !y)} title={yoloMode ? 'YOLO ON — auto-runs all phases' : 'YOLO — auto-run all phases without confirmation'} style={{ height: '44px', padding: '0 10px', background: yoloMode ? 'rgba(255,180,0,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${yoloMode ? 'rgba(255,180,0,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: yoloMode ? '#ffb400' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em', flexShrink: 0 }}>YOLO</button>}
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
-                      <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
+                      <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
                     </form>
                 </div>
               </div>
@@ -1853,11 +1853,14 @@ const App = () => {
                        const allDone = ap.completedPhases.size === ap.plan.phases.length;
                        return <>
                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                           <div>
+                           <div style={{ flex: 1, minWidth: 0 }}>
                              <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.14em', marginBottom: '3px' }}>IMPLEMENTATION PLAN</div>
                              <div style={{ fontWeight: 800, fontSize: '0.85rem', lineHeight: 1.3 }}>{ap.plan.title}</div>
                            </div>
-                           <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)', flexShrink: 0, marginLeft: '8px' }}>{(ap.plan.complexity || 'medium').toUpperCase()}</span>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', flexShrink: 0 }}>
+                             <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '5px', color: 'var(--primary)' }}>{(ap.plan.complexity || 'medium').toUpperCase()}</span>
+                             <button onClick={() => { setActivePlan(null); planPhaseResolvers.current.clear(); setRightPanelTab('console'); }} title="Delete plan" style={{ background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.25)', borderRadius: '5px', color: '#ff416c', cursor: 'pointer', padding: '2px 8px', fontSize: '0.55rem', fontWeight: 700, whiteSpace: 'nowrap' }}>✕ Delete</button>
+                           </div>
                          </div>
 
                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>{ap.plan.summary}</div>
