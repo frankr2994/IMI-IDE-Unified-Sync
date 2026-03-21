@@ -1862,7 +1862,7 @@ const App = () => {
                             const isExpanded = expandedTools.has(tool.id);
                             const isUpdating = updatingTool === tool.id;
                             return (
-                              <div key={tool.id} style={{ display: 'flex', flexDirection: 'column', gap: '0', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px', ...(isOllama ? { gridColumn: '1 / -1' } : {}) }}>
+                              <div key={tool.id} style={{ display: 'flex', flexDirection: 'column', gap: '0', padding: '12px 16px', background: tool.installed ? 'rgba(0,255,136,0.04)' : 'rgba(255,65,108,0.04)', border: `1px solid ${tool.installed ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, borderRadius: '12px', ...(isOllama && isExpanded ? { gridColumn: '1 / -1' } : {}) }}>
                                 {/* Tool header row */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <span style={{ fontSize: '1.4rem' }}>{tool.icon}</span>
@@ -1923,21 +1923,17 @@ const App = () => {
 
                                 {/* Ollama expanded: installed models list */}
                                 {isOllama && isExpanded && (
-                                  <div style={{ marginTop: '14px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
-                                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: '8px' }}>INSTALLED MODELS — available in Brain &amp; Coder dropdowns</div>
+                                  <div style={{ marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '8px' }}>
                                     {ollamaModels.length === 0
-                                      ? <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', padding: '10px 0' }}>No models installed yet. Go to AI Models tab to pull one.</div>
-                                      : <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                      ? <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', padding: '4px 0' }}>No models yet — pull one from the AI Models tab.</div>
+                                      : <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                           {ollamaModels.map(m => (
-                                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.03)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.2)' : 'rgba(0,255,136,0.15)'}`, borderRadius: '8px' }}>
-                                              <span style={{ fontSize: '1rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
-                                              <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontWeight: 800, fontSize: '0.82rem' }}>{shortModelName(m.name)}</div>
-                                                <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '1px' }}>{m.modified}</div>
-                                              </div>
-                                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size ? `${m.size}` : ''}</span>
-                                              <span style={{ fontSize: '0.58rem', padding: '2px 7px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800, whiteSpace: 'nowrap' }}>{m.tooLarge ? "Can't Run" : '✅ Ready'}</span>
-                                              <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer', fontSize: '0.65rem', padding: '3px 8px', flexShrink: 0 }} title="Remove model">✕ Remove</button>
+                                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 10px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.03)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.15)' : 'rgba(0,255,136,0.12)'}`, borderRadius: '6px' }}>
+                                              <span style={{ fontSize: '0.8rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
+                                              <span style={{ flex: 1, fontWeight: 700, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortModelName(m.name)}</span>
+                                              <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{m.size}</span>
+                                              <span style={{ fontSize: '0.55rem', padding: '1px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "⚠ Can't Run" : '✓ Ready'}</span>
+                                              <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', padding: '0 4px', flexShrink: 0, opacity: 0.7 }} title="Remove">✕</button>
                                             </div>
                                           ))}
                                         </div>
