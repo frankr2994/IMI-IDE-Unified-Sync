@@ -3074,60 +3074,77 @@ const App = () => {
 
           {activeTab === 'skills' && (
             <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel skills-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {/* Header */}
-              <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>⚡ SKILL ENGINE</div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>Self-optimizing zero-token request handler · Goal: 90% efficiency</div>
-                </div>
-                <button onClick={async () => { const r = await (ipc as any).invoke('skills-optimize'); alert(`Optimization complete\nEfficiency: ${skillEfficiency}%\nRemoved: ${r.removed} weak skills`); fetchStats(); }} className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.65rem' }}>🔄 OPTIMIZE NOW</button>
-              </div>
 
-              {/* Stats Bar */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1px', background: 'var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
-                {[
-                  { label: 'EFFICIENCY', value: `${skillEfficiency}%`, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 50 ? '#ffa500' : '#ff416c', goal: '90%' },
-                  { label: 'SKILL HITS', value: skillStats.skillHits?.toLocaleString() || '0', color: '#4facfe', goal: 'requests handled' },
-                  { label: 'TOKENS SAVED', value: skillStats.tokensSaved?.toLocaleString() || '0', color: '#9b4dff', goal: 'est. saved' },
-                  { label: 'ACTIVE SKILLS', value: skills.filter(s => s.active).length, color: '#00ff88', goal: `${skills.length} total` },
-                ].map(s => (
-                  <div key={s.label} style={{ padding: '15px 20px', background: 'rgba(0,0,0,0.2)' }}>
-                    <div style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginBottom: '6px' }}>{s.label}</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color }}>{s.value}</div>
-                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '2px' }}>goal: {s.goal}</div>
+              {/* ── Header ── */}
+              <div style={{ padding: '18px 24px 0', background: 'rgba(0,0,0,0.15)', borderBottom: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.18em', marginBottom: '4px' }}>SKILL ENGINE</div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>Zero-token request interception</div>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '2px' }}>Matches commands locally before touching any AI · target: 90% efficiency</div>
                   </div>
-                ))}
-              </div>
-
-              {/* Efficiency bar */}
-              <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>Token Efficiency Progress</span>
-                  <span style={{ fontSize: '0.6rem', color: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)' }}>{skillEfficiency}% / 90% goal</span>
-                </div>
-                <div style={{ height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? 'linear-gradient(90deg,#00ff88,#4facfe)' : 'linear-gradient(90deg,var(--primary),#4facfe)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
-                </div>
-              </div>
-
-              {/* Sub-tab switcher */}
-              <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.15)' }}>
-                {[
-                  { id: 'mine' as const,       label: '⚡ MY SKILLS',    badge: String(skills.length) },
-                  { id: 'library' as const,    label: '📚 LIBRARY',      badge: String(SKILL_LIBRARY.length) },
-                  { id: 'optimizer' as const,  label: '🧠 OPTIMIZER',    badge: `${skillEfficiency}%` },
-                  { id: 'benchmarks' as const, label: '📊 BENCHMARKS',   badge: String(Object.keys(benchmarkData).length) },
-                ].map(tab => (
-                  <button key={tab.id} onClick={async () => {
-                    setSkillsSubTab(tab.id);
-                    if (tab.id === 'optimizer') {
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                    {/* Efficiency ring */}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 900, lineHeight: 1, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 50 ? '#ffa500' : '#ff416c' }}>{skillEfficiency}<span style={{ fontSize: '0.9rem', opacity: 0.7 }}>%</span></div>
+                      <div style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '2px' }}>EFFICIENCY</div>
+                    </div>
+                    <button onClick={async () => {
+                      const r = await (ipc as any).invoke('skills-optimize');
                       const h = await (ipc as any).invoke('skills-get-history');
                       if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
-                    }
-                  }} style={{ flex: 1, padding: '12px 10px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    {tab.label} <span style={{ opacity: 0.5, marginLeft: '3px' }}>{tab.badge}</span>
-                  </button>
-                ))}
+                      if (r) setOptimizerLastResult(r);
+                      fetchStats();
+                    }} style={{ height: '36px', padding: '0 16px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.22)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.12)'; }}>
+                      OPTIMIZE
+                    </button>
+                  </div>
+                </div>
+
+                {/* Slim stats row */}
+                <div style={{ display: 'flex', gap: '24px', marginBottom: '0', paddingBottom: '14px' }}>
+                  {[
+                    { label: 'SKILL HITS', value: skillStats.skillHits?.toLocaleString() || '0', color: '#4facfe' },
+                    { label: 'TOKENS SAVED', value: (skillStats.tokensSaved || 0) >= 1000 ? `${Math.round((skillStats.tokensSaved||0)/1000)}k` : String(skillStats.tokensSaved || 0), color: 'var(--primary)' },
+                    { label: 'ACTIVE', value: `${skills.filter(s => s.active).length} / ${skills.length}`, color: '#00ff88' },
+                    { label: 'GOAL', value: skillEfficiency >= 90 ? 'REACHED' : `${90 - skillEfficiency}% away`, color: skillEfficiency >= 90 ? '#00ff88' : 'rgba(255,255,255,0.4)' },
+                  ].map(s => (
+                    <div key={s.label} style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: s.color, fontFamily: 'monospace' }}>{s.value}</span>
+                      <span style={{ fontSize: '0.5rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>{s.label}</span>
+                    </div>
+                  ))}
+                  {/* Progress bar — far right */}
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                    <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)', borderRadius: '2px', transition: 'width 0.5s ease' }} />
+                    </div>
+                    <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>90% goal</span>
+                  </div>
+                </div>
+
+                {/* Sub-tabs */}
+                <div style={{ display: 'flex', gap: '0', marginTop: '0' }}>
+                  {([
+                    { id: 'mine',       label: 'MY SKILLS',  count: skills.length },
+                    { id: 'library',    label: 'LIBRARY',    count: SKILL_LIBRARY.length },
+                    { id: 'optimizer',  label: 'OPTIMIZER',  count: null },
+                    { id: 'benchmarks', label: 'BENCHMARKS', count: Object.keys(benchmarkData).length || null },
+                  ] as { id: 'mine'|'library'|'optimizer'|'benchmarks'; label: string; count: number|null }[]).map(tab => (
+                    <button key={tab.id} onClick={async () => {
+                      setSkillsSubTab(tab.id);
+                      if (tab.id === 'optimizer') { const h = await (ipc as any).invoke('skills-get-history'); if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); } }
+                      if (tab.id === 'benchmarks') { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }
+                    }} style={{ padding: '10px 16px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'rgba(255,255,255,0.35)', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', transition: 'color 0.15s, border-color 0.15s', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onMouseEnter={e => { if (skillsSubTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.65)'; }}
+                      onMouseLeave={e => { if (skillsSubTab !== tab.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.35)'; }}>
+                      {tab.label}
+                      {tab.count !== null && tab.count > 0 && <span style={{ fontSize: '0.5rem', background: skillsSubTab === tab.id ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.07)', color: skillsSubTab === tab.id ? 'var(--primary)' : 'rgba(255,255,255,0.35)', padding: '1px 6px', borderRadius: '10px', fontWeight: 700 }}>{tab.count}</span>}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* MY SKILLS tab */}
