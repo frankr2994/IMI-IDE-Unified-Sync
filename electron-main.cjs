@@ -1186,7 +1186,8 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
-  const installMatch = command.match(/\b(?:install|setup|download|get|add)\b\s+(.+?)(?:\s+(?:for me|please|now|on my (?:pc|computer|machine|desktop)))?\s*$/i);
+  // Only trigger for short user commands (< 80 chars), never for long plan phase prompts
+  const installMatch = command.length < 80 && command.match(/\b(?:install|setup|download|get|add)\b\s+(.+?)(?:\s+(?:for me|please|now|on my (?:pc|computer|machine|desktop)))?\s*$/i);
   if (installMatch) {
     const target = installMatch[1].trim().toLowerCase().replace(/['"]/g, '');
     const key = resolveInstallKey(target);
