@@ -125,6 +125,8 @@ const App = () => {
   const [hfResults, setHfResults] = useState<any[]>([]);
   const [hfSearching, setHfSearching] = useState(false);
   const [hfError, setHfError] = useState('');
+  const [hfUrlPreview, setHfUrlPreview] = useState<any>(null);
+  const [npmUrlPreview, setNpmUrlPreview] = useState<any>(null);
   const OLLAMA_FEATURED = [
     { name: 'llama3.2',       label: 'Llama 3.2 3B',    size: '2GB',    desc: 'Meta\'s latest — fast, capable, great for chat & code', tags: ['chat','code'] },
     { name: 'mistral',        label: 'Mistral 7B',       size: '4.1GB',  desc: 'Fast French model, excellent for code',                 tags: ['code','chat'] },

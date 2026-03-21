@@ -2188,6 +2188,94 @@ ipcMain.handle('mcp:global-add', (e, c) => { mcpServersList.push(c); saveGlobalS
 ipcMain.handle('mcp:global-remove', (e, n) => { mcpServersList = mcpServersList.filter(s => s.name !== n); saveGlobalState(); return { success: true }; });
 
 // Live npm registry search for MCP packages
+// Fetch a single npm package by name or npmjs.com URL
+ipcMain.handle('npm-fetch-package', async (_e, input) => {
+  try {
+    // Accept full URL or just package name
+    let pkgName = input.trim();
+    const urlMatch = pkgName.match(/npmjs\.com\/package\/(@?[^/?#]+(?:\/[^/?#]+)?)/);
+    if (urlMatch) pkgName = decodeURIComponent(urlMatch[1]);
+    return new Promise((resolve) => {
+      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'registry.npmjs.org', path: `/${encodeURIComponent(pkgName).replace('%40','@').replace('%2F','/')}` });
+      req.setHeader('Accept', 'application/json');
+      req.setHeader('User-Agent', 'IMI-MCP-Hub/1.0');
+      let raw = '';
+      req.on('response', res => {
+        res.on('data', d => raw += d.toString());
+        res.on('end', () => {
+          try {
+            const p = JSON.parse(raw);
+            if (p.error || !p.name) return resolve({ error: p.error || 'Package not found' });
+            const latest = p['dist-tags']?.latest || Object.keys(p.versions || {}).pop() || '';
+            const vData = p.versions?.[latest] || {};
+            resolve({ type: 'npm', data: {
+              name: p.name, description: p.description || '',
+              version: latest, license: p.license || vData.license || '',
+              author: typeof p.author === 'string' ? p.author : p.author?.name || '',
+              keywords: p.keywords || [],
+              npmUrl: `https://www.npmjs.com/package/${p.name}`,
+              repoUrl: vData.repository?.url?.replace(/^git\+/, '').replace(/\.git$/, '') || p.repository?.url?.replace(/^git\+/, '').replace(/\.git$/, '') || '',
+              homepage: p.homepage || '',
+              weeklyDownloads: null,
+              updatedAt: p.time?.[latest] || p.time?.modified || '',
+              readme: (p.readme || '').substring(0, 500),
+            }});
+          } catch(e) { resolve({ error: e.message }); }
+        });
+      });
+      req.on('error', e => resolve({ error: e.message }));
+      req.end();
+    });
+  } catch(e) { return { error: e.message }; }
+});
+
+// Fetch a single HuggingFace model by URL or model ID
+ipcMain.handle('hf-fetch-model', async (_e, input) => {
+  try {
+    let modelId = input.trim();
+    const urlMatch = modelId.match(/huggingface\.co\/([^/?#]+\/[^/?#]+)/);
+    if (urlMatch) modelId = urlMatch[1];
+    return new Promise((resolve) => {
+      const req = net.request({ method: 'GET', protocol: 'https:', hostname: 'huggingface.co', path: `/api/models/${modelId}?blobs=true` });
+      req.setHeader('Accept', 'application/json');
+      req.setHeader('User-Agent', 'IMI-DevHub/1.0');
+      let raw = '';
+      req.on('response', res => {
+        res.on('data', d => raw += d.toString());
+        res.on('end', () => {
+          try {
+            const m = JSON.parse(raw);
+            if (m.error || !m.modelId) return resolve({ error: m.error || 'Model not found' });
+            const fmtBytes = (b) => b >= 1e9 ? `${(b/1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b/1e6).toFixed(0)} MB` : `${b} B`;
+            const siblings = m.siblings || [];
+            const getSize = (s) => s.lfs?.size || s.size || 0;
+            const ggufFiles = siblings.filter(s => s.rfilename?.toLowerCase().endsWith('.gguf') && getSize(s) > 0);
+            let sizeLabel = '';
+            if (ggufFiles.length === 1) sizeLabel = fmtBytes(getSize(ggufFiles[0]));
+            else if (ggufFiles.length > 1) {
+              const smallest = Math.min(...ggufFiles.map(f => getSize(f)));
+              const largest = Math.max(...ggufFiles.map(f => getSize(f)));
+              sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
+            }
+            resolve({ type: 'hf', data: {
+              id: m.modelId, name: m.modelId,
+              author: (m.modelId || '').split('/')[0],
+              downloads: m.downloads || 0, likes: m.likes || 0,
+              pipeline: m.pipeline_tag || 'text-generation',
+              tags: m.tags || [], sizeLabel, ggufCount: ggufFiles.length,
+              hfUrl: `https://huggingface.co/${m.modelId}`,
+              ollamaCmd: `hf.co/${m.modelId}`,
+              updatedAt: m.lastModified || '',
+            }});
+          } catch(e) { resolve({ error: e.message }); }
+        });
+      });
+      req.on('error', e => resolve({ error: e.message }));
+      req.end();
+    });
+  } catch(e) { return { error: e.message }; }
+});
+
 ipcMain.handle('npm-search-mcp', async (_e, query) => {
   if (!query || query.trim().length < 2) return { results: [], total: 0 };
   return new Promise((resolve) => {
