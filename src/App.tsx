@@ -1462,18 +1462,28 @@ const App = () => {
           {activeTab === 'command center' && (
             <motion.div key="cc" className="full-height-panel" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} style={{ display: 'grid', gridTemplateColumns: '1fr clamp(280px, 25vw, 400px)', gap: 'clamp(12px, 1.5vw, 25px)', height: 'calc(100vh - clamp(3rem, 5vw, 6rem))' }}>
               <div className="glass-card chat-interface" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '1rem 2rem', background: 'rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--glass-border)', alignItems: 'center' }}>
+                <div style={{ padding: '12px 20px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.07)', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <div className="spin"><RefreshCw size={14} color="var(--primary)" /></div>
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.05em' }}>ORCHESTRATOR BROADCAST</span>
+                    <div style={{ width: '24px', height: '24px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Cpu size={12} color="rgba(155,77,255,0.9)" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+                        {activeDirector.startsWith('ollama:') ? shortModelName(activeDirector.slice(7)) : activeDirector}
+                        {activeEngine !== 'imi-core' && <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}> · {activeEngine.startsWith('ollama:') ? shortModelName(activeEngine.slice(7)) : activeEngine}</span>}
+                      </div>
+                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)' }}>
+                        {planMode ? '📋 Plan mode' : 'Direct chat'}
+                        {lastSyncTime && ` · synced ${lastSyncTime}`}
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Last Sync Indicator */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,255,136,0.05)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(0,255,136,0.1)' }}>
-                    <ShieldCheck size={12} color="#00ff88" />
-                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.05em' }}>
-                      LAST GITHUB PULSE: {lastSyncTime || 'PENDING'}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {isSyncing && <span style={{ fontSize: '0.65rem', color: 'rgba(155,77,255,0.7)', display: 'flex', alignItems: 'center', gap: '4px' }}><RefreshCw size={10} className="spin" /> Processing</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
+                      <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Connected</span>
+                    </div>
                   </div>
                 </div>
                 <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1545,11 +1555,14 @@ const App = () => {
                       }}>
                         {m.type==='ai' && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                              {m.director ? (m.director.startsWith('ollama:') ? shortModelName(m.director.slice(7)).toUpperCase() : m.director.toUpperCase()) : 'SYSTEM'}
+                            <div style={{ fontSize: '0.65rem', fontWeight: 600, color: 'rgba(155,77,255,0.8)' }}>
+                              {m.director ? (m.director.startsWith('ollama:') ? shortModelName(m.director.slice(7)) : m.director) : 'System'}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {m.isStreaming && <div className="pulse-slow" style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', fontSize: '0.55rem', padding: '1px 6px', borderRadius: '4px', fontWeight: 800 }}>● LIVE</div>}
+                              {m.isStreaming && <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
+                                <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>streaming</span>
+                              </div>}
                               {!m.isStreaming && m.text && (
                                 <button onClick={() => { navigator.clipboard.writeText(m.text); }} title="Copy message" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', opacity: 0.5, padding: '2px 4px', borderRadius: '4px', display: 'flex', alignItems: 'center', transition: 'opacity 0.15s' }} onMouseEnter={e => (e.currentTarget.style.opacity='1')} onMouseLeave={e => (e.currentTarget.style.opacity='0.5')}>
                                   <Copy size={11} />
@@ -1570,17 +1583,10 @@ const App = () => {
                           ) : renderContent(m.text)}
                         </div>
                         {m.isStreaming && m.text !== '' && (
-                          <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
-                            <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em', color: 'var(--primary)' }}>RECEIVING DATA STREAM...</div>
-                            <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                              <motion.div
-                                initial={{ x: '-100%' }}
-                                animate={{ x: '100%' }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                className="quota-fill"
-                                style={{ width: '50%', background: 'var(--primary)', boxShadow: '0 0 15px var(--primary)' }}
-                              />
-                            </div>
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.5 }}>
+                            {[0, 0.2, 0.4].map(delay => (
+                              <motion.div key={delay} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay, ease: 'easeInOut' }} style={{ width: '3px', height: '3px', borderRadius: '50%', background: 'rgba(155,77,255,0.9)' }} />
+                            ))}
                           </div>
                         )}
                       </div>}
