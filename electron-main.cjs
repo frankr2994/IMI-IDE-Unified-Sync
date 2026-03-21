@@ -1168,6 +1168,8 @@ ipcMain.on('execute-plan-phase', (event, payload) => {
 ipcMain.on('execute-command-stream', async (event, payload) => {
   const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
   const cmdLower = command.toLowerCase().trim();
+  console.log(`[CMD] director=${director} | "${command.slice(0, 120)}${command.length > 120 ? '…' : ''}"`);
+
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
   const installMatch = command.match(/\b(?:install|setup|download|get|add)\b\s+(.+?)(?:\s+(?:for me|please|now|on my (?:pc|computer|machine|desktop)))?\s*$/i);
