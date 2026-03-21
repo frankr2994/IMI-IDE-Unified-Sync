@@ -1902,14 +1902,13 @@ const App = () => {
                                       ) : (
                                         <button onClick={async () => {
                                           setUpdatingTool('ollama');
-                                          setUpdateResult(p => ({ ...p, ollama: '' }));
+                                          setUpdateResult(p => ({ ...p, ollama: '' }));  // clear previous result on new click
                                           const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false }));
                                           setUpdatingTool(null);
-                                          const msg = res?.upToDate ? '✅ Already latest' : res?.success ? `✅ Updated${res.newVersion ? ` v${res.newVersion}` : '!'}` : '❌ Failed';
+                                          const msg = res?.upToDate ? '✅ Already latest' : res?.success ? `✅ Updated!` : '❌ Failed';
                                           setUpdateResult(p => ({ ...p, ollama: msg }));
-                                          if (res?.success && !res?.upToDate) setTimeout(loadTools, 1500);
-                                          setTimeout(() => setUpdateResult(p => ({ ...p, ollama: '' })), 8000);
-                                        }} style={{ height: '24px', padding: '0 8px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '6px', color: updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', width: '100%' }}>
+                                          setTimeout(loadTools, 1000); // always refresh version badge
+                                        }} style={{ height: '24px', padding: '0 8px', background: updateResult['ollama']?.startsWith('✅') ? 'rgba(0,255,136,0.12)' : updateResult['ollama']?.startsWith('❌') ? 'rgba(255,65,108,0.12)' : 'rgba(79,172,254,0.1)', border: `1px solid ${updateResult['ollama']?.startsWith('✅') ? 'rgba(0,255,136,0.4)' : updateResult['ollama']?.startsWith('❌') ? 'rgba(255,65,108,0.4)' : 'rgba(79,172,254,0.4)'}`, borderRadius: '6px', color: updateResult['ollama']?.startsWith('✅') ? '#00ff88' : updateResult['ollama']?.startsWith('❌') ? '#ff416c' : '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap', width: '100%' }}>
                                           {updateResult['ollama'] || '⬆ Update'}
                                         </button>
                                       )}
