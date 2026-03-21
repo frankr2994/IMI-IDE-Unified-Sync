@@ -1258,18 +1258,23 @@ const App = () => {
                           </div>
                         )}
                         <div className="chat-bubble-content" style={{ fontSize: '0.9rem', lineHeight: '1.5' }}>
-                          {renderContent(m.text)}
+                          {m.isStreaming && m.text === '' ? (
+                            <span style={{ color: 'var(--text-dim)', fontStyle: 'italic', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>⏳</motion.span>
+                              {m.director?.startsWith('ollama:') ? 'Loading model into memory…' : 'Thinking…'}
+                            </span>
+                          ) : renderContent(m.text)}
                         </div>
-                        {m.isStreaming && (
+                        {m.isStreaming && m.text !== '' && (
                           <div style={{ marginTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
                             <div style={{ fontSize: '0.6rem', fontWeight: 900, marginBottom: '5px', opacity: 0.6, letterSpacing: '0.05em', color: 'var(--primary)' }}>RECEIVING DATA STREAM...</div>
                             <div className="quota-bar" style={{ height: '4px', margin: 0, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                              <motion.div 
+                              <motion.div
                                 initial={{ x: '-100%' }}
                                 animate={{ x: '100%' }}
                                 transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                                className="quota-fill" 
-                                style={{ width: '50%', background: 'var(--primary)', boxShadow: '0 0 15px var(--primary)' }} 
+                                className="quota-fill"
+                                style={{ width: '50%', background: 'var(--primary)', boxShadow: '0 0 15px var(--primary)' }}
                               />
                             </div>
                           </div>
