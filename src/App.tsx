@@ -1084,12 +1084,14 @@ const App = () => {
     };
     
     const onEnd = (event: any, data: any) => {
+      let finishedText = '';
       setMessages(prev => {
         const updated = prev.map(m =>
           m.id === data.messageId ? { ...m, isStreaming: false } : m
         );
         const finished = updated.find(m => m.id === data.messageId);
         if (finished) {
+          finishedText = finished.text || '';
           (ipc as any).invoke('store-append-message', storeProjectKey, finished).catch(() => {});
         }
         return updated;
@@ -1099,6 +1101,33 @@ const App = () => {
       // Resolve any waiting plan phase
       const resolve = planPhaseResolvers.current.get(data.messageId);
       if (resolve) { planPhaseResolvers.current.delete(data.messageId); resolve(); }
+
+      // ── 🐛 DEBUG PASS — runs automatically when Debug is ON ──────────────
+      if (debuggerEnabledRef.current && finishedText.length > 100) {
+        const msgId = data.messageId;
+        setDebugResults(prev => ({ ...prev, [msgId]: { analysis: '', loading: true } }));
+        // Append a debug loading indicator to the message
+        setMessages(prev => prev.map(m =>
+          m.id === msgId ? { ...m, text: m.text + '\n\n🐛 **Debug Pass running...**' } : m
+        ));
+        (ipc as any).invoke('run-debug-pass', {
+          code: finishedText.slice(0, 6000),
+          context: 'IMI command output — check for bugs, truncated code, or incomplete files',
+          model: 'gemini-flash',
+          messageId: msgId,
+        }).then((result: any) => {
+          const analysis = result?.analysis || result?.error || 'No issues found.';
+          setDebugResults(prev => ({ ...prev, [msgId]: { analysis, loading: false } }));
+          setMessages(prev => prev.map(m =>
+            m.id === msgId ? { ...m, text: m.text.replace('\n\n🐛 **Debug Pass running...**', `\n\n🐛 **Debug Review:**\n${analysis}`) } : m
+          ));
+        }).catch(() => {
+          setMessages(prev => prev.map(m =>
+            m.id === msgId ? { ...m, text: m.text.replace('\n\n🐛 **Debug Pass running...**', '') } : m
+          ));
+        });
+      }
+      // ─────────────────────────────────────────────────────────────────────
     };
 
     const onError = (event: any, data: any) => {
@@ -1993,7 +2022,7 @@ const App = () => {
                         </div>
                         {/* DEBUG - standalone box */}
                         <div style={{ position: 'relative', flexShrink: 0 }}>
-                          <div onClick={() => setDebuggerEnabled(!debuggerEnabled)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '64px', height: '64px', padding: '0 8px', background: debuggerEnabled ? 'rgba(255,65,108,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debuggerEnabled ? 'rgba(255,65,108,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: debuggerEnabled ? '#ff416c' : 'rgba(255,255,255,0.4)', fontWeight: 900, fontSize: '0.55rem', cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}>
+                          <div onClick={() => { const next = !debuggerEnabled; setDebuggerEnabled(next); debuggerEnabledRef.current = next; }}} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '64px', height: '64px', padding: '0 8px', background: debuggerEnabled ? 'rgba(255,65,108,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debuggerEnabled ? 'rgba(255,65,108,0.4)' : 'var(--glass-border)'}`, borderRadius: '10px', color: debuggerEnabled ? '#ff416c' : 'rgba(255,255,255,0.4)', fontWeight: 900, fontSize: '0.55rem', cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s' }}>
                             <span style={{ fontSize: '0.45rem', opacity: 0.7, letterSpacing: '0.1em' }}>DEBUG</span>
                             <AlertCircle size={12} />
                             <span style={{ fontSize: '0.55rem' }}>{debuggerEnabled ? 'ON' : 'OFF'}</span>

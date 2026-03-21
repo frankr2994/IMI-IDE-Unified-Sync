@@ -4114,24 +4114,31 @@ ipcMain.handle('fetch-package-docs', async (e, packages) => {
 ipcMain.handle('run-debug-pass', async (e, { code, context, model, messageId, geminiKey: gKey }) => {
   const key = gKey || GEMINI_KEY;
   if (!key) return { error: 'No Gemini key' };
-  const debugPrompt = `You are a code reviewer and debugger. Review the following code changes and identify any bugs, errors, or improvements needed.
+  const debugPrompt = `You are a code reviewer and debugger inside IMI (an AI coding tool). Analyze the following AI output and identify problems.
 
-Context: ${context || 'Recent code changes'}
+Context: ${context || 'Recent AI command output'}
 
-Code to review:
+Output to review:
 \`\`\`
-${(code || '').slice(0, 4000)}
+${(code || '').slice(0, 5000)}
 \`\`\`
 
-Respond with:
-1. BUGS FOUND (list any actual bugs with line references)
-2. WARNINGS (potential issues)
-3. VERDICT: PASS / FAIL / WARNINGS
-Keep it concise and actionable.`;
+Check for these specific problems:
+1. TRUNCATION — Does the code/file end abruptly mid-function, mid-tag, or mid-statement? (e.g. ends with "if (" or missing closing </html> or incomplete JS)
+2. MARKDOWN LEAKAGE — Does the output start with \`\`\`html or \`\`\`js or similar code fence markers? (These break files)
+3. BUGS — Any actual logic bugs, syntax errors, or broken references
+4. INCOMPLETE FILES — Was a file meant to be created but appears to have missing sections?
+
+Respond in this exact format:
+TRUNCATED: YES/NO — [brief reason]
+MARKDOWN LEAKAGE: YES/NO — [brief reason]
+BUGS: [list any or "None found"]
+VERDICT: PASS / FAIL / WARNINGS
+ACTION: [one sentence — what IMI should do to fix it, or "None needed"]`;
 
   const postData = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: debugPrompt }] }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+    generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
   });
   return new Promise((resolve) => {
     const req = net.request({
