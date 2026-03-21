@@ -1882,22 +1882,28 @@ const App = () => {
                                       {updatingTool === 'ollama' ? (
                                         /* Download/install progress bar */
                                         <div style={{ width: '100%' }}>
-                                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                            <span style={{ fontSize: '0.58rem', color: '#4facfe', fontWeight: 700 }}>
-                                              {depInstalling['ollama-update']?.status === 'installing' ? '⚙️ Installing…' : '⬇ Downloading…'}
-                                            </span>
-                                            <span style={{ fontSize: '0.58rem', color: 'white', fontWeight: 900 }}>
-                                              {depInstalling['ollama-update']?.percent ?? 0}%
-                                            </span>
-                                          </div>
-                                          <div style={{ height: '5px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', width: `${depInstalling['ollama-update']?.percent ?? 0}%`, background: 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: '0 0 8px rgba(79,172,254,0.8)' }} />
-                                          </div>
-                                          {(depInstalling['ollama-update']?.total ?? 0) > 0 && (
-                                            <div style={{ fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '2px', textAlign: 'right' }}>
-                                              {depInstalling['ollama-update']?.received}MB / {depInstalling['ollama-update']?.total}MB
-                                            </div>
-                                          )}
+                                          {(() => {
+                                            const upd = depInstalling['ollama-update'];
+                                            const pct = upd?.percent ?? 0;
+                                            const isInstalling = upd?.status === 'installing';
+                                            const isDone = upd?.status === 'done';
+                                            return (<>
+                                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '0.6rem', color: isDone ? '#00ff88' : isInstalling ? '#ffaa00' : '#4facfe', fontWeight: 700 }}>
+                                                  {isDone ? '✅ Done!' : isInstalling ? '⚙️ Installing…' : '⬇ Downloading…'}
+                                                </span>
+                                                <span style={{ fontSize: '0.6rem', color: 'white', fontWeight: 900 }}>{pct}%</span>
+                                              </div>
+                                              <div style={{ height: '6px', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                <div style={{ height: '100%', width: `${pct}%`, background: isDone ? '#00ff88' : isInstalling ? 'linear-gradient(90deg,#ffaa00,#ff6b6b)' : 'linear-gradient(90deg,#9b4dff,#4facfe)', borderRadius: '4px', transition: 'width 0.4s ease', boxShadow: `0 0 8px ${isDone ? 'rgba(0,255,136,0.8)' : isInstalling ? 'rgba(255,170,0,0.8)' : 'rgba(79,172,254,0.8)'}` }} />
+                                              </div>
+                                              {!isInstalling && !isDone && (upd?.total ?? 0) > 0 && (
+                                                <div style={{ fontSize: '0.52rem', color: 'var(--text-dim)', marginTop: '2px', textAlign: 'right' }}>
+                                                  {upd?.received}MB / {upd?.total}MB
+                                                </div>
+                                              )}
+                                            </>);
+                                          })()}
                                         </div>
                                       ) : (
                                         <button onClick={async () => {
