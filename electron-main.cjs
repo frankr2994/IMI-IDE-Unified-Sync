@@ -1510,6 +1510,7 @@ User message: `;
       || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
     );
     if (isDesktopOp) {
+      console.log(`[ROUTE] → triggerDesktopTask (folder+file on desktop)`);
       triggerDesktopTask(event, command, cmdL, messageId);
       return;
     }
@@ -1520,6 +1521,7 @@ User message: `;
       || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
     ) && /\b(desktop|my desktop)\b/i.test(command);
     if (isCreateProgram) {
+      console.log(`[ROUTE] → triggerAutoCreateFile (desktop file)`);
       triggerAutoCreateFile(event, command, messageId);
       return;
     }
