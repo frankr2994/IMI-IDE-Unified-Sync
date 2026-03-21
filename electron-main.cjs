@@ -386,24 +386,25 @@ const smartContext = new SmartContext();
 
 // ── IMI Agent Tools — used by the agentic loop ───────────────────────────────
 const AGENT_TOOLS_DESC = `
-You are an AI coding agent inside IMI. You can use these tools to read, search, edit, and verify code.
+You are an AI coding agent inside IMI. You have full access to the file system, terminal, and screen.
 
 AVAILABLE TOOLS:
-1. read_file {"path": "relative/path"} — Read a file (relative to project root)
-2. search_code {"pattern": "regex", "path": "src/"} — Search for pattern in files
-3. list_dir {"path": "."} — List files in a directory
-4. write_patch {"file": "path", "search": "exact text to find", "replace": "new text"} — Apply surgical patch
-5. run_build {} — Run npm run build and return any errors
-6. read_error {"file": "path", "line": 392} — Read lines around a specific error
-7. done {"message": "summary of what was done"} — Signal completion
+1.  read_file      {"path": "relative/path"} — Read a file
+2.  search_code    {"pattern": "regex", "path": "src/"} — Search files for a pattern
+3.  list_dir       {"path": "."} — List directory contents
+4.  write_patch    {"file": "path", "search": "exact text", "replace": "new text"} — Surgical patch
+5.  run_build      {} — Run npm run build, returns errors
+6.  run_command    {"cmd": "git status"} — Run a terminal command and see output
+7.  take_screenshot {} — Capture the screen, see what the UI currently looks like
+8.  read_error     {"file": "path", "line": 392} — Read lines around an error
+9.  done           {"message": "what was done"} — Signal completion
 
 RULES:
-- Always read a file before patching it
-- After patching, always run_build to verify no errors
-- If build fails, read the error location and fix it
-- Maximum 12 tool steps per task
-- Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
-- When finished: TOOL_CALL: {"tool": "done", "args": {"message": "..."}}
+- Read files before patching. Use exact text in write_patch.
+- After every patch run_build to verify. Fix any errors before calling done.
+- Use take_screenshot to see the actual UI before making visual changes.
+- Use run_command for git, npm, node, python — but never destructive commands.
+- Maximum 15 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
 `;
 
 async function executeAgentTool(toolName, args, projectRoot) {
@@ -529,6 +530,39 @@ async function executeAgentTool(toolName, args, projectRoot) {
         const end = Math.min(lines.length, lineNum + 10);
         const section = lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join('\n');
         return `${args.file} lines ${start+1}-${end}:\n\`\`\`\n${section}\n\`\`\``;
+      }
+
+      case 'run_command': {
+        const cmd = (args.cmd || '').trim();
+        if (!cmd) return 'No command provided.';
+        // Safety: block destructive commands
+        const blocked = /\b(rm\s+-rf|del\s+\/[sf]|format\s+[a-z]:?|rmdir\s+\/s|drop\s+table|shutdown|taskkill|reg\s+(delete|add)|net\s+user|mkfs|fdisk|dd\s+if)\b/i;
+        if (blocked.test(cmd)) return `Blocked: "${cmd}" is a destructive command and cannot be run.`;
+        return new Promise(resolve => {
+          exec(cmd, { cwd: projectRoot, timeout: 30000, maxBuffer: 1024 * 512 }, (err, stdout, stderr) => {
+            const out = (stdout + stderr).trim();
+            resolve(out ? out.slice(0, 2000) : (err ? `Error: ${err.message}` : '(no output)'));
+          });
+        });
+      }
+
+      case 'take_screenshot': {
+        return new Promise(async resolve => {
+          try {
+            const { desktopCapturer } = require('electron');
+            const sources = await desktopCapturer.getSources({
+              types: ['screen'],
+              thumbnailSize: { width: 1280, height: 720 }
+            });
+            if (!sources.length) { resolve('No screen source found.'); return; }
+            const base64 = sources[0].thumbnail.toPNG().toString('base64');
+            // Store the screenshot for use in next Gemini call
+            global._lastScreenshot = base64;
+            resolve(`SCREENSHOT_TAKEN: Image captured (${Math.round(base64.length * 0.75 / 1024)}KB). It will be included in the next message to Gemini automatically.`);
+          } catch(e) {
+            resolve(`Screenshot failed: ${e.message}`);
+          }
+        });
       }
 
       default:
