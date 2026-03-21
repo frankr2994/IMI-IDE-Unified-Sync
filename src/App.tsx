@@ -1768,13 +1768,14 @@ const App = () => {
                         const isPulling = ollamaPulling === model.name;
                         return (
                           <div key={model.name} style={{ padding: '14px 16px', background: isInstalled ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isInstalled ? 'rgba(0,255,136,0.25)' : 'var(--glass-border)'}`, borderRadius: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{model.label}</span>
-                              <div style={{ display: 'flex', gap: '3px' }}>
-                                {model.tags.map((tag: string) => <span key={tag} style={{ fontSize: '0.5rem', padding: '2px 5px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '4px', color: 'var(--primary)' }}>{tag}</span>)}
-                              </div>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', background: 'rgba(255,170,0,0.12)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: '6px', color: '#ffaa00', whiteSpace: 'nowrap' }}>💾 {model.size}</span>
                             </div>
-                            <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc} <span style={{ opacity: 0.5 }}>· {model.size}</span></p>
+                            <div style={{ display: 'flex', gap: '3px', marginBottom: '7px' }}>
+                              {model.tags.map((tag: string) => <span key={tag} style={{ fontSize: '0.5rem', padding: '2px 5px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '4px', color: 'var(--primary)' }}>{tag}</span>)}
+                            </div>
+                            <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '10px', lineHeight: 1.4 }}>{model.desc}</p>
                             {isPulling && (() => {
                               const p = ollamaPullProgress[model.name];
                               const pct = p?.percent ?? 0;
