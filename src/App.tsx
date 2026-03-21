@@ -76,7 +76,7 @@ const App = () => {
   const [yoloMode, setYoloMode] = useState(false);
   const [activePlan, setActivePlan] = useState<{ messageId: number; plan: any; currentPhaseIdx: number; completedPhases: Set<number>; running: boolean } | null>(null);
   const planPhaseResolvers = React.useRef<Map<number, () => void>>(new Map());
-  const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'|'parallel'|'docs'>('console');
+  const [rightPanelTab, setRightPanelTab] = useState<'console'|'plan'|'debate'|'parallel'|'docs'>('console');
   const [editingPhase, setEditingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
   const [editPhaseData, setEditPhaseData] = useState<{ name: string; description: string; prompt: string }>({ name: '', description: '', prompt: '' });
   const [suggestingPhase, setSuggestingPhase] = useState<{ planMsgId: number; phaseIdx: number } | null>(null);
@@ -91,6 +91,13 @@ const App = () => {
   const [npmError, setNpmError] = useState('');
   const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'|'mcp'|'tools'|'ai'|'agent'>('mcp');
   const [agentStats, setAgentStats] = useState<any>(null);
+
+  // ⚔ Debate Mode
+  const [debateMode, setDebateMode] = useState(false);
+  const [debateRounds, setDebateRounds] = useState<Array<{ round: number; role: string; label: string; content: string; status: string }>>([]);
+  const [debatingActive, setDebatingActive] = useState(false);
+  const [debateComplete, setDebateComplete] = useState<{ refinedCommand: string; patch: string; finalPlan: string; error?: string } | null>(null);
+  const [debateCollapsed, setDebateCollapsed] = useState<Set<number>>(new Set());
   const [ghQuery, setGhQuery] = useState('');
   const [ghResults, setGhResults] = useState<any[]>([]);
   const [ghSearching, setGhSearching] = useState(false);
@@ -1028,6 +1035,26 @@ const App = () => {
     }
     // ── END PLAN MODE ────────────────────────────────────────────────────────
 
+    // ── DEBATE MODE ──────────────────────────────────────────────────────────
+    if (debateMode) {
+      const userText = chatInput;
+      const messageId = Date.now();
+      setMessages(prev => [...prev, { id: messageId, type: 'user', text: userText }]);
+      setChatInput('');
+      setDebateRounds([]);
+      setDebateComplete(null);
+      setDebatingActive(true);
+      setDebateCollapsed(new Set());
+      setRightPanelTab('debate' as any);
+      // Fire and forget — debate-update events stream in via IPC listener
+      (ipc as any).invoke('run-debate', { command: userText, messageId }).catch((e: any) => {
+        setDebatingActive(false);
+        setDebateComplete({ refinedCommand: userText, patch: '', finalPlan: '', error: e?.message || 'Debate failed' });
+      });
+      return;
+    }
+    // ── END DEBATE MODE ───────────────────────────────────────────────────────
+
     const messageId = Date.now();
     const newUserMsg = { id: messageId, type: 'user', text: chatInput, imageUrl: attachedImage?.previewUrl };
     setMessages(prev => [...prev, newUserMsg]);
@@ -1246,6 +1273,21 @@ const App = () => {
       if (status !== 'Idle') addLog('system', `Coder: ${status}`);
     });
 
+    // ⚔ Debate event listeners
+    ipc.on('debate-update', (_: any, data: any) => {
+      setDebateRounds(prev => {
+        const idx = prev.findIndex(r => r.round === data.round);
+        if (idx >= 0) { const u = [...prev]; u[idx] = data; return u; }
+        return [...prev, data];
+      });
+      if (data.round > 0 && data.status !== 'error') setRightPanelTab('debate' as any);
+    });
+
+    ipc.on('debate-complete', (_: any, data: any) => {
+      setDebatingActive(false);
+      setDebateComplete(data);
+    });
+
     return () => {
       clearInterval(statsInterval);
       clearInterval(telemetryInterval);
@@ -1258,6 +1300,8 @@ const App = () => {
       ipc.removeAllListeners('ollama-pull-progress');
       ipc.removeAllListeners('install-dep-progress');
       ipc.removeAllListeners('sync-time');
+      ipc.removeAllListeners('debate-update');
+      ipc.removeAllListeners('debate-complete');
     };
   }, []);
 
@@ -2161,7 +2205,10 @@ const App = () => {
                       </div>
 
                       {/* Plan Mode */}
-                      <button type="button" onClick={() => setPlanMode(p => !p)} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — break task into phases'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
+                      <button type="button" onClick={() => { setPlanMode(p => !p); if (debateMode) setDebateMode(false); }} title={planMode ? 'Plan Mode ON — click to disable' : 'Plan Mode — break task into phases'} style={{ height: '38px', width: '38px', background: planMode ? 'rgba(155,77,255,0.25)' : 'rgba(255,255,255,0.04)', border: `1px solid ${planMode ? 'rgba(155,77,255,0.6)' : 'var(--glass-border)'}`, borderRadius: '9px', color: planMode ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📋</button>
+
+                      {/* Debate Mode */}
+                      <button type="button" onClick={() => { setDebateMode(d => !d); if (planMode) setPlanMode(false); }} title={debateMode ? 'Debate Mode ON — Brain & Coder debate then execute' : 'Debate Mode — Brain plans, Coder critiques, then apply'} style={{ height: '38px', width: '38px', background: debateMode ? 'rgba(255,160,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debateMode ? 'rgba(255,160,0,0.55)' : 'var(--glass-border)'}`, borderRadius: '9px', color: debateMode ? '#ffa000' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚔</button>
 
                       {/* Terminal toggle */}
                       <button type="button" onClick={() => { setTerminalOpen(t => !t); setTimeout(() => terminalInputRef.current?.focus(), 80); }} title="Toggle Terminal" style={{ height: '38px', width: '38px', background: terminalOpen ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${terminalOpen ? 'rgba(0,255,136,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: terminalOpen ? '#00ff88' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2181,6 +2228,7 @@ const App = () => {
                    {[
                      { id: 'console',  label: 'CONSOLE' },
                      { id: 'plan',     label: activePlan?.running ? 'PLAN ⚙' : 'PLAN' },
+                     { id: 'debate',   label: debatingActive ? 'DEBATE ⚙' : 'DEBATE' },
                      { id: 'parallel', label: 'PARALLEL' },
                      { id: 'docs',     label: 'DOCS' },
                    ].map(tab => (

@@ -1477,6 +1477,94 @@ Respond with ONLY valid JSON matching exactly:
   });
 });
 
+// ── DEBATE MODE — Brain + Coder multi-round consensus before execution ────────
+ipcMain.handle('run-debate', async (event, { command, messageId }) => {
+  const brainDirector = ACTIVE_BRAIN || 'gemini';
+  // Coder uses a different model if configured, else same as Brain
+  const coderDirector = (ACTIVE_CODER && !['imi-core', 'local', 'auto'].includes(ACTIVE_CODER))
+    ? ACTIVE_CODER : brainDirector;
+
+  const sendUpdate = (round, role, label, content, status = 'done') => {
+    try { event.sender.send('debate-update', { messageId, round, role, label, content, status }); } catch(e) {}
+  };
+
+  // Read context — desktop task vs project task
+  const isDesktopTask = /\b(desktop|create|make|build)\b/i.test(command) && !/\b(app\.tsx|electron|imi)\b/i.test(command);
+  const projectMap = isDesktopTask ? '' : smartContext.getProjectMap(currentProjectRoot);
+  const relevantCode = isDesktopTask ? '' : smartContext.getRelevantCode(command, currentProjectRoot);
+  const desktopCtx = getDesktopSnapshot(1);
+  const contextStr = (relevantCode || desktopCtx).slice(0, 3500);
+
+  try {
+    // ── ROUND 1: Brain — High-level strategic plan ───────────────────────────
+    sendUpdate(1, 'brain', '🧠 Brain: Strategic Plan', '', 'streaming');
+
+    const brainPlan = await callModelAPI(brainDirector,
+      `You are the Brain of IMI — a high-level strategic AI planner.
+Your role: analyze tasks and produce clear execution strategies. Focus on WHAT to do and WHY.
+Be concise (under 250 words). Be decisive. Propose a clear 2-4 step strategy.
+${projectMap ? 'PROJECT STRUCTURE:\n' + projectMap.slice(0, 1500) : 'DESKTOP CONTEXT:\n' + desktopCtx.slice(0, 1000)}`,
+      [{ role: 'user', content: `Task: "${command}"\n\nProvide your strategic plan. Be specific about what files/locations are involved, the key approach, and any dependencies. Keep it under 250 words.` }],
+      2500
+    );
+    sendUpdate(1, 'brain', '🧠 Brain: Strategic Plan', brainPlan, 'done');
+
+    // ── ROUND 2: Coder — Implementation critique ─────────────────────────────
+    sendUpdate(2, 'coder', '⚙️ Coder: Implementation Review', '', 'streaming');
+
+    const coderCritique = await callModelAPI(coderDirector,
+      `You are the Coder of IMI — a precise implementation specialist who reviews plans for technical feasibility.
+Your role: critique the Brain's plan. You MUST find at least ONE specific issue, edge case, or improvement.
+Focus on HOW the code/implementation works — specific APIs, file structures, and technical constraints.
+CURRENT CODE CONTEXT:\n${contextStr}`,
+      [{ role: 'user', content: `The Brain proposed:\n\n${brainPlan}\n\nCritique it. Find implementation issues, edge cases, or better approaches. Reference actual code patterns or file paths where relevant. Under 250 words.` }],
+      2500
+    );
+    sendUpdate(2, 'coder', '⚙️ Coder: Implementation Review', coderCritique, 'done');
+
+    // ── ROUND 3: Brain — Refined final plan ──────────────────────────────────
+    sendUpdate(3, 'brain', '🧠 Brain: Refined Plan', '', 'streaming');
+
+    const finalPlan = await callModelAPI(brainDirector,
+      `You are the Brain of IMI. You've received implementation feedback from the Coder.
+Incorporate the valid criticisms and produce the FINAL refined execution plan.
+Be specific and actionable — this plan will be executed directly.
+End your response with a line starting with "EXECUTE:" containing the single most precise command to run this task.`,
+      [{ role: 'user', content: `Original plan:\n${brainPlan}\n\nCoder's critique:\n${coderCritique}\n\nProduce the final refined plan addressing valid concerns. Under 250 words. End with EXECUTE: <precise command>` }],
+      2500
+    );
+    sendUpdate(3, 'brain', '🧠 Brain: Refined Plan', finalPlan, 'done');
+
+    // ── ROUND 4: Coder — Surgical implementation output ──────────────────────
+    sendUpdate(4, 'coder', '⚙️ Coder: Implementation Output', '', 'streaming');
+
+    const patch = await callModelAPI(coderDirector,
+      `You are the Coder of IMI — generating the final, precise implementation.
+Based on the agreed plan, produce the exact implementation:
+• For CODE tasks: exact code to write, with file paths clearly specified
+• For SYSTEM tasks: the precise shell command or action
+• For FILE tasks: the exact complete file content
+Be surgical and precise. No preamble — just the implementation.
+CONTEXT:\n${contextStr}`,
+      [{ role: 'user', content: `Agreed plan:\n${finalPlan}\n\nTask: "${command}"\n\nGenerate the surgical implementation. Provide exact code/commands needed. Be complete and precise.` }],
+      6000
+    );
+    sendUpdate(4, 'coder', '⚙️ Coder: Implementation Output', patch, 'done');
+
+    // Extract EXECUTE line for the apply button
+    const executeMatch = finalPlan.match(/EXECUTE:\s*(.+?)(?:\n|$)/i);
+    const refinedCommand = executeMatch ? executeMatch[1].trim() : command;
+
+    event.sender.send('debate-complete', { messageId, refinedCommand, patch, finalPlan });
+    return { success: true };
+
+  } catch(e) {
+    sendUpdate(-1, 'error', '❌ Debate Error', e.message || String(e), 'error');
+    event.sender.send('debate-complete', { messageId, refinedCommand: command, patch: '', finalPlan: '', error: e.message });
+    return { success: false, error: e.message };
+  }
+});
+
 // ── UI PREVIEW — Gemini 2.0 Flash image generation ────────────────────────
 ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
   if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings → APIs');
