@@ -1639,11 +1639,18 @@ const App = () => {
               {/* Sub-tab switcher */}
               <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.15)' }}>
                 {[
-                  { id: 'mine' as const, label: '⚡ MY SKILLS', count: skills.length },
-                  { id: 'library' as const, label: '📚 SKILL LIBRARY', count: SKILL_LIBRARY.length },
+                  { id: 'mine' as const,      label: '⚡ MY SKILLS',    badge: String(skills.length) },
+                  { id: 'library' as const,   label: '📚 LIBRARY',      badge: String(SKILL_LIBRARY.length) },
+                  { id: 'optimizer' as const, label: '🧠 OPTIMIZER',    badge: `${skillEfficiency}%` },
                 ].map(tab => (
-                  <button key={tab.id} onClick={() => setSkillsSubTab(tab.id)} style={{ flex: 1, padding: '12px 16px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    {tab.label} <span style={{ opacity: 0.5, marginLeft: '4px' }}>{tab.count}</span>
+                  <button key={tab.id} onClick={async () => {
+                    setSkillsSubTab(tab.id);
+                    if (tab.id === 'optimizer') {
+                      const h = await (ipc as any).invoke('skills-get-history');
+                      if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
+                    }
+                  }} style={{ flex: 1, padding: '12px 10px', background: 'none', border: 'none', borderBottom: skillsSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', color: skillsSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.08em', cursor: 'pointer', transition: 'all 0.2s' }}>
+                    {tab.label} <span style={{ opacity: 0.5, marginLeft: '3px' }}>{tab.badge}</span>
                   </button>
                 ))}
               </div>
@@ -1796,6 +1803,152 @@ const App = () => {
                   })()}
                 </div>
               )}
+
+              {/* ── OPTIMIZER TAB ── */}
+              {skillsSubTab === 'optimizer' && (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+
+                  {/* Efficiency Gauge */}
+                  <div style={{ background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '14px', padding: '20px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '4px' }}>EFFICIENCY GOAL</div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                          <span style={{ fontSize: '2.4rem', fontWeight: 900, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 60 ? '#ffa500' : 'var(--primary)' }}>{skillEfficiency}%</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>/ 90% target</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginBottom: '2px' }}>Skills intercepting AI calls</div>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: skillEfficiency >= 90 ? '#00ff88' : '#ffa500' }}>
+                          {skillEfficiency >= 90 ? '🎯 Goal Reached!' : skillEfficiency >= 60 ? '📈 Getting there…' : '🚀 Keep adding skills'}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ height: '10px', background: 'rgba(255,255,255,0.07)', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? 'linear-gradient(90deg,#00ff88,#4facfe)' : 'linear-gradient(90deg,var(--primary),#4facfe)', borderRadius: '5px', transition: 'width 0.6s ease' }} />
+                      {/* 90% goal marker */}
+                      <div style={{ position: 'absolute', left: '90%', top: 0, height: '100%', width: '2px', background: 'rgba(255,255,255,0.4)' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>0%</span>
+                      <span style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.4)' }}>◀ 90% goal</span>
+                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>100%</span>
+                    </div>
+                  </div>
+
+                  {/* Stats Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                    {[
+                      { label: 'INTERCEPTED', value: skillStats.skillHits || 0, color: '#00ff88', icon: '⚡', desc: 'Handled by skills' },
+                      { label: 'AI CALLS',    value: skillStats.totalRequests || 0, color: '#4facfe', icon: '🧠', desc: 'Sent to AI model' },
+                      { label: 'TOKENS SAVED',value: (skillStats.tokensSaved || 0).toLocaleString(), color: 'var(--primary)', icon: '💰', desc: 'Not billed' },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{s.icon}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '3px' }}>{s.label}</div>
+                        <div style={{ fontSize: '0.5rem', color: 'rgba(255,255,255,0.25)', marginTop: '2px' }}>{s.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* The Loop */}
+                  <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '12px' }}>THE OPTIMIZATION LOOP</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                      {[
+                        { step: '1', label: 'Deploy Skills', color: '#9b4dff' },
+                        { step: '→', label: '', color: 'var(--text-dim)' },
+                        { step: '2', label: 'Intercept Queries', color: '#4facfe' },
+                        { step: '→', label: '', color: 'var(--text-dim)' },
+                        { step: '3', label: 'Measure Performance', color: '#ffa500' },
+                        { step: '→', label: '', color: 'var(--text-dim)' },
+                        { step: '4', label: 'Auto-Optimize', color: '#00ff88' },
+                        { step: '→', label: '', color: 'var(--text-dim)' },
+                        { step: '5', label: 'Repeat', color: '#9b4dff' },
+                      ].map((item, i) => item.step === '→' ? (
+                        <span key={i} style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>→</span>
+                      ) : (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 10px', background: `${item.color}18`, border: `1px solid ${item.color}40`, borderRadius: '20px' }}>
+                          <span style={{ fontSize: '0.55rem', fontWeight: 900, color: item.color, background: `${item.color}25`, borderRadius: '50%', width: '14px', height: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.step}</span>
+                          <span style={{ fontSize: '0.55rem', fontWeight: 700, color: 'white' }}>{item.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '10px' }}>
+                      ⏱ Auto-runs every <b style={{ color: 'white' }}>5 minutes</b> · Removes skills scoring below 20% · Creates skills from repeated patterns
+                    </div>
+                  </div>
+
+                  {/* Run Optimizer + Last Result */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <button
+                      onClick={async () => {
+                        setOptimizerRunning(true);
+                        const result = await (ipc as any).invoke('skills-optimize');
+                        const h = await (ipc as any).invoke('skills-get-history');
+                        if (result) setOptimizerLastResult(result);
+                        if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
+                        setOptimizerLastRun(Date.now());
+                        setOptimizerRunning(false);
+                        fetchStats();
+                      }}
+                      disabled={optimizerRunning}
+                      className="btn-premium"
+                      style={{ padding: '10px 20px', fontSize: '0.65rem', opacity: optimizerRunning ? 0.6 : 1 }}
+                    >
+                      {optimizerRunning ? '⏳ Running…' : '▶ Run Optimizer Now'}
+                    </button>
+                    {optimizerLastRun && (
+                      <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>
+                        Last run: {Math.round((Date.now() - optimizerLastRun) / 1000)}s ago
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Last optimization result */}
+                  {optimizerLastResult && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '10px', marginBottom: '16px', fontSize: '0.65rem' }}>
+                      <span style={{ color: '#00ff88', fontWeight: 900 }}>✓ Optimization complete</span>
+                      <span style={{ color: 'var(--text-dim)', marginLeft: '10px' }}>
+                        Efficiency: <b style={{ color: 'white' }}>{optimizerLastResult.efficiency}%</b>
+                        {optimizerLastResult.removed > 0 && <span style={{ marginLeft: '8px', color: '#ff416c' }}>· Removed {optimizerLastResult.removed} weak skill{optimizerLastResult.removed !== 1 ? 's' : ''}</span>}
+                        {optimizerLastResult.removed === 0 && <span style={{ marginLeft: '8px', color: 'var(--text-dim)' }}>· No weak skills found</span>}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Miss Log — learning from AI calls */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em' }}>LEARNING FROM AI CALLS</div>
+                      <span style={{ fontSize: '0.5rem', color: 'var(--text-dim)' }}>Last {optimizerHistory.length} queries that fell through to AI</span>
+                    </div>
+                    {optimizerHistory.length === 0 ? (
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center', padding: '20px' }}>
+                        No history yet — start using the Command Center and the engine will learn your patterns
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '220px', overflowY: 'auto' }}>
+                        {[...optimizerHistory].reverse().map((entry: any, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: '7px', fontSize: '0.6rem' }}>
+                            <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span style={{ flex: 1, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{entry.command}"</span>
+                            <span style={{ fontSize: '0.5rem', padding: '1px 7px', background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.2)', borderRadius: '4px', color: '#ffa500', flexShrink: 0 }}>→ AI</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ marginTop: '10px', fontSize: '0.55rem', color: 'var(--text-dim)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '10px' }}>
+                      💡 When the same pattern appears <b style={{ color: 'white' }}>3+ times</b>, the engine automatically creates a skill to intercept it — reducing future AI calls to zero.
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
             </motion.div>
           )}
 
