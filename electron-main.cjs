@@ -2140,15 +2140,18 @@ async function triggerCoderImplementation(event, engine, brainPlan, messageId) {
     event.sender.send('command-chunk', { messageId, chunk: `\n[IMI CORE] Reading project files...` });
 
     // Read current file contents so Gemini knows what actually exists
-    const filesToRead = ['electron-main.cjs', 'src/App.tsx', 'src/index.css', 'package.json'];
+    const filesToRead = ['src/App.tsx', 'src/index.css', 'package.json'];
     let fileContext = '';
     for (const f of filesToRead) {
       const fp = path.join(currentProjectRoot, f);
       if (fs.existsSync(fp)) {
         const raw = fs.readFileSync(fp, 'utf-8');
-        // Send first 150 lines per file to stay within token budget  
-        const snippet = raw.split('\n').slice(0, 150).join('\n');
-        fileContext += `\n\n=== ${f} (first 150 lines) ===\n${snippet}\n=== end ${f} ===`;
+        // Send up to 500 lines so IMI-CORE can see code added anywhere in the file
+        const lines = raw.split('\n');
+        const limit = f === 'package.json' ? 60 : 500;
+        const snippet = lines.slice(0, limit).join('\n');
+        const note = lines.length > limit ? ` [file has ${lines.length} lines total; showing first ${limit}]` : '';
+        fileContext += `\n\n=== ${f}${note} ===\n${snippet}\n=== end ${f} ===`;
       }
     }
 
