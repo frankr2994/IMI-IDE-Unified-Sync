@@ -1913,13 +1913,10 @@ User: `;
         event.sender.send('command-chunk', { messageId, chunk: '\n' + brainResult });
         tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(brainResult.length / 4);
         saveGlobalState();
-        if (payload.engine && payload.engine !== 'gemini' && payload.engine !== director) {
-          event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${payload.engine.toUpperCase()}` });
-          setTimeout(() => triggerCoderImplementation(event, payload.engine, brainResult, messageId), 800);
-        } else {
-          await triggerCoderImplementation(event, payload.engine || 'imi-core', brainResult, messageId);
-          event.sender.send('command-end', { messageId, code: 0 });
-        }
+        // triggerCoderImplementation sends command-end itself — never send it here too
+        const coderEngine = payload.engine || 'imi-core';
+        event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${coderEngine.toUpperCase()}` });
+        setTimeout(() => triggerCoderImplementation(event, coderEngine, brainResult, messageId), 800);
       } catch(e) {
         event.sender.send('command-error', { messageId, error: `Brain tool-use failed: ${e.message}` });
       }
