@@ -3340,7 +3340,7 @@ const App = () => {
           )}
 
           {activeTab === 'skills' && (
-            <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel skills-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <motion.div key="skills" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel skills-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
               {/* ── Header ── */}
               <div style={{ padding: '18px 24px 0', background: 'rgba(0,0,0,0.15)', borderBottom: '1px solid var(--glass-border)' }}>
@@ -3946,6 +3946,40 @@ const App = () => {
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* ── SHARE MODAL OVERLAY ── */}
+              {shareModalSkill && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                  <div style={{ background: 'rgba(18,18,28,0.98)', border: '1px solid rgba(155,77,255,0.35)', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'white' }}>Share Skill</div>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '2px' }}>{shareModalSkill.name}</div>
+                      </div>
+                      <button onClick={() => { setShareModalSkill(null); setShareJson(''); }}
+                        style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
+                        ✕
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '10px' }}>Copy this JSON and share it on GitHub, Discord, or the IMI community:</div>
+                    <textarea readOnly value={shareJson} onClick={e => (e.target as HTMLTextAreaElement).select()}
+                      style={{ width: '100%', height: '180px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#4facfe', fontSize: '0.62rem', fontFamily: 'monospace', padding: '10px', resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                      <button onClick={() => { navigator.clipboard.writeText(shareJson); }}
+                        style={{ flex: 1, height: '36px', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.35)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <Copy size={13}/> COPY JSON
+                      </button>
+                      <button onClick={() => { setShareModalSkill(null); setShareJson(''); }}
+                        style={{ height: '36px', padding: '0 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.62rem' }}>
+                        Close
+                      </button>
+                    </div>
+                    <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: '7px', fontSize: '0.55rem', color: 'var(--text-dim)' }}>
+                      💡 Want to publish to the registry? Open a PR at <span style={{ color: '#4facfe' }}>github.com/creepybunny99/IMI-skills</span> with your skill JSON
+                    </div>
+                  </div>
                 </div>
               )}
 
