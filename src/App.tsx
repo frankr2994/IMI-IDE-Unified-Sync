@@ -91,6 +91,7 @@ const App = () => {
   const [toolsLoading, setToolsLoading] = useState(false);
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
   const [updatingTool, setUpdatingTool] = useState<string | null>(null);
+  const [updateResult, setUpdateResult] = useState<Record<string, string>>({});
   const loadTools = async () => {
     setToolsLoading(true);
     const res = await (ipc as any).invoke('check-tools').catch(() => []);
@@ -1878,9 +1879,25 @@ const App = () => {
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                                   {isOllama && tool.installed && (
                                     <>
-                                      <button onClick={async () => { setUpdatingTool(tool.id); await (ipc as any).invoke('ollama-update').catch(() => {}); setUpdatingTool(null); setTimeout(loadTools, 1500); }} style={{ height: '26px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                        {isUpdating ? '⏳' : '⬆ Update'}
+                                      <button onClick={async () => {
+                                        setUpdatingTool(tool.id);
+                                        setUpdateResult(p => ({ ...p, [tool.id]: '' }));
+                                        const res = await (ipc as any).invoke('ollama-update').catch(() => ({ success: false, message: 'Error' }));
+                                        setUpdatingTool(null);
+                                        const msg = res?.message || '';
+                                        if (msg.includes('already') || msg.includes('No applicable') || msg.includes('up-to-date') || msg.includes('up to date')) {
+                                          setUpdateResult(p => ({ ...p, [tool.id]: '✅ Already latest' }));
+                                        } else if (res?.success) {
+                                          setUpdateResult(p => ({ ...p, [tool.id]: '✅ Updated!' }));
+                                          setTimeout(loadTools, 2000);
+                                        } else {
+                                          setUpdateResult(p => ({ ...p, [tool.id]: '⚠ winget not found — download at ollama.com' }));
+                                        }
+                                        setTimeout(() => setUpdateResult(p => ({ ...p, [tool.id]: '' })), 4000);
+                                      }} style={{ height: '26px', padding: '0 8px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                        {isUpdating ? '⏳ Checking…' : '⬆ Update'}
                                       </button>
+                                      {updateResult[tool.id] && <span style={{ fontSize: '0.6rem', color: updateResult[tool.id].startsWith('✅') ? '#00ff88' : '#ffaa00', whiteSpace: 'nowrap' }}>{updateResult[tool.id]}</span>}
                                       <button onClick={() => { setExpandedTools(prev => { const n = new Set(prev); n.has(tool.id) ? n.delete(tool.id) : n.add(tool.id); return n; }); if (!expandedTools.has(tool.id)) loadOllamaModels(); }} style={{ height: '26px', padding: '0 8px', background: isExpanded ? 'rgba(155,77,255,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isExpanded ? 'rgba(155,77,255,0.4)' : 'var(--glass-border)'}`, borderRadius: '6px', color: isExpanded ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                         {isExpanded ? '▲ Hide' : `▼ ${ollamaModels.length} Model${ollamaModels.length !== 1 ? 's' : ''}`}
                                       </button>
