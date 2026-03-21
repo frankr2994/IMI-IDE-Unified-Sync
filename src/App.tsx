@@ -843,14 +843,9 @@ const App = () => {
   const runPlanPhase = async (plan: any, phaseIdx: number, planMsgId: number) => {
     const phase = plan.phases[phaseIdx];
     const phaseMessageId = Date.now();
-    setMessages(prev => [...prev, { id: phaseMessageId, type: 'ai', director: activeDirector, text: '', isStreaming: true }]);
-    setActivePlan(prev => prev ? { ...prev, currentPhaseIdx: phaseIdx, running: true } : prev);
-    (ipc as any).send('execute-plan-phase', { prompt: phase.prompt, director: activeDirector, engine: activeEngine, messageId: phaseMessageId });
+    // Register resolver BEFORE sending — eliminates race condition for fast responses
     await new Promise<void>(resolve => {
-      const onDone = (_: any, data: any) => {
-        if (data?.messageId !== phaseMessageId) return;
-        (ipc as any).removeListener('command-end', onDone);
-        (ipc as any).removeListener('command-error', onDone);
+      planPhaseResolvers.current.set(phaseMessageId, () => {
         setActivePlan(prev => {
           if (!prev) return null;
           const completed = new Set(prev.completedPhases);
@@ -858,9 +853,10 @@ const App = () => {
           return { ...prev, completedPhases: completed, running: false };
         });
         resolve();
-      };
-      (ipc as any).on('command-end', onDone);
-      (ipc as any).on('command-error', onDone);
+      });
+      setMessages(prev => [...prev, { id: phaseMessageId, type: 'ai', director: activeDirector, text: '', isStreaming: true }]);
+      setActivePlan(prev => prev ? { ...prev, currentPhaseIdx: phaseIdx, running: true } : prev);
+      (ipc as any).send('execute-plan-phase', { prompt: phase.prompt, director: activeDirector, engine: activeEngine, messageId: phaseMessageId });
     });
   };
 
