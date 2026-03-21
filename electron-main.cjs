@@ -3227,6 +3227,13 @@ app.whenReady().then(() => {
     syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
   }
 });
+// Listen for the 'open-directory' event
+ipcMain.on('open-directory', (event, path) => {
+  shell.openPath(path).catch(err => {
+    console.error("Failed to open path:", err);
+  });
+});
+
 app.on('window-all-closed', () => { app.quit(); });
 app.on('before-quit', () => { process.exit(0); });
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow(); if (win) win.minimize(); });
