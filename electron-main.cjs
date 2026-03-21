@@ -1176,14 +1176,27 @@ ipcMain.on('execute-plan-phase', (event, payload) => {
     engine: payload.engine,
     messageId: payload.messageId,
     history: [],
+    isPlanPhase: true,   // ← skip all routing, go straight to Brain → IMI-CORE
   });
 });
 
 ipcMain.on('execute-command-stream', async (event, payload) => {
-  const { command, director, messageId, imageBase64, imageMimeType, history = [] } = payload;
+  const { command, director, messageId, imageBase64, imageMimeType, history = [], isPlanPhase = false } = payload;
   const cmdLower = command.toLowerCase().trim();
   console.log(`[CMD] director=${director} | "${command.slice(0, 120)}${command.length > 120 ? '…' : ''}"`);
 
+  // ── Plan phases bypass ALL routing — straight to Brain → IMI-CORE ──
+  if (isPlanPhase) {
+    console.log(`[ROUTE] → Plan phase: Brain(${director}) → ${payload.engine || 'imi-core'}`);
+    const engine = payload.engine || 'imi-core';
+    // Stream the brain response, collect full text, then hand to coder
+    streamGeminiBrain(event, command, messageId, director, history, (fullBrainText) => {
+      if (fullBrainText && fullBrainText.trim()) {
+        triggerCoderImplementation(event, engine, fullBrainText, messageId);
+      }
+    });
+    return;
+  }
 
   // ── ⬇ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it ──
   // Only trigger for short user commands (< 80 chars), never for long plan phase prompts
