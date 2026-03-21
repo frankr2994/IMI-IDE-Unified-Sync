@@ -1481,19 +1481,19 @@ const TOOLS_MANIFEST = [
   { id: 'git',       label: 'Git',           cmd: 'git --version',         installUrl: 'https://git-scm.com', category: 'dev',     icon: '🌿', desc: 'Version control — required for sync' },
   { id: 'python',    label: 'Python',        cmd: 'python --version',      installUrl: 'https://python.org', category: 'runtime',  icon: '🐍', desc: 'Python runtime' },
   { id: 'gemini',    label: 'Gemini CLI',    cmd: 'gemini --version',      installUrl: 'https://github.com/google-gemini/gemini-cli', category: 'ai', icon: '✨', desc: 'Google Gemini CLI — powers the Brain' },
-  { id: 'jules',     label: 'Jules CLI',     cmd: 'jules --version',       installUrl: 'https://jules.google.com', category: 'ai',  icon: '🤖', desc: 'Google Jules coding agent' },
   { id: 'ollama',    label: 'Ollama',        cmd: 'ollama --version',      installUrl: 'https://ollama.com', category: 'ai',       icon: '🦙', desc: 'Run AI models locally — zero API cost' },
-  { id: 'docker',    label: 'Docker',        cmd: 'docker --version',      installUrl: 'https://docker.com', category: 'dev',      icon: '🐳', desc: 'Container runtime for MCP servers' },
   { id: 'code',      label: 'VS Code',       cmd: 'code --version',        installUrl: 'https://code.visualstudio.com', category: 'editor', icon: '💙', desc: 'Visual Studio Code editor' },
   { id: 'gh',        label: 'GitHub CLI',    cmd: 'gh --version',          installUrl: 'https://cli.github.com', category: 'dev',   icon: '🐙', desc: 'GitHub CLI — manage repos from terminal' },
-  { id: 'bun',       label: 'Bun',           cmd: 'bun --version',         installUrl: 'https://bun.sh', category: 'runtime',      icon: '🧅', desc: 'Fast JS runtime & package manager' },
 ];
 
 ipcMain.handle('check-tools', async () => {
   const execAsync = (cmd) => new Promise(resolve => {
     exec(cmd, { timeout: 4000 }, (err, stdout) => {
-      if (err) resolve(null);
-      else resolve(stdout.trim().split('\n')[0].replace(/^v/, ''));
+      if (err) { resolve(null); return; }
+      const line = stdout.trim().split('\n')[0];
+      // Extract first semver-like number from output (handles "git version 2.53.0", "ollama version is 0.18.2", etc.)
+      const match = line.match(/(\d+\.\d+[\.\d]*)/);
+      resolve(match ? match[1] : line.replace(/^v/, '').trim());
     });
   });
   const results = await Promise.all(TOOLS_MANIFEST.map(async tool => {
