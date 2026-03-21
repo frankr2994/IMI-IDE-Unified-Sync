@@ -1437,6 +1437,34 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // ── End universal browser actions ─────────────────────────────────────────
 
+  // ── DESKTOP / FILE CREATION — director-agnostic, always runs before AI routing ──
+  // These always use Gemini's API for content generation regardless of which brain is selected.
+  {
+    const _deskL = command.toLowerCase();
+    // Create folder on desktop
+    const _isDesktopOp = (
+      /\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b.{0,60}\b(desktop|my desktop)\b/i.test(command)
+      || /\b(desktop|my desktop)\b.{0,60}\b(create|make|new|add|build)\b.{0,25}\b(folder|directory)\b/i.test(command)
+    );
+    if (_isDesktopOp) {
+      console.log(`[ROUTE] → triggerDesktopTask (folder+file on desktop)`);
+      triggerDesktopTask(event, command, _deskL, messageId);
+      return;
+    }
+    // Create a program/script/file on desktop (no folder needed)
+    const _isCreateProgram = (
+      /\b(create|make|build|write|generate)\b.{0,40}\b(script|program|app|application|tool|website|calculator|game|utility)\b/i.test(command)
+      || /\b(create|make|build|write|generate)\b.{0,25}\b(python|javascript|html|css|typescript|bash|shell|node)\b.{0,30}\b(file|script|program)?\b/i.test(command)
+      || /\b(html|python|javascript)\b.{0,30}\b(pong|snake|tetris|calculator|todo|game|app|tool)\b/i.test(command)
+    ) && /\b(desktop|my desktop)\b/i.test(command);
+    if (_isCreateProgram) {
+      console.log(`[ROUTE] → triggerAutoCreateFile (desktop file)`);
+      triggerAutoCreateFile(event, command, messageId);
+      return;
+    }
+  }
+  // ── End desktop / file creation ────────────────────────────────────────────
+
   // Smart context — reads only what's relevant for this specific command
   const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
