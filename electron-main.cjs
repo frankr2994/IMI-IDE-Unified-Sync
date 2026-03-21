@@ -2822,11 +2822,20 @@ ipcMain.handle('ollama-update', async (event) => {
     await downloadFile(event, 'ollama-update', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
     event.sender.send('ollama-update-progress', { status: 'installing', percent: 95, label: '⚙️ Installing…' });
     await new Promise((resolve, reject) => {
-      exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP-`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
+      exec(`start /wait /b "" "${installerPath}" /VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES`, { timeout: 180000, windowsHide: true }, (err) => err ? reject(err) : resolve());
     });
     try { require('fs').unlinkSync(installerPath); } catch {}
+    // Kill any Ollama window that auto-launched after install — user didn't ask for it
+    exec(`taskkill /F /IM "Ollama.exe" /T`, { windowsHide: true }, () => {});
+    // Get the new version to confirm update
+    const newVersion = await new Promise(resolve => {
+      exec('ollama --version', { timeout: 4000 }, (err, stdout) => {
+        const m = (stdout||'').match(/(\d+\.\d+[\.\d]*)/);
+        resolve(m ? m[1] : null);
+      });
+    });
     event.sender.send('ollama-update-progress', { status: 'done', percent: 100, label: '✅ Updated!' });
-    return { success: true, upToDate: false };
+    return { success: true, upToDate: false, newVersion };
   } catch(e) {
     event.sender.send('ollama-update-progress', { status: 'error', percent: 0, label: '❌ Failed' });
     return { success: false, message: e.message };
