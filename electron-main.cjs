@@ -2503,12 +2503,19 @@ ipcMain.handle('hf-fetch-model', async (_e, input) => {
               const largest = Math.max(...ggufFiles.map(f => getSize(f)));
               sizeLabel = smallest === largest ? fmtBytes(smallest) : `${fmtBytes(smallest)} – ${fmtBytes(largest)}`;
             }
+            const ggufList = ggufFiles.map(f => {
+              // Extract quant tag from filename e.g. "Qwen3-4B-Q4_K_M.gguf" → "Q4_K_M"
+              const quantMatch = f.rfilename.match(/[-_](Q\d[^-.]*(?:_[A-Z]+)*)\./i) || f.rfilename.match(/(Q\d[^-.]*)\./i);
+              const quant = quantMatch ? quantMatch[1].toUpperCase() : f.rfilename.replace('.gguf','');
+              return { filename: f.rfilename, quant, size: fmtBytes(getSize(f)), sizeBytes: getSize(f) };
+            }).sort((a,b) => a.sizeBytes - b.sizeBytes);
             resolve({ type: 'hf', data: {
               id: m.modelId, name: m.modelId,
               author: (m.modelId || '').split('/')[0],
               downloads: m.downloads || 0, likes: m.likes || 0,
               pipeline: m.pipeline_tag || 'text-generation',
               tags: m.tags || [], sizeLabel, ggufCount: ggufFiles.length,
+              ggufList,
               hfUrl: `https://huggingface.co/${m.modelId}`,
               ollamaCmd: `hf.co/${m.modelId}`,
               updatedAt: m.lastModified || '',
