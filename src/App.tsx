@@ -1318,6 +1318,13 @@ const App = () => {
                   ))}
                 </div>
                 <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
+                    {attachedImage && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'rgba(155,77,255,0.08)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '10px', marginBottom: '6px' }}>
+                        <img src={attachedImage.previewUrl} alt="preview" style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px' }} />
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', flex: 1 }}>Image attached — the AI will see this</span>
+                        <button type="button" onClick={() => setAttachedImage(null)} style={{ background: 'none', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.9rem', opacity: 0.7 }}>✕</button>
+                      </div>
+                    )}
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '12px', overflow: 'visible' }}>
                         
@@ -1466,6 +1473,7 @@ const App = () => {
                            <Mic size={16} className={isListening ? 'pulse-anim' : ''} />
                         </div>
                       </div>
+                      <button type="button" onClick={handleImageAttach} title="Attach image" style={{ height: '44px', width: '44px', background: attachedImage ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.05)', border: `1px solid ${attachedImage ? 'rgba(155,77,255,0.5)' : 'var(--glass-border)'}`, borderRadius: '10px', color: attachedImage ? 'var(--primary)' : 'var(--text-dim)', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>📎</button>
                       <button type="submit" className="btn-chat-send" style={{ width: '40px', height: '40px' }}><Send size={16}/></button>
                       <button type="button" title="Clear chat history" onClick={async () => { setMessages([]); await (ipc as any).invoke('store-clear-messages', storeProjectKey); }} style={{ width: '40px', height: '40px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '10px', color: '#ff416c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={14}/></button>
                     </form>
