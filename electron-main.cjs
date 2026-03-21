@@ -595,6 +595,22 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
   // ≡ƒºá IMI SYSTEM MEMORY ΓÇö Injected into every Brain request
   // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  // Read live UI files so Gemini sees the ACTUAL current code, not just descriptions
+  let liveCSS = '';
+  let liveAppSnippet = '';
+  try {
+    const cssPath = path.join(currentProjectRoot, 'src', 'index.css');
+    if (fs.existsSync(cssPath)) liveCSS = fs.readFileSync(cssPath, 'utf-8').slice(0, 3000);
+  } catch(e) {}
+  try {
+    const appPath = path.join(currentProjectRoot, 'src', 'App.tsx');
+    if (fs.existsSync(appPath)) {
+      const full = fs.readFileSync(appPath, 'utf-8');
+      // Grab the CSS variables block + sidebar + command center sections (first 3000 chars captures most of it)
+      liveAppSnippet = full.slice(0, 3000);
+    }
+  } catch(e) {}
+
   const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface), a powerful AI orchestration desktop app built with Electron + React.
 Your primary role is the STRATEGY layer (analyzing requests and planning solutions for the Coder engine), BUT you are also a highly capable general assistant. You happily and naturally answer general questions, search the web, give weather updates, write stories, or chat about any random topic the user desires. Never refuse a request just because it's not about IMI.
 
@@ -603,21 +619,31 @@ PROJECT MEMORY:
 - Project Root: ${currentProjectRoot}
 - Active Coder Engine: ${ACTIVE_CODER}
 - Stack: Electron (electron-main.cjs), React + Vite (src/App.tsx), TypeScript
-- Architecture: Brain (strategy AI) ΓåÆ Orchestrator (hand-off) ΓåÆ Coder (implementation)
-- The Coder engine is Antigravity (an AI coding assistant in the user's IDE)
-- Key files: electron-main.cjs (backend/IPC), src/App.tsx (entire UI)
-- The app has these tabs: Dashboard, Command Center, Global MCP, System
-- IMI syncs to GitHub repo: creepybunny99/IMI-IDE-Unified-Sync
+- Architecture: Brain (strategy AI) -> Orchestrator (hand-off) -> Coder (implementation)
+- Key files: electron-main.cjs (backend/IPC), src/App.tsx (entire UI), src/index.css (all styles)
+- Tabs: Dashboard, Command Center, Dev Hub, Skills, Settings
+- Desktop path: ${path.join(os.homedir(), 'Desktop')}
+
+LIVE UI CODE — what IMI actually looks like right now:
+
+src/index.css (current styles):
+\`\`\`css
+${liveCSS}
+\`\`\`
+
+src/App.tsx (current component structure, first section):
+\`\`\`tsx
+${liveAppSnippet}
+\`\`\`
 
 FILE SYSTEM CAPABILITIES:
-- Desktop path: ${path.join(os.homedir(), 'Desktop')}
 - IMI has full read/write/list access to the file system
 - When asked to create a file or program, generate the complete content and IMI will write it
 - When asked to edit an existing file, IMI reads the current content first and passes it to you — return the complete updated file
 - Wrap file content in a code block with the language tag (e.g. \`\`\`python) so IMI can extract and write it automatically
 
-When the user says "IMI" they mean this app. When they say "my settings" they mean the System tab. When they say "make it look better" they mean update the React UI in src/App.tsx.
-Always respond as a knowledgeable collaborator who already knows this project inside out.
+When the user says "IMI" they mean this app. When they say "my settings" they mean the System tab. When they say "make it look better" they mean update src/App.tsx or src/index.css.
+You now have the ACTUAL current code — use it to give specific, relevant answers about what exists and what can be changed.
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
 GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE to IMI.
