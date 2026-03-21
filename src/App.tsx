@@ -712,6 +712,7 @@ const App = () => {
     loadConfig();
     fetchStats();
     setTimeout(loadTools, 2000); // defer tool scan — avoids blocking main process during startup paint
+    setTimeout(loadOllamaModels, 1500); // load installed models so Coder dropdown is populated on startup
     // 🚀 [BALANCED PERF]
     const statsInterval = setInterval(fetchStats, 60000); // Heavy disk scan: 1 min
     const telemetryInterval = setInterval(async () => {
