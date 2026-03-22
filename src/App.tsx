@@ -2037,7 +2037,7 @@ const App = () => {
                                     return (
                                       <div key={id}
                                         onClick={() => { if (m.tooLarge) { alert(`⚠️ "${label}" is too large for your GPU (${m.vramGB?.toFixed(0)}GB VRAM).\n\nThis model won't respond. Delete it and pull a smaller one like qwen2.5-coder:7b.`); return; } setActiveDirector(id); setIsDropdownOpen(false); addLog('system', `Brain set to ${label} (local)`); saveConfig({ activeBrain: id }); }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: m.tooLarge ? '#ff416c' : activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: m.tooLarge ? 'not-allowed' : 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', opacity: m.tooLarge ? 0.7 : 1, fontWeight: activeDirector === id ? 900 : 400 }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', color: m.tooLarge ? '#ff416c' : activeDirector === id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: m.tooLarge ? 'not-allowed' : 'pointer', background: activeDirector === id ? 'rgba(0,255,136,0.1)' : 'transparent', opacity: m.tooLarge ? 0.7 : 1, fontWeight: activeDirector === id ? 900 : 400 }}
                                         onMouseEnter={e => { if (activeDirector !== id && !m.tooLarge) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                                         onMouseLeave={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                       >
@@ -2098,7 +2098,7 @@ const App = () => {
                                  .map(opt => (
                                   <div key={opt.id}
                                     onClick={() => { if (opt.tooLarge) { alert(`⚠️ "${opt.name}" can't run on your GPU (${opt.vramGB?.toFixed(0)}GB VRAM).\n\nDelete it in Dev Hub → AI Models and pull a smaller model.`); return; } setActiveEngine(opt.id); setIsCoderDropdownOpen(false); addLog('system', `Coder set to ${opt.name}`); saveConfig({ activeCoder: opt.id }); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', color: opt.tooLarge ? '#ff416c' : activeEngine === opt.id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: opt.tooLarge ? 'not-allowed' : 'pointer', background: activeEngine === opt.id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeEngine === opt.id ? 900 : 400, opacity: opt.tooLarge ? 0.7 : 1 }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', color: opt.tooLarge ? '#ff416c' : activeEngine === opt.id ? '#00ff88' : '#fff', fontSize: '0.72rem', cursor: opt.tooLarge ? 'not-allowed' : 'pointer', background: activeEngine === opt.id ? 'rgba(0,255,136,0.1)' : 'transparent', fontWeight: activeEngine === opt.id ? 900 : 400, opacity: opt.tooLarge ? 0.7 : 1 }}
                                     onMouseEnter={e => { if (activeEngine !== opt.id && !opt.tooLarge) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                                     onMouseLeave={e => { if (activeEngine !== opt.id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                   >
