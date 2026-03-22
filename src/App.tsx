@@ -3068,7 +3068,7 @@ const App = () => {
                     return (
                       <div key={cat} style={{ marginBottom: '24px' }}>
                         <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '10px' }}>{catLabel[cat]}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px', alignItems: 'start' }}>
                           {items.map(tool => {
                             const isOllama = tool.id === 'ollama';
                             const isExpanded = expandedTools.has(tool.id);
@@ -3158,14 +3158,14 @@ const App = () => {
                                 </div>{/* end header row */}
                                 {/* Inline model chips when expanded */}
                                 {isOllama && isExpanded && (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingTop: '2px', alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingTop: '2px', alignItems: 'center', width: '100%', overflow: 'hidden' }}>
                                     {ollamaModels.length === 0
                                       ? <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>No models yet — pull one in AI Models.</span>
                                       : ollamaModels.map(m => (
-                                          <div key={m.name} title={m.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px 2px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.08)' : 'rgba(0,255,136,0.06)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, color: m.tooLarge ? '#ff416c' : '#00ff88' }}>
-                                            <span>{m.tooLarge ? '⚠' : '🦙'}</span>
-                                            <span>{shortModelName(m.name)}</span>
-                                            <span style={{ opacity: 0.6, fontWeight: 400, fontSize: '0.6rem' }}>{m.size}</span>
+                                          <div key={m.name} title={m.name} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '2px 8px 2px 6px', background: m.tooLarge ? 'rgba(255,65,108,0.08)' : 'rgba(0,255,136,0.06)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, color: m.tooLarge ? '#ff416c' : '#00ff88', maxWidth: '100%', overflow: 'hidden' }}>
+                                            <span style={{ flexShrink: 0 }}>{m.tooLarge ? '⚠' : '🦙'}</span>
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortModelName(m.name)}</span>
+                                            <span style={{ opacity: 0.6, fontWeight: 400, fontSize: '0.6rem', flexShrink: 0 }}>{m.size}</span>
                                             <button onClick={async () => { if (confirm(`Delete ${shortModelName(m.name)}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'none', border: 'none', color: '#ff416c', cursor: 'pointer', fontSize: '0.6rem', padding: '0', lineHeight: 1, marginLeft: '2px', opacity: 0.7 }}>✕</button>
                                           </div>
                                         ))

@@ -4725,21 +4725,33 @@ const TOOLS_MANIFEST = [
 ];
 
 ipcMain.handle('check-tools', async () => {
-  const npmGlobal = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
-  const enrichedEnv = { ...process.env, PATH: [process.env.PATH, npmGlobal].filter(Boolean).join(';') };
-  const execAsync = (cmd) => new Promise(resolve => {
-    exec(cmd, { timeout: 4000, env: enrichedEnv }, (err, stdout) => {
-      if (err) { resolve(null); return; }
-      const line = stdout.trim().split('\n')[0];
-      // Extract first semver-like number from output (handles "git version 2.53.0", "ollama version is 0.18.2", etc.)
-      const match = line.match(/(\d+\.\d+[\.\d]*)/);
-      resolve(match ? match[1] : line.replace(/^v/, '').trim());
+  // Enrich PATH with all common locations for globally installed tools
+  const npmGlobal   = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+  const nodeDir     = path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'nodejs');
+  const nodeSys     = 'C:\\Program Files\\nodejs';
+  const enrichedPath = [process.env.PATH, npmGlobal, nodeDir, nodeSys].filter(Boolean).join(';');
+  const enrichedEnv = { ...process.env, PATH: enrichedPath };
+
+  // First confirm the binary exists via where.exe, then get version
+  const checkTool = (tool) => new Promise(resolve => {
+    const binName = tool.cmd.split(' ')[0]; // e.g. "gemini" from "gemini --version"
+    exec(`where.exe ${binName}`, { env: enrichedEnv, timeout: 3000 }, (whereErr, wherePath) => {
+      if (whereErr || !wherePath.trim()) return resolve({ ...tool, installed: false, version: null });
+      // Binary found — now get version
+      exec(tool.cmd, { env: enrichedEnv, timeout: 4000 }, (err, stdout) => {
+        if (err || !stdout.trim()) {
+          // where found it but --version failed — still mark as installed
+          return resolve({ ...tool, installed: true, version: '?' });
+        }
+        const line = stdout.trim().split('\n')[0];
+        const match = line.match(/(\d+\.\d+[\.\d]*)/);
+        const version = match ? match[1] : line.replace(/^v/, '').trim();
+        resolve({ ...tool, installed: true, version: version || '?' });
+      });
     });
   });
-  const results = await Promise.all(TOOLS_MANIFEST.map(async tool => {
-    const version = await execAsync(tool.cmd);
-    return { ...tool, installed: !!version, version: version || null };
-  }));
+
+  const results = await Promise.all(TOOLS_MANIFEST.map(checkTool));
   return results;
 });
 
