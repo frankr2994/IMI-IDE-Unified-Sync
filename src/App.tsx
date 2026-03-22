@@ -4356,42 +4356,41 @@ const App = () => {
                           (ipc as any).invoke('save-full-profile', next).then((saved: any) => { if (saved && !saved.error) setFullProfile(saved); }).catch(() => {});
                         };
                         return (
-                          <div style={{ background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '12px', padding: '16px 18px' }}>
-                            {/* Name + description */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                              <input value={fullProfile.name} onChange={e => upd({ name: e.target.value })} placeholder="Profile name…" className="chat-input" style={{ fontSize: '0.88rem', fontWeight: 700, height: '42px', padding: '0 14px' }} />
-                              <input value={fullProfile.description} onChange={e => upd({ description: e.target.value })} placeholder="Short description (optional)…" className="chat-input" style={{ fontSize: '0.72rem', height: '38px', padding: '0 14px' }} />
+                          <div style={{ background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.18)', borderRadius: '12px', padding: '18px 20px' }}>
+                            {/* Top row: name input + action buttons inline */}
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                              <input value={fullProfile.name} onChange={e => upd({ name: e.target.value })} placeholder="Profile name…" className="chat-input" style={{ flex: 1, fontSize: '0.85rem', fontWeight: 700, height: '38px', padding: '0 14px' }} />
+                              <button onClick={async () => {
+                                const res = await (ipc as any).invoke('export-full-profile', { profile: fullProfile });
+                                if (res?.path) setProfileMsg({ type: 'success', text: `✅ Saved to ${res.path}` });
+                                else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
+                              }} className="btn-premium" style={{ height: '38px', padding: '0 14px', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>⬇ Export</button>
+                              <button onClick={async () => {
+                                const res = await (ipc as any).invoke('import-full-profile');
+                                if (res?.profile) { setFullProfile(res.profile); (ipc as any).invoke('save-full-profile', res.profile); setProfileMsg({ type: 'success', text: `✅ Imported: ${res.profile.name}` }); }
+                                else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
+                              }} className="btn-premium" style={{ height: '38px', padding: '0 14px', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>⬆ Import</button>
+                              <button onClick={async () => {
+                                const res = await (ipc as any).invoke('add-to-community', { profile: { ...fullProfile, isPublic: true } });
+                                if (res?.success) setProfileMsg({ type: 'success', text: '✅ Shared to IMI Community!' });
+                                else setProfileMsg({ type: 'error', text: res?.error || 'Share failed' });
+                              }} className="btn-premium" style={{ height: '38px', padding: '0 14px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', color: '#00ff88', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0 }}>🌐 Share</button>
                             </div>
+                            {/* Description */}
+                            <input value={fullProfile.description} onChange={e => upd({ description: e.target.value })} placeholder="Short description (optional)…" className="chat-input" style={{ width: '100%', fontSize: '0.72rem', height: '34px', padding: '0 14px', marginBottom: '10px', boxSizing: 'border-box' }} />
                             {/* Tags */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
                               {(fullProfile.tags || []).map((t: string, i: number) => (
-                                <span key={i} style={{ fontSize: '0.68rem', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '20px', padding: '3px 10px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '6px', padding: '3px 9px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   {t}
-                                  <button onClick={() => upd({ tags: fullProfile.tags.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.75rem', lineHeight: 1 }}>×</button>
+                                  <button onClick={() => upd({ tags: fullProfile.tags.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
                                 </span>
                               ))}
                               <input value={profileTagInput} onChange={e => setProfileTagInput(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && profileTagInput.trim()) { upd({ tags: [...(fullProfile.tags||[]), profileTagInput.trim()] }); setProfileTagInput(''); e.preventDefault(); } }}
                                 placeholder="+ tag" className="chat-input"
-                                style={{ fontSize: '0.68rem', height: '28px', padding: '0 10px', width: '80px', borderRadius: '20px' }} />
-                            </div>
-                            {/* Action buttons row */}
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button onClick={async () => {
-                                const res = await (ipc as any).invoke('export-full-profile', { profile: fullProfile });
-                                if (res?.path) setProfileMsg({ type: 'success', text: `✅ Saved to ${res.path}` });
-                                else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
-                              }} className="btn-premium" style={{ flex: 1, height: '36px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>⬇ EXPORT</button>
-                              <button onClick={async () => {
-                                const res = await (ipc as any).invoke('import-full-profile');
-                                if (res?.profile) { setFullProfile(res.profile); (ipc as any).invoke('save-full-profile', res.profile); setProfileMsg({ type: 'success', text: `✅ Imported: ${res.profile.name}` }); }
-                                else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
-                              }} className="btn-premium" style={{ flex: 1, height: '36px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>⬆ IMPORT</button>
-                              <button onClick={async () => {
-                                const res = await (ipc as any).invoke('add-to-community', { profile: { ...fullProfile, isPublic: true } });
-                                if (res?.success) setProfileMsg({ type: 'success', text: '✅ Shared to IMI Community Library!' });
-                                else setProfileMsg({ type: 'error', text: res?.error || 'Share failed' });
-                              }} className="btn-premium" style={{ flex: 1, height: '36px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', color: '#00ff88', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>🌐 SHARE</button>
+                                style={{ fontSize: '0.65rem', height: '26px', padding: '0 9px', width: '72px', borderRadius: '6px' }} />
+                              {fullProfile.updatedAt > 0 && <span style={{ fontSize: '0.58rem', color: 'var(--text-dim)', opacity: 0.4, marginLeft: 'auto' }}>saved {new Date(fullProfile.updatedAt).toLocaleTimeString()}</span>}
                             </div>
                             {/* Feedback */}
                             {profileMsg && (
@@ -4400,7 +4399,6 @@ const App = () => {
                                 <button onClick={() => setProfileMsg(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5, padding: '0 2px' }}>✕</button>
                               </div>
                             )}
-                            {fullProfile.updatedAt > 0 && <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '8px', opacity: 0.45 }}>Last saved {new Date(fullProfile.updatedAt).toLocaleString()}</div>}
                           </div>
                         );
                       })()}
