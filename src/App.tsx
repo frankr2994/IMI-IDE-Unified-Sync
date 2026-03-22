@@ -1998,32 +1998,34 @@ const App = () => {
                                     { id: 'jules',      name: 'Jules',       sub: 'Google · Agentic',      icon: '🤝', key: (julesApiKey || githubToken)?.trim() },
                                     { id: 'custom',     name: 'Custom API',  sub: 'Your endpoint',         icon: '🔧', key: (customApiKey?.trim() && customApiUrl?.trim()) ? 'set' : '' },
                                   ];
-                                  return cloudModels.map(opt => {
-                                    const hasKey = !!(opt.key && opt.key.length > 0);
-                                    const isActive = activeDirector === opt.id;
-                                    return (
-                                      <div key={opt.id}
-                                        onClick={() => {
-                                          if (!hasKey) { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); return; }
-                                          setActiveDirector(opt.id); setIsDropdownOpen(false);
-                                          addLog('system', `Brain set to ${opt.name}`);
-                                          saveConfig({ activeBrain: opt.id });
-                                        }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', color: isActive ? 'var(--primary)' : hasKey ? 'white' : 'rgba(255,255,255,0.35)', fontSize: '0.72rem', cursor: 'pointer', background: isActive ? 'rgba(155,77,255,0.12)' : 'transparent', fontWeight: isActive ? 900 : 400 }}
-                                        onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                                        onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                                        title={hasKey ? opt.sub : `Add ${opt.name} API key in Settings`}
-                                      >
-                                        <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center', flexShrink: 0 }}>{opt.icon}</span>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                          <div style={{ lineHeight: 1.2 }}>{opt.name}</div>
-                                          <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2 }}>{opt.sub}</div>
+                                  const available = cloudModels.filter(opt => !!(opt.key && opt.key.length > 0));
+                                  return (<>
+                                    {available.map(opt => {
+                                      const isActive = activeDirector === opt.id;
+                                      return (
+                                        <div key={opt.id}
+                                          onClick={() => { setActiveDirector(opt.id); setIsDropdownOpen(false); addLog('system', `Brain set to ${opt.name}`); saveConfig({ activeBrain: opt.id }); }}
+                                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', color: isActive ? 'var(--primary)' : 'white', fontSize: '0.72rem', cursor: 'pointer', background: isActive ? 'rgba(155,77,255,0.12)' : 'transparent', fontWeight: isActive ? 900 : 400 }}
+                                          onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
+                                          onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                        >
+                                          <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center', flexShrink: 0 }}>{opt.icon}</span>
+                                          <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ lineHeight: 1.2 }}>{opt.name}</div>
+                                            <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2 }}>{opt.sub}</div>
+                                          </div>
+                                          {isActive && <span style={{ fontSize: '0.5rem', color: 'var(--primary)', flexShrink: 0 }}>●</span>}
                                         </div>
-                                        {isActive && <span style={{ fontSize: '0.5rem', color: 'var(--primary)', flexShrink: 0 }}>●</span>}
-                                        {!hasKey && <span style={{ fontSize: '0.55rem', opacity: 0.4, flexShrink: 0 }}>🔒</span>}
-                                      </div>
-                                    );
-                                  });
+                                      );
+                                    })}
+                                    <div onClick={() => { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 14px', color: 'rgba(155,77,255,0.8)', fontSize: '0.65rem', cursor: 'pointer', borderTop: '1px solid var(--glass-border)', fontWeight: 700 }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.08)'; }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                    >
+                                      <span style={{ fontSize: '0.8rem' }}>＋</span> Add a model
+                                    </div>
+                                  </>);
                                 })()}
                                 {/* Local Ollama models as Brain */}
                                 {ollamaModels.length > 0 && <>
