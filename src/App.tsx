@@ -118,6 +118,7 @@ const App = () => {
   };
   const [profileSubTab, setProfileSubTab] = useState<'code'|'design'|'art'|'writing'|'workflow'|'stack'|'community'>('code');
   const [styleDnaTab, setStyleDnaTab] = useState<'code'|'stack'|'workflow'|'design'|'writing'>('code');
+  const [codeLang, setCodeLang] = useState<'js'|'python'|'other'>('js');
   const [communityProfiles, setCommunityProfiles] = useState<any[]>([]);
   const [communityProfilesLoading, setCommunityProfilesLoading] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success'|'error'; text: string } | null>(null);
@@ -171,6 +172,8 @@ const App = () => {
   const [terminalHeight, setTerminalHeight] = useState(320);
   const terminalDragRef = React.useRef<{ dragging: boolean; startY: number; startH: number }>({ dragging: false, startY: 0, startH: 320 });
   const importStyleRef = React.useRef<HTMLInputElement>(null);
+  const brainDropdownRef = React.useRef<HTMLDivElement>(null);
+  const coderDropdownRef = React.useRef<HTMLDivElement>(null);
   const debatePanelRef = React.useRef<HTMLDivElement>(null);
 
   // 🛠 Installed Tools
@@ -1092,6 +1095,16 @@ const App = () => {
     }
   }, [debateRounds, debateComplete]);
 
+  // Close dropdowns on click-outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (brainDropdownRef.current && !brainDropdownRef.current.contains(e.target as Node)) setIsDropdownOpen(false);
+      if (coderDropdownRef.current && !coderDropdownRef.current.contains(e.target as Node)) setIsCoderDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   // Terminal drag-to-resize
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -1969,7 +1982,7 @@ const App = () => {
                     <form onSubmit={e => {e.preventDefault(); handleSendMessage();}} style={{ display: 'flex', gap: '5px', alignItems: 'flex-end' }}>
                       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '6px' }}>
                         {/* BRAIN */}
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <div ref={brainDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
                           <div onClick={() => { setIsDropdownOpen(!isDropdownOpen); setIsCoderDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', height: '64px', padding: '0 8px', background: 'rgba(155,77,255,0.1)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: 'var(--primary)', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
                             <span style={{ fontSize: '0.48rem', opacity: 0.6, letterSpacing: '0.1em' }}>BRAIN</span>
                             {activeDirector === 'gemini' && <Zap size={12} />}
@@ -2044,13 +2057,10 @@ const App = () => {
                                         onMouseEnter={e => { if (activeDirector !== id && !m.tooLarge) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; }}
                                         onMouseLeave={e => { if (activeDirector !== id) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                                       >
-                                        <Database size={12} style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center', flexShrink: 0, color: m.tooLarge ? '#ff416c' : '#00ff88' }}>⬡</span>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-                                          <div style={{ fontSize: '0.48rem', display: 'flex', gap: '6px', alignItems: 'center', opacity: 0.8 }}>
-                                            <span style={{ color: m.tooLarge ? '#ff416c' : 'var(--text-dim)' }}>Local · {m.size}</span>
-                                            <span style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 900 }}>{m.tooLarge ? "⚠ Can't Run" : '✅ Ready'}</span>
-                                          </div>
+                                          <div style={{ lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+                                          <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2, whiteSpace: 'nowrap' }}>Local · {m.size} {m.tooLarge ? "· ⚠ Can't Run" : '· Ready'}</div>
                                         </div>
                                         {activeDirector === id && !m.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                       </div>
@@ -2068,7 +2078,7 @@ const App = () => {
                         </div>
 
                         {/* CODER */}
-                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <div ref={coderDropdownRef} style={{ position: 'relative', flexShrink: 0 }}>
                           <div onClick={() => { setIsCoderDropdownOpen(!isCoderDropdownOpen); setIsDropdownOpen(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', width: '72px', height: '64px', padding: '0 8px', background: 'rgba(0,255,136,0.05)', border: '1px solid var(--glass-border)', borderRadius: '10px', color: '#00ff88', fontWeight: 900, fontSize: '0.6rem', textTransform: 'uppercase', cursor: 'pointer', flexShrink: 0 }}>
                             <span style={{ fontSize: '0.48rem', opacity: 0.6, letterSpacing: '0.1em' }}>CODER</span>
                             {activeEngine === 'jules' ? <Layers size={12} /> : (activeEngine === 'antigravity' ? <Cpu size={12} /> : <Zap size={12} />)}
@@ -4298,14 +4308,12 @@ const App = () => {
                   </div>
 
                   {/* ── CODE tab ── */}
-                  {styleDnaTab === 'code' && (() => {
-                    const [codeLang, setCodeLang] = (React as any).useState('js');
-                    return (
+                  {styleDnaTab === 'code' && (
                       <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {/* Language switcher */}
                         <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
                           {[{id:'js',label:'JS / TS'},{id:'python',label:'Python'},{id:'other',label:'Rust / Go / Other'}].map(l => (
-                            <button key={l.id} onClick={() => setCodeLang(l.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: `1px solid ${codeLang===l.id?'rgba(79,172,254,0.5)':'var(--glass-border)'}`, background: codeLang===l.id?'rgba(79,172,254,0.12)':'rgba(255,255,255,0.03)', color: codeLang===l.id?'#4facfe':'rgba(255,255,255,0.45)', fontSize: '0.62rem', fontWeight: codeLang===l.id?800:500, cursor: 'pointer' }}>{l.label}</button>
+                            <button key={l.id} onClick={() => setCodeLang(l.id as 'js'|'python'|'other')} style={{ padding: '5px 12px', borderRadius: '7px', border: `1px solid ${codeLang===l.id?'rgba(79,172,254,0.5)':'var(--glass-border)'}`, background: codeLang===l.id?'rgba(79,172,254,0.12)':'rgba(255,255,255,0.03)', color: codeLang===l.id?'#4facfe':'rgba(255,255,255,0.45)', fontSize: '0.62rem', fontWeight: codeLang===l.id?800:500, cursor: 'pointer' }}>{l.label}</button>
                           ))}
                         </div>
 
@@ -4340,8 +4348,7 @@ const App = () => {
                           <textarea value={fullProfile.code.notes} onChange={e => updFullProfile('code', { notes: e.target.value })} placeholder="Notes — linter rules, patterns, anything the AI should always follow…" className="chat-input" style={{ width: '100%', height: '60px', resize: 'vertical', fontSize: '0.65rem', padding: '7px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
                         </div>
                       </div>
-                    );
-                  })()}
+                  )}
 
                   {/* ── STACK tab ── */}
                   {styleDnaTab === 'stack' && (
