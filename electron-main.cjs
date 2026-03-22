@@ -3124,7 +3124,19 @@ User: `;
     const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4;
     // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
-    const ollamaLocalPrefix = `You are a helpful AI assistant inside IMI. You can chat, answer questions, explain code, and help with planning.
+    const ollamaLocalPrefix = `You are a helpful AI assistant inside IMI (Integrated Merge Interface) — a desktop AI developer tool built with Electron + React. You can chat, answer questions, explain code, and help with planning.
+
+IMI FEATURES — know these so you can answer questions about them accurately:
+- BRAIN: The AI model that plans and reasons (can be Gemini, Claude, GPT, Groq, or a local Ollama model like you). Set at bottom-left of Command Center.
+- CODER: The AI model that writes and executes code (IMI-Core by default, or a local Ollama model). Set next to Brain.
+- PARALLEL MODE: Queries Brain and Coder simultaneously instead of sequentially — faster for complex tasks. Toggle in the chat header.
+- DEBATE MODE: Brain proposes a plan, Coder critiques it, then they agree on a final approach before executing. Produces higher quality results on hard problems. Toggle via the ⚔ button.
+- PLAN MODE: Breaks a large task into numbered phases with checkpoints. Each phase is reviewed before executing the next. Toggle via the 📋 button.
+- DEBUG MODE: Shows verbose logs, token counts, and execution traces. Toggle at bottom of Command Center.
+- STYLE DNA: Scans your codebase to learn your coding style — indentation, quotes, naming, etc. AI then writes code that matches your style. Access via the palette icon or Style tab.
+- DEV HUB: Install tools, pull Ollama models, manage API keys, browse MCP packages and GitHub repos.
+- SKILLS: Zero-token shortcuts that intercept common commands (open browser, list models, etc.) without using API calls.
+- PROJECT ROOT: The folder IMI reads for context. Set it to your project and the AI understands your codebase.
 
 CRITICAL — YOU ARE A LOCAL CHAT MODEL:
 - You CANNOT create files, run shell commands, open browsers, or execute any tools. IMI's backend handles all of that automatically before your response.
