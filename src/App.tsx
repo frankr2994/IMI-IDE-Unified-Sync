@@ -4576,22 +4576,22 @@ const App = () => {
                             const inp = stackChipInput[field] || '';
                             return (
                               <div>
-                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: 600 }}>{label}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px', letterSpacing: '0.01em' }}>{label}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                                   {arr.map((v: string, i: number) => (
-                                    <span key={i} style={{ fontSize: '0.72rem', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '20px', padding: '4px 10px', color: '#4facfe', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', padding: '4px 10px', color: '#4facfe', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                       {v}
-                                      <button onClick={() => upd('stack', { [field]: arr.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.8rem' }}>×</button>
+                                      <button onClick={() => upd('stack', { [field]: arr.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.75rem' }}>×</button>
                                     </span>
                                   ))}
                                   <input value={inp} onChange={e => setStackChipInput(p => ({...p, [field]: e.target.value}))}
                                     onKeyDown={e => { if (e.key === 'Enter' && inp.trim()) { upd('stack', { [field]: [...arr, inp.trim()] }); setStackChipInput(p => ({...p, [field]: ''})); e.preventDefault(); } }}
-                                    placeholder="type + Enter…" className="chat-input" style={{ fontSize: '0.72rem', height: '28px', padding: '0 10px', width: '110px', borderRadius: '20px' }} />
+                                    placeholder="type + Enter" className="chat-input" style={{ fontSize: '0.7rem', height: '32px', padding: '0 10px', width: '110px' }} />
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                                   {suggestions.filter(s => !arr.includes(s)).map(s => (
                                     <button key={s} onClick={() => upd('stack', { [field]: [...arr, s] })}
-                                      style={{ padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.4)', fontSize: '0.68rem', cursor: 'pointer' }}>+ {s}</button>
+                                      style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-dim)', fontSize: '0.67rem', cursor: 'pointer' }}>+ {s}</button>
                                   ))}
                                 </div>
                               </div>
@@ -4640,11 +4640,11 @@ const App = () => {
                                       <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', padding: '2px 8px', color: 'var(--primary)' }}>{t}</span>
                                     ))}
                                   </div>
-                                  <button onClick={() => { setFullProfile(p); (ipc as any).invoke('save-full-profile', p); setProfileMsg({ type: 'success', text: `✅ Applied: ${p.name}` }); setProfileSubTab('code'); }} style={{ width: '100%', padding: '8px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Apply Profile</button>
+                                  <button onClick={() => { setFullProfile(p); (ipc as any).invoke('save-full-profile', p); setProfileMsg({ type: 'success', text: `✅ Applied: ${p.name}` }); setProfileSubTab('code'); }} className="btn-premium" style={{ width: '100%', height: '34px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>APPLY PROFILE</button>
                                 </div>
                               ))}
                             </div>
-                          </div>
+                          </TabCard>
                         );
 
                         return null;
