@@ -481,6 +481,7 @@ const App = () => {
   const [geminiKey, setGeminiKey] = useState('');
   const [githubToken, setGithubToken] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
+  const [apiKeySearch, setApiKeySearch] = useState('');
   const [claudeKey, setClaudeKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
