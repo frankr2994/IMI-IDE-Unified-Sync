@@ -4205,9 +4205,9 @@ const App = () => {
                   );
                 };
                 const dnaRow = (label: string, content: React.ReactNode) => (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
-                    {content}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minHeight: '28px' }}>
+                    <div style={{ fontSize: '0.58rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.06em', whiteSpace: 'nowrap', width: '110px', flexShrink: 0 }}>{label}</div>
+                    <div style={{ flex: 1 }}>{content}</div>
                   </div>
                 );
                 const dnaSection = (title: string, icon: React.ReactNode, rows: React.ReactNode) => (
