@@ -89,7 +89,7 @@ const App = () => {
   const [npmSearching, setNpmSearching] = useState(false);
   const [npmTotal, setNpmTotal] = useState(0);
   const [npmError, setNpmError] = useState('');
-  const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'|'mcp'|'tools'|'ai'|'agent'|'keys'>('mcp');
+  const [mcpHubTab, setMcpHubTab] = useState<'npm'|'github'|'ollama'|'installed-tools'|'mcp'|'tools'|'ai'|'agent'|'keys'>('tools');
   const [agentStats, setAgentStats] = useState<any>(null);
 
   // 🎨 Style Analyzer
@@ -2694,11 +2694,11 @@ const App = () => {
                 {/* Sub-tabs */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0' }}>
                   {[
-                    { id: 'mcp',    label: '📦 MCP Registry',      sub: 'npm packages' },
-                    { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
                     { id: 'tools',  label: '🛠 Installed Tools',    sub: 'system check' },
                     { id: 'ai',     label: '🤖 AI Models',         sub: 'run locally' },
                     { id: 'keys',   label: '🔑 API Keys',           sub: 'manage keys' },
+                    { id: 'mcp',    label: '📦 MCP Registry',      sub: 'npm packages' },
+                    { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
                     { id: 'agent',  label: '🤖 Agent Monitor',      sub: 'loop stats' },
                   ].map(t => (
                     <button key={t.id} onClick={() => { setMcpHubTab(t.id as any); if (t.id === 'ai') loadOllamaModels(); if (t.id === 'agent') { (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {}); } }} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
@@ -3488,7 +3488,7 @@ const App = () => {
                   const q = apiKeySearch.toLowerCase().trim();
                   const results = q.length > 0
                     ? API_DIRECTORY.filter(s => s.name.toLowerCase().includes(q) || s.cat.toLowerCase().includes(q))
-                    : API_DIRECTORY;
+                    : [];
 
                   // Connected keys — all slots + extraKeys
                   const allSlots = [
