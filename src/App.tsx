@@ -4159,119 +4159,288 @@ const App = () => {
 
           {activeTab === 'style' && (
             <motion.div key="style" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              {/* Hero card — Export / Import */}
-              <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(155,77,255,0.08) 0%, rgba(79,172,254,0.06) 100%)', border: '1px solid rgba(155,77,255,0.25)' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <Palette size={20} style={{ color: 'var(--primary)' }} />
-                      <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>Style DNA</span>
-                      {styleProfile && <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '20px', color: '#00ff88', fontWeight: 700 }}>ACTIVE</span>}
+              {(() => {
+                // ── helpers ──
+                const dnaChip = (cat: keyof typeof DEFAULT_FULL_PROFILE, field: string, options: string[]) => {
+                  const val = (fullProfile as any)[cat]?.[field] ?? '';
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {options.map(o => {
+                        const active = val === o || val === true && o === 'Yes' || val === false && o === 'No';
+                        const isYes = o === 'Yes', isNo = o === 'No';
+                        const realVal = isYes ? true : isNo ? false : o;
+                        return (
+                          <button key={o} onClick={() => updFullProfile(cat, { [field]: val === realVal ? (isYes || isNo ? null : '') : realVal })}
+                            style={{ padding: '5px 12px', borderRadius: '8px', border: `1px solid ${active ? 'var(--primary)' : 'var(--glass-border)'}`, background: active ? 'rgba(155,77,255,0.18)' : 'rgba(255,255,255,0.04)', color: active ? 'var(--primary)' : 'rgba(255,255,255,0.6)', fontSize: '0.68rem', fontWeight: active ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+                            {o}
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, maxWidth: '480px' }}>
-                      IMI learns exactly how you write code — your indentation, quotes, naming, patterns — then codes that way forever. Export your style as a file and share it with any dev. They import it and IMI instantly codes like you.
-                    </div>
-                    {styleProfile && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-                        {[
-                          styleProfile.indent && `${styleProfile.indent}`,
-                          styleProfile.quotes && `${styleProfile.quotes} quotes`,
-                          styleProfile.semicolons != null && (styleProfile.semicolons ? 'semicolons' : 'no semi'),
-                          styleProfile.typescript != null && (styleProfile.typescript ? 'TypeScript' : 'JavaScript'),
-                          styleProfile.naming && styleProfile.naming,
-                        ].filter(Boolean).map((tag: any) => (
-                          <span key={tag} style={{ fontSize: '0.6rem', padding: '3px 9px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', color: 'var(--primary)', fontWeight: 700 }}>{tag}</span>
+                  );
+                };
+                const dnaTagList = (cat: keyof typeof DEFAULT_FULL_PROFILE, field: string, presets: string[]) => {
+                  const arr: string[] = (fullProfile as any)[cat]?.[field] ?? [];
+                  const inputKey = `${cat}.${field}`;
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                        {presets.map(p => {
+                          const on = arr.includes(p);
+                          return <button key={p} onClick={() => updFullProfile(cat, { [field]: on ? arr.filter((x: string) => x !== p) : [...arr, p] })}
+                            style={{ padding: '5px 12px', borderRadius: '8px', border: `1px solid ${on ? 'rgba(0,255,136,0.5)' : 'var(--glass-border)'}`, background: on ? 'rgba(0,255,136,0.1)' : 'rgba(255,255,255,0.04)', color: on ? '#00ff88' : 'rgba(255,255,255,0.6)', fontSize: '0.68rem', fontWeight: on ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>{p}</button>;
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <input value={stackChipInput[inputKey] || ''} onChange={e => setStackChipInput(s => ({ ...s, [inputKey]: e.target.value }))}
+                          onKeyDown={e => { if (e.key === 'Enter' && (stackChipInput[inputKey] || '').trim()) { const v = (stackChipInput[inputKey] || '').trim(); if (!arr.includes(v)) updFullProfile(cat, { [field]: [...arr, v] }); setStackChipInput(s => ({ ...s, [inputKey]: '' })); e.preventDefault(); } }}
+                          placeholder="+ add custom…" className="chat-input" style={{ flex: 1, height: '32px', fontSize: '0.68rem', padding: '0 10px' }} />
+                        {arr.filter((x: string) => !presets.includes(x)).map((custom: string) => (
+                          <span key={custom} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 9px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '20px', fontSize: '0.62rem', color: 'var(--primary)' }}>
+                            {custom} <button onClick={() => updFullProfile(cat, { [field]: arr.filter((x: string) => x !== custom) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.7 }}>×</button>
+                          </span>
                         ))}
-                        <span style={{ fontSize: '0.6rem', padding: '3px 9px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', color: 'rgba(255,255,255,0.4)' }}>{styleProfile.filesAnalyzed} files scanned</span>
                       </div>
-                    )}
+                    </div>
+                  );
+                };
+                const dnaRow = (label: string, content: React.ReactNode) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
+                    {content}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-                    <button onClick={async () => {
-                      const root = stats.projectRoot;
-                      if (!root) { setStyleMsg({ type: 'error', text: 'Set a project root in System → Workspace first' }); return; }
-                      setStyleLoading(true); setStyleMsg(null);
-                      try {
-                        const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
-                        if (p && !p.error) {
-                          setStyleProfile(p);
-                          const codeUpdate = { indent: p.indent, quotes: p.quotes, semicolons: p.semicolons, arrowFunctions: p.arrowFunctions, constOverLet: p.constOverLet, asyncAwait: p.asyncAwait, typescript: p.typescript, naming: p.naming, importStyle: p.importStyle, jsdocComments: p.jsdocComments, filesAnalyzed: p.filesAnalyzed };
-                          updFullProfile('code', codeUpdate);
-                          setStyleMsg({ type: 'success', text: `✅ Scanned ${p.filesAnalyzed} files — style learned` });
-                        } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
-                      } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
-                      setStyleLoading(false);
-                    }} disabled={styleLoading} className="btn-premium" style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em' }}>
-                      {styleLoading ? '⏳ SCANNING…' : '🔍 Scan My Project'}
-                    </button>
-                    <button onClick={() => {
-                      const exportData = { imi: 'style-profile', version: '1.0', exportedAt: new Date().toISOString(), ...fullProfile, code: { ...fullProfile.code, ...(styleProfile ? { filesAnalyzed: styleProfile.filesAnalyzed, analyzedAt: styleProfile.analyzedAt } : {}) } };
-                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `${(fullProfile.name || 'my-style').replace(/\s+/g,'-').toLowerCase()}.imistyle.json`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                      setStyleMsg({ type: 'success', text: `✅ Exported "${fullProfile.name || 'My Style Profile'}"` });
-                    }} style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.35)', borderRadius: '9px', color: '#00ff88', cursor: 'pointer' }}>
-                      ⬆ Export Style
-                    </button>
-                    <button onClick={() => importStyleRef.current?.click()} style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.35)', borderRadius: '9px', color: '#4facfe', cursor: 'pointer' }}>
-                      ⬇ Import Style
-                    </button>
+                );
+                const dnaSection = (title: string, icon: React.ReactNode, rows: React.ReactNode) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      {icon}
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
+                    </div>
+                    {rows}
                   </div>
-                </div>
-                {styleMsg && <div style={{ marginTop: '14px', padding: '8px 14px', borderRadius: '8px', fontSize: '0.68rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
-              </div>
+                );
 
-              {/* Profile name */}
-              <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>PROFILE NAME</span>
-                <input
-                  value={fullProfile.name}
-                  onChange={e => setFullProfile((p: typeof DEFAULT_FULL_PROFILE) => ({ ...p, name: e.target.value }))}
-                  placeholder="e.g. John's React Style, Airbnb Standard…"
-                  className="chat-input"
-                  style={{ flex: 1, height: '36px', fontSize: '0.72rem', padding: '0 14px' }}
-                />
-              </div>
-
-              {/* Code style grid */}
-              {styleProfile && (
-                <div className="glass-card" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px' }}>Detected Code Style</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
-                    {[
-                      { label: 'Indent', val: fullProfile.code.indent },
-                      { label: 'Quotes', val: fullProfile.code.quotes },
-                      { label: 'Semicolons', val: fullProfile.code.semicolons != null ? (fullProfile.code.semicolons ? 'Yes' : 'No') : '—' },
-                      { label: 'Arrow Functions', val: fullProfile.code.arrowFunctions != null ? (fullProfile.code.arrowFunctions ? 'Yes' : 'No') : '—' },
-                      { label: 'const over let', val: fullProfile.code.constOverLet != null ? (fullProfile.code.constOverLet ? 'Yes' : 'No') : '—' },
-                      { label: 'Async/Await', val: fullProfile.code.asyncAwait != null ? (fullProfile.code.asyncAwait ? 'Yes' : 'No') : '—' },
-                      { label: 'TypeScript', val: fullProfile.code.typescript != null ? (fullProfile.code.typescript ? 'Yes' : 'No') : '—' },
-                      { label: 'Naming', val: fullProfile.code.naming || '—' },
-                      { label: 'Imports', val: fullProfile.code.importStyle || '—' },
-                    ].map(item => (
-                      <div key={item.label} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px' }}>
-                        <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>{item.label}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#fff', fontWeight: 600 }}>{item.val || '—'}</div>
+                return (<>
+                  {/* ── Hero: scan / export / import ── */}
+                  <div className="glass-card" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, rgba(155,77,255,0.08) 0%, rgba(79,172,254,0.05) 100%)', border: '1px solid rgba(155,77,255,0.22)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                          <Palette size={18} style={{ color: 'var(--primary)' }} />
+                          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>Style DNA</span>
+                          {styleProfile && <span style={{ fontSize: '0.52rem', padding: '2px 8px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '20px', color: '#00ff88', fontWeight: 700 }}>ACTIVE</span>}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6, maxWidth: '460px' }}>
+                          Your complete developer identity — languages, tools, code style, workflow, design taste. Scan your project to auto-detect, then fill in the rest. Export as a file to share with any dev or team.
+                        </div>
+                        {(fullProfile.stack.languages.length > 0 || styleProfile) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '10px' }}>
+                            {fullProfile.stack.languages.slice(0, 6).map((l: string) => <span key={l} style={{ fontSize: '0.58rem', padding: '2px 8px', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.25)', borderRadius: '20px', color: '#4facfe', fontWeight: 700 }}>{l}</span>)}
+                            {fullProfile.stack.frameworks.slice(0, 4).map((f: string) => <span key={f} style={{ fontSize: '0.58rem', padding: '2px 8px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', color: 'var(--primary)', fontWeight: 700 }}>{f}</span>)}
+                            {styleProfile && <span style={{ fontSize: '0.58rem', padding: '2px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', color: 'rgba(255,255,255,0.4)' }}>{styleProfile.filesAnalyzed} files scanned</span>}
+                          </div>
+                        )}
                       </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', flexShrink: 0 }}>
+                        <button onClick={async () => {
+                          const root = stats.projectRoot;
+                          if (!root) { setStyleMsg({ type: 'error', text: 'Set a project root in System → Workspace first' }); return; }
+                          setStyleLoading(true); setStyleMsg(null);
+                          try {
+                            const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
+                            if (p && !p.error) {
+                              setStyleProfile(p);
+                              updFullProfile('code', { indent: p.indent, quotes: p.quotes, semicolons: p.semicolons, arrowFunctions: p.arrowFunctions, constOverLet: p.constOverLet, asyncAwait: p.asyncAwait, typescript: p.typescript, naming: p.naming, importStyle: p.importStyle, jsdocComments: p.jsdocComments, filesAnalyzed: p.filesAnalyzed });
+                              setStyleMsg({ type: 'success', text: `✅ Scanned ${p.filesAnalyzed} files — Code tab updated` });
+                            } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
+                          } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
+                          setStyleLoading(false);
+                        }} disabled={styleLoading} className="btn-premium" style={{ height: '36px', padding: '0 16px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>
+                          {styleLoading ? '⏳ SCANNING…' : '🔍 Auto-Scan Project'}
+                        </button>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => {
+                            const d = { imi: 'style-profile', version: '1.0', exportedAt: new Date().toISOString(), ...fullProfile };
+                            const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob); const a = document.createElement('a');
+                            a.href = url; a.download = `${(fullProfile.name || 'my-style').replace(/\s+/g,'-').toLowerCase()}.imistyle.json`; a.click(); URL.revokeObjectURL(url);
+                            setStyleMsg({ type: 'success', text: `✅ Exported "${fullProfile.name || 'My Style Profile'}"` });
+                          }} style={{ flex: 1, height: '36px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer' }}>⬆ Export</button>
+                          <button onClick={() => importStyleRef.current?.click()} style={{ flex: 1, height: '36px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', color: '#4facfe', cursor: 'pointer' }}>⬇ Import</button>
+                        </div>
+                      </div>
+                    </div>
+                    {styleMsg && <div style={{ marginTop: '12px', padding: '7px 12px', borderRadius: '7px', fontSize: '0.65rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
+                  </div>
+
+                  {/* ── Profile name ── */}
+                  <div className="glass-card" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>PROFILE NAME</span>
+                    <input value={fullProfile.name} onChange={e => setFullProfile((p: typeof DEFAULT_FULL_PROFILE) => ({ ...p, name: e.target.value }))} placeholder="e.g. John's React Style · Team Airbnb · Solo Python Dev…" className="chat-input" style={{ flex: 1, height: '32px', fontSize: '0.72rem', padding: '0 12px' }} />
+                    <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>AUTHOR</span>
+                    <input value={fullProfile.author} onChange={e => setFullProfile((p: typeof DEFAULT_FULL_PROFILE) => ({ ...p, author: e.target.value }))} placeholder="Your name…" className="chat-input" style={{ width: '140px', height: '32px', fontSize: '0.72rem', padding: '0 12px' }} />
+                  </div>
+
+                  {/* ── Tab bar ── */}
+                  <div style={{ display: 'flex', gap: '4px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '4px' }}>
+                    {([
+                      { id: 'code',     label: '💻 Code Style' },
+                      { id: 'stack',    label: '📦 Stack' },
+                      { id: 'workflow', label: '🔄 Workflow' },
+                      { id: 'design',   label: '🎨 Design' },
+                      { id: 'writing',  label: '✍️ Writing' },
+                    ] as { id: typeof styleDnaTab; label: string }[]).map(t => (
+                      <button key={t.id} onClick={() => setStyleDnaTab(t.id)}
+                        style={{ flex: 1, padding: '8px 4px', borderRadius: '7px', border: 'none', background: styleDnaTab === t.id ? 'rgba(155,77,255,0.2)' : 'transparent', color: styleDnaTab === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.45)', fontSize: '0.65rem', fontWeight: styleDnaTab === t.id ? 800 : 500, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+                        {t.label}
+                      </button>
                     ))}
                   </div>
-                </div>
-              )}
 
-              {/* No profile state */}
-              {!styleProfile && (
-                <div className="glass-card" style={{ padding: '32px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                  <Palette size={28} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: '12px' }} />
-                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginBottom: '6px' }}>No style profile yet</div>
-                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>Click <strong style={{ color: 'rgba(255,255,255,0.35)' }}>Scan My Project</strong> to learn your code style, or <strong style={{ color: 'rgba(255,255,255,0.35)' }}>Import Style</strong> to load one from another dev.</div>
-                </div>
-              )}
+                  {/* ── CODE tab ── */}
+                  {styleDnaTab === 'code' && (
+                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {dnaSection('JavaScript / TypeScript', <Terminal size={13} style={{ color: '#4facfe' }} />, <>
+                        {dnaRow('Indentation', dnaChip('code', 'indent', ['2 spaces', '4 spaces', 'tabs']))}
+                        {dnaRow('Quotes', dnaChip('code', 'quotes', ['single', 'double', 'backtick']))}
+                        {dnaRow('Semicolons', dnaChip('code', 'semicolons', ['Yes', 'No']))}
+                        {dnaRow('Arrow Functions', dnaChip('code', 'arrowFunctions', ['Yes', 'No']))}
+                        {dnaRow('const over let', dnaChip('code', 'constOverLet', ['Yes', 'No']))}
+                        {dnaRow('Async / Await', dnaChip('code', 'asyncAwait', ['Yes', 'No']))}
+                        {dnaRow('TypeScript', dnaChip('code', 'typescript', ['Yes', 'No']))}
+                        {dnaRow('Naming convention', dnaChip('code', 'naming', ['camelCase', 'PascalCase', 'snake_case', 'kebab-case']))}
+                        {dnaRow('Import style', dnaChip('code', 'importStyle', ['named', 'default', 'mixed']))}
+                        {dnaRow('JSDoc comments', dnaChip('code', 'jsdocComments', ['Yes', 'No']))}
+                      </>)}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Python', <span style={{ fontSize: '0.8rem' }}>🐍</span>, <>
+                          {dnaRow('Indentation', dnaChip('workflow', 'pythonIndent', ['4 spaces', '2 spaces', 'tabs']))}
+                          {dnaRow('Naming', dnaChip('workflow', 'pythonNaming', ['snake_case', 'camelCase']))}
+                          {dnaRow('Type hints', dnaChip('workflow', 'pythonTypeHints', ['Yes', 'No']))}
+                          {dnaRow('Docstrings', dnaChip('workflow', 'pythonDocstrings', ['Google', 'NumPy', 'reStructuredText', 'None']))}
+                          {dnaRow('Formatter', dnaChip('workflow', 'pythonFormatter', ['Black', 'autopep8', 'YAPF', 'None']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Rust / Go / Other', <span style={{ fontSize: '0.8rem' }}>⚙️</span>, <>
+                          {dnaRow('Error handling style', dnaChip('workflow', 'errorHandling', ['Result/Option', 'Exceptions', 'Error codes', 'Panic/crash']))}
+                          {dnaRow('Comment style', dnaChip('workflow', 'commentStyle', ['Inline only', 'Block headers', 'Full docs', 'Minimal']))}
+                          {dnaRow('Line length limit', dnaChip('workflow', 'lineLength', ['80 chars', '100 chars', '120 chars', 'No limit']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
+                        <textarea value={fullProfile.code.notes} onChange={e => updFullProfile('code', { notes: e.target.value })} placeholder="Any specific code style rules, linter configs, patterns you always follow…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                      </div>
+                    </div>
+                  )}
 
+                  {/* ── STACK tab ── */}
+                  {styleDnaTab === 'stack' && (
+                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {dnaSection('Languages', <Code size={13} style={{ color: '#4facfe' }} />,
+                        dnaRow('Select all you use', dnaTagList('stack', 'languages', ['JavaScript','TypeScript','Python','Rust','Go','Java','C#','C++','Swift','Kotlin','PHP','Ruby','Dart','Solidity','Bash']))
+                      )}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Frameworks & Libraries', <Layers size={13} style={{ color: '#9b4dff' }} />,
+                          dnaRow('Select all you use', dnaTagList('stack', 'frameworks', ['React','Vue','Angular','Next.js','Svelte','Express','Fastify','FastAPI','Django','Flask','Spring','Laravel','Rails','Flutter','Electron','Tauri']))
+                        )}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Tools & Infra', <Cpu size={13} style={{ color: '#00ff88' }} />,
+                          dnaRow('Select all you use', dnaTagList('stack', 'tools', ['Docker','Git','GitHub','VS Code','Vim/Neovim','Linux','PostgreSQL','MongoDB','Redis','AWS','GCP','Azure','Terraform','Kubernetes','GraphQL','REST','gRPC']))
+                        )}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('AI Usage', <Zap size={13} style={{ color: '#ffa000' }} />, <>
+                          {dnaRow('I use AI for', dnaTagList('stack', 'modelUsage', ['Code generation','Debugging','Code review','Documentation','Architecture planning','Refactoring','Test writing','Learning new tech','UI design','Data analysis']))}
+                          {dnaRow('Preferred model', dnaChip('stack', 'preferredModel', ['GPT-4o','Claude','Gemini','Mistral','Llama (local)','Qwen (local)','CodeLlama']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
+                        <textarea value={fullProfile.stack.notes} onChange={e => updFullProfile('stack', { notes: e.target.value })} placeholder="Any specific version requirements, tech constraints, things the AI should always know about your stack…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── WORKFLOW tab ── */}
+                  {styleDnaTab === 'workflow' && (
+                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {dnaSection('Development Approach', <GitBranch size={13} style={{ color: '#4facfe' }} />, <>
+                        {dnaRow('Coding style', dnaChip('workflow', 'approach', ['TDD', 'BDD', 'Agile', 'Kanban', 'Solo hacker', 'Cowboy coding']))}
+                        {dnaRow('Testing', dnaChip('workflow', 'testing', ['Unit tests always', 'Integration tests', 'E2E tests', 'Tests when needed', 'No tests']))}
+                        {dnaRow('Documentation', dnaChip('workflow', 'documentation', ['Always full docs', 'README only', 'Inline comments', 'Self-documenting', 'Minimal']))}
+                        {dnaRow('Code review style', dnaChip('workflow', 'codeReview', ['Strict', 'Collaborative', 'Quick pass', 'Solo — no review']))}
+                      </>)}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('File & Project Structure', <Database size={13} style={{ color: '#9b4dff' }} />, <>
+                          {dnaRow('File size preference', dnaChip('workflow', 'fileSize', ['Small files (< 100 lines)', 'Medium (100–300 lines)', 'Large files OK']))}
+                          {dnaRow('Folder structure', dnaChip('workflow', 'folderStructure', ['Feature-based', 'Layer-based', 'Flat', 'Monorepo']))}
+                          {dnaRow('Git commit style', dnaChip('workflow', 'gitStyle', ['Conventional commits', 'Descriptive', 'Short & quick', 'Squash & merge']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Skills & Specialties', <Zap size={13} style={{ color: '#00ff88' }} />,
+                          dnaRow('I specialize in', dnaTagList('workflow', 'specialties', ['Frontend','Backend','Full-stack','DevOps','Mobile','AI/ML','Data engineering','Game dev','Embedded','Web3/Blockchain','Security','Systems programming','CLI tools','APIs']))
+                        )}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
+                        <textarea value={fullProfile.workflow.notes} onChange={e => updFullProfile('workflow', { notes: e.target.value })} placeholder="Your workflow rules, team conventions, things the AI should always keep in mind when helping you…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── DESIGN tab ── */}
+                  {styleDnaTab === 'design' && (
+                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {dnaSection('Visual Style', <Palette size={13} style={{ color: 'var(--primary)' }} />, <>
+                        {dnaRow('Color palette', dnaChip('design', 'colorPalette', ['Dark', 'Light', 'High contrast', 'Colorful', 'Pastel', 'Monochrome']))}
+                        {dnaRow('Corner radius', dnaChip('design', 'cornerRadius', ['Sharp', 'Subtle', 'Rounded', 'Pill']))}
+                        {dnaRow('Spacing', dnaChip('design', 'spacing', ['Tight', 'Normal', 'Comfortable', 'Spacious']))}
+                        {dnaRow('Typography', dnaChip('design', 'typography', ['Monospace', 'Modern sans', 'Serif', 'Mixed']))}
+                        {dnaRow('Animations', dnaChip('design', 'animations', ['None', 'Subtle', 'Smooth', 'Energetic']))}
+                        {dnaRow('Density', dnaChip('design', 'density', ['Dense', 'Normal', 'Spacious']))}
+                      </>)}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('UI Framework Preferences', <Layers size={13} style={{ color: '#4facfe' }} />, <>
+                          {dnaRow('CSS approach', dnaChip('art', 'visualStyle', ['Tailwind', 'CSS Modules', 'Styled Components', 'Plain CSS', 'Sass/SCSS', 'Inline styles']))}
+                          {dnaRow('Component style', dnaChip('art', 'mood', ['Glassmorphism', 'Neumorphism', 'Flat', 'Material', 'Minimal', 'Brutalist']))}
+                          {dnaRow('Icon library', dnaChip('art', 'medium', ['Lucide', 'Heroicons', 'FontAwesome', 'Phosphor', 'Custom SVG']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
+                        <textarea value={fullProfile.design.notes} onChange={e => updFullProfile('design', { notes: e.target.value })} placeholder="Specific design rules, brand colors, fonts you always use, accessibility requirements…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── WRITING tab ── */}
+                  {styleDnaTab === 'writing' && (
+                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {dnaSection('Communication Style', <span style={{ fontSize: '0.9rem' }}>✍️</span>, <>
+                        {dnaRow('Tone', dnaChip('writing', 'tone', ['Professional', 'Casual', 'Technical', 'Friendly', 'Blunt']))}
+                        {dnaRow('Response length', dnaChip('writing', 'length', ['Minimal', 'Concise', 'Detailed', 'Thorough']))}
+                        {dnaRow('Formality', dnaChip('writing', 'formality', ['Formal', 'Semi-formal', 'Casual', 'Slang OK']))}
+                        {dnaRow('Technical level', dnaChip('writing', 'techLevel', ['Beginner friendly', 'Intermediate', 'Advanced', 'Expert — skip basics']))}
+                      </>)}
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        {dnaSection('Documentation Preferences', <Database size={13} style={{ color: '#4facfe' }} />, <>
+                          {dnaRow('README style', dnaChip('workflow', 'readmeStyle', ['Minimal', 'Standard', 'Full wiki', 'Badge-heavy']))}
+                          {dnaRow('Comment density', dnaChip('workflow', 'commentDensity', ['No comments', 'Key points only', 'Every function', 'Full explanation']))}
+                          {dnaRow('Changelog', dnaChip('workflow', 'changelog', ['Always keep', 'Sometimes', 'Never']))}
+                        </>)}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
+                        <textarea value={fullProfile.writing.notes} onChange={e => updFullProfile('writing', { notes: e.target.value })} placeholder="How you like the AI to talk to you, things to always include or avoid, your preferred explanation style…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                      </div>
+                    </div>
+                  )}
+                </>);
+              })()}
             </motion.div>
           )}
 
