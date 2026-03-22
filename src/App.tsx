@@ -153,9 +153,6 @@ const App = () => {
   const [parallelMode, setParallelMode] = useState(false);
   const [parallelResults, setParallelResults] = useState<Record<string, { text: string; ms: number; model: string; error?: boolean }> | null>(null);
   const [parallelLoading, setParallelLoading] = useState(false);
-  const [navigatorData, setNavigatorData] = useState<{ files: any[]; packageFrequency: Record<string, number>; totalFiles: number } | null>(null);
-  const [navigatorLoading, setNavigatorLoading] = useState(false);
-  const [navigatorSearch, setNavigatorSearch] = useState('');
   const [docPackages, setDocPackages] = useState<any[]>([]);
   const [docLoading, setDocLoading] = useState(false);
   const [cacheStats, setCacheStats] = useState<{ files: number; hits: number } | null>(null);
@@ -1135,23 +1132,6 @@ const App = () => {
     }
   }, [stats.projectRoot]);
 
-  // Auto-scan project navigator when the tab opens
-  useEffect(() => {
-    if (activeTab !== 'navigator') return;
-    const doScan = async () => {
-      setNavigatorLoading(true);
-      try {
-        // Always fetch fresh project root directly from backend — don't rely on stale stats state
-        const freshStats = await (ipc as any).invoke('get-project-stats');
-        const root = freshStats?.projectRoot;
-        if (!root) { setNavigatorLoading(false); return; }
-        const data = await (ipc as any).invoke('scan-project-imports', root);
-        if (data && !data.error) setNavigatorData(data);
-      } catch(e) { /* silent fail */ }
-      setNavigatorLoading(false);
-    };
-    doScan();
-  }, [activeTab]);
 
   useEffect(() => {
     loadConfig();
@@ -4048,123 +4028,6 @@ const App = () => {
             </motion.div>
           )}
 
-          {activeTab === 'navigator' && (
-            <motion.div key="navigator" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              {/* Header */}
-              <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>🗺 PROJECT NAVIGATOR</div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>File dependency tree · Import relationships · Package usage</div>
-                </div>
-                <button onClick={async () => {
-                  setNavigatorLoading(true);
-                  try {
-                    const freshStats = await (ipc as any).invoke('get-project-stats');
-                    const root = freshStats?.projectRoot;
-                    if (!root) { alert('No project root found. Set one in System → Preferences.'); setNavigatorLoading(false); return; }
-                    const data = await (ipc as any).invoke('scan-project-imports', root);
-                    if (data && !data.error) setNavigatorData(data);
-                    else if (data?.error) alert(`Scan error: ${data.error}`);
-                  } catch(e: any) { alert(`Scan failed: ${e?.message}`); }
-                  setNavigatorLoading(false);
-                }} className="btn-premium" style={{ padding: '8px 16px', fontSize: '0.65rem' }}>
-                  {navigatorLoading ? '⏳ Scanning…' : '🔄 RESCAN'}
-                </button>
-              </div>
-
-              {/* Cache stats bar */}
-              {cacheStats && (
-                <div style={{ display: 'flex', gap: '1px', background: 'var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
-                  {[
-                    { label: 'CACHED FILES', value: cacheStats.files, color: '#4facfe' },
-                    { label: 'CACHE HITS', value: cacheStats.hits, color: '#00ff88' },
-                    { label: 'TTL', value: '60s', color: 'rgba(255,255,255,0.5)' },
-                  ].map(s => (
-                    <div key={s.label} style={{ flex: 1, padding: '10px 16px', background: 'rgba(0,0,0,0.2)' }}>
-                      <div style={{ fontSize: '0.52rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{s.label}</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color, marginTop: '2px' }}>{s.value}</div>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px' }}>
-                    <button onClick={() => { (ipc as any).send('clear-file-cache'); setCacheStats(null); }} style={{ fontSize: '0.6rem', padding: '4px 10px', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', borderRadius: '6px', color: '#ff416c', cursor: 'pointer' }}>CLEAR CACHE</button>
-                  </div>
-                </div>
-              )}
-              <button onClick={async () => { const s = await (ipc as any).invoke('get-cache-stats'); setCacheStats(s); }} style={{ margin: '8px 20px 0', padding: '6px 12px', background: 'rgba(79,172,254,0.08)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '6px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', width: 'fit-content' }}>📊 Refresh Cache Stats</button>
-
-              {navigatorLoading && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', opacity: 0.7 }}>
-                  <span style={{ fontSize: '3rem' }}>🔍</span>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>Scanning project files…</div>
-                </div>
-              )}
-              {!navigatorData && !navigatorLoading && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', opacity: 0.4 }}>
-                  <span style={{ fontSize: '3rem' }}>🗺</span>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textAlign: 'center' }}>No project files found — click RESCAN to try again</div>
-                </div>
-              )}
-
-              {navigatorData && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                  {/* Stats */}
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'FILES SCANNED', value: navigatorData.totalFiles, color: 'var(--primary)' },
-                      { label: 'PACKAGES USED', value: Object.keys(navigatorData.packageFrequency).length, color: '#4facfe' },
-                      { label: 'TOTAL IMPORTS', value: navigatorData.files.reduce((a: number, f: any) => a + f.imports.length, 0), color: '#00ff88' },
-                    ].map(s => (
-                      <div key={s.label} style={{ padding: '10px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', minWidth: '120px' }}>
-                        <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>{s.label}</div>
-                        <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color }}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Search */}
-                  <input value={navigatorSearch} onChange={e => setNavigatorSearch(e.target.value)} placeholder="Filter files…" style={{ width: '100%', padding: '8px 12px', marginBottom: '14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }} />
-
-                  {/* Top packages */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '8px' }}>TOP DEPENDENCIES BY USAGE</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {Object.entries(navigatorData.packageFrequency).sort((a: any, b: any) => b[1] - a[1]).slice(0, 15).map(([pkg, count]: [string, any]) => (
-                        <div key={pkg} style={{ padding: '3px 10px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', fontSize: '0.65rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          {pkg} <span style={{ opacity: 0.6, fontSize: '0.55rem' }}>×{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* File list */}
-                  <div style={{ fontSize: '0.62rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.12em', marginBottom: '8px' }}>FILE DEPENDENCY MAP</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {navigatorData.files.filter((f: any) => !navigatorSearch || f.file.toLowerCase().includes(navigatorSearch.toLowerCase())).map((f: any) => (
-                      <div key={f.file} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: f.imports.length > 0 ? '6px' : '0' }}>
-                          <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'rgba(255,255,255,0.8)' }}>{f.file}</span>
-                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                            <span style={{ fontSize: '0.52rem', background: 'rgba(79,172,254,0.1)', color: '#4facfe', padding: '2px 6px', borderRadius: '4px' }}>{f.size} lines</span>
-                            <span style={{ fontSize: '0.52rem', background: 'rgba(155,77,255,0.1)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '4px' }}>{f.imports.length} imports</span>
-                          </div>
-                        </div>
-                        {f.imports.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {f.imports.slice(0, 8).map((imp: any, i: number) => (
-                              <span key={i} style={{ fontSize: '0.58rem', padding: '2px 7px', background: imp.type === 'local' ? 'rgba(0,255,136,0.07)' : 'rgba(255,255,255,0.05)', border: `1px solid ${imp.type === 'local' ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '4px', color: imp.type === 'local' ? '#00ff88' : 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
-                                {imp.type === 'local' ? '↳' : '📦'} {imp.path}
-                              </span>
-                            ))}
-                            {f.imports.length > 8 && <span style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>+{f.imports.length - 8} more</span>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
 
           {activeTab === 'style' && (
             <motion.div key="style" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
