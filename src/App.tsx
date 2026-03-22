@@ -2028,13 +2028,6 @@ const App = () => {
                                         </div>
                                       );
                                     })}
-                                    <div onClick={() => { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); }}
-                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 14px', color: 'rgba(155,77,255,0.8)', fontSize: '0.65rem', cursor: 'pointer', borderTop: '1px solid var(--glass-border)', fontWeight: 700 }}
-                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(155,77,255,0.08)'; }}
-                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                                    >
-                                      <span style={{ fontSize: '0.8rem' }}>＋</span> Add a model
-                                    </div>
                                   </>);
                                 })()}
                                 {/* Local Ollama models as Brain */}
@@ -2053,9 +2046,9 @@ const App = () => {
                                         <Database size={12} style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', flexShrink: 0 }} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-                                          <div style={{ fontSize: '0.55rem', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          <div style={{ fontSize: '0.48rem', display: 'flex', gap: '6px', alignItems: 'center', opacity: 0.8 }}>
                                             <span style={{ color: m.tooLarge ? '#ff416c' : 'var(--text-dim)' }}>Local · {m.size}</span>
-                                            <span style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 900 }}>{m.tooLarge ? "⚠️ Can't Run" : '✅ Ready'}</span>
+                                            <span style={{ color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 900 }}>{m.tooLarge ? "⚠ Can't Run" : '✅ Ready'}</span>
                                           </div>
                                         </div>
                                         {activeDirector === id && !m.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
