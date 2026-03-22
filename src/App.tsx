@@ -4156,6 +4156,124 @@ const App = () => {
             </motion.div>
           )}
 
+          {activeTab === 'style' && (
+            <motion.div key="style" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Hero card — Export / Import */}
+              <div className="glass-card" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(155,77,255,0.08) 0%, rgba(79,172,254,0.06) 100%)', border: '1px solid rgba(155,77,255,0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '200px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                      <Palette size={20} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>Style DNA</span>
+                      {styleProfile && <span style={{ fontSize: '0.55rem', padding: '2px 8px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '20px', color: '#00ff88', fontWeight: 700 }}>ACTIVE</span>}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, maxWidth: '480px' }}>
+                      IMI learns exactly how you write code — your indentation, quotes, naming, patterns — then codes that way forever. Export your style as a file and share it with any dev. They import it and IMI instantly codes like you.
+                    </div>
+                    {styleProfile && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
+                        {[
+                          styleProfile.indent && `${styleProfile.indent}`,
+                          styleProfile.quotes && `${styleProfile.quotes} quotes`,
+                          styleProfile.semicolons != null && (styleProfile.semicolons ? 'semicolons' : 'no semi'),
+                          styleProfile.typescript != null && (styleProfile.typescript ? 'TypeScript' : 'JavaScript'),
+                          styleProfile.naming && styleProfile.naming,
+                        ].filter(Boolean).map((tag: any) => (
+                          <span key={tag} style={{ fontSize: '0.6rem', padding: '3px 9px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', color: 'var(--primary)', fontWeight: 700 }}>{tag}</span>
+                        ))}
+                        <span style={{ fontSize: '0.6rem', padding: '3px 9px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', color: 'rgba(255,255,255,0.4)' }}>{styleProfile.filesAnalyzed} files scanned</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+                    <button onClick={async () => {
+                      const root = stats.projectRoot;
+                      if (!root) { setStyleMsg({ type: 'error', text: 'Set a project root in System → Workspace first' }); return; }
+                      setStyleLoading(true); setStyleMsg(null);
+                      try {
+                        const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
+                        if (p && !p.error) {
+                          setStyleProfile(p);
+                          const codeUpdate = { indent: p.indent, quotes: p.quotes, semicolons: p.semicolons, arrowFunctions: p.arrowFunctions, constOverLet: p.constOverLet, asyncAwait: p.asyncAwait, typescript: p.typescript, naming: p.naming, importStyle: p.importStyle, jsdocComments: p.jsdocComments, filesAnalyzed: p.filesAnalyzed };
+                          upd('code', codeUpdate);
+                          setStyleMsg({ type: 'success', text: `✅ Scanned ${p.filesAnalyzed} files — style learned` });
+                        } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
+                      } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
+                      setStyleLoading(false);
+                    }} disabled={styleLoading} className="btn-premium" style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em' }}>
+                      {styleLoading ? '⏳ SCANNING…' : '🔍 Scan My Project'}
+                    </button>
+                    <button onClick={() => {
+                      const exportData = { imi: 'style-profile', version: '1.0', exportedAt: new Date().toISOString(), ...fullProfile, code: { ...fullProfile.code, ...(styleProfile ? { filesAnalyzed: styleProfile.filesAnalyzed, analyzedAt: styleProfile.analyzedAt } : {}) } };
+                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${(fullProfile.name || 'my-style').replace(/\s+/g,'-').toLowerCase()}.imistyle.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      setStyleMsg({ type: 'success', text: `✅ Exported "${fullProfile.name || 'My Style Profile'}"` });
+                    }} style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.35)', borderRadius: '9px', color: '#00ff88', cursor: 'pointer' }}>
+                      ⬆ Export Style
+                    </button>
+                    <button onClick={() => importStyleRef.current?.click()} style={{ height: '40px', padding: '0 20px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.05em', background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.35)', borderRadius: '9px', color: '#4facfe', cursor: 'pointer' }}>
+                      ⬇ Import Style
+                    </button>
+                  </div>
+                </div>
+                {styleMsg && <div style={{ marginTop: '14px', padding: '8px 14px', borderRadius: '8px', fontSize: '0.68rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
+              </div>
+
+              {/* Profile name */}
+              <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-dim)', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>PROFILE NAME</span>
+                <input
+                  value={fullProfile.name}
+                  onChange={e => setFullProfile((p: typeof DEFAULT_FULL_PROFILE) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. John's React Style, Airbnb Standard…"
+                  className="chat-input"
+                  style={{ flex: 1, height: '36px', fontSize: '0.72rem', padding: '0 14px' }}
+                />
+              </div>
+
+              {/* Code style grid */}
+              {styleProfile && (
+                <div className="glass-card" style={{ padding: '20px' }}>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '14px' }}>Detected Code Style</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
+                    {[
+                      { label: 'Indent', val: fullProfile.code.indent },
+                      { label: 'Quotes', val: fullProfile.code.quotes },
+                      { label: 'Semicolons', val: fullProfile.code.semicolons != null ? (fullProfile.code.semicolons ? 'Yes' : 'No') : '—' },
+                      { label: 'Arrow Functions', val: fullProfile.code.arrowFunctions != null ? (fullProfile.code.arrowFunctions ? 'Yes' : 'No') : '—' },
+                      { label: 'const over let', val: fullProfile.code.constOverLet != null ? (fullProfile.code.constOverLet ? 'Yes' : 'No') : '—' },
+                      { label: 'Async/Await', val: fullProfile.code.asyncAwait != null ? (fullProfile.code.asyncAwait ? 'Yes' : 'No') : '—' },
+                      { label: 'TypeScript', val: fullProfile.code.typescript != null ? (fullProfile.code.typescript ? 'Yes' : 'No') : '—' },
+                      { label: 'Naming', val: fullProfile.code.naming || '—' },
+                      { label: 'Imports', val: fullProfile.code.importStyle || '—' },
+                    ].map(item => (
+                      <div key={item.label} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>{item.label}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#fff', fontWeight: 600 }}>{item.val || '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No profile state */}
+              {!styleProfile && (
+                <div className="glass-card" style={{ padding: '32px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                  <Palette size={28} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: '12px' }} />
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginBottom: '6px' }}>No style profile yet</div>
+                  <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>Click <strong style={{ color: 'rgba(255,255,255,0.35)' }}>Scan My Project</strong> to learn your code style, or <strong style={{ color: 'rgba(255,255,255,0.35)' }}>Import Style</strong> to load one from another dev.</div>
+                </div>
+              )}
+
+            </motion.div>
+          )}
+
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
