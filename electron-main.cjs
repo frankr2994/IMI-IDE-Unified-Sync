@@ -1413,7 +1413,8 @@ let DEEPSEEK_KEY = ''; let MISTRAL_KEY = ''; let LLAMA_KEY = ''; let PERPLEXITY_
 let GROQ_KEY = ''; let GROK_KEY = ''; let COHERE_KEY = '';
 let CUSTOM_API_KEY = ''; let CUSTOM_API_URL = ''; let CUSTOM_API_MODEL = ''; 
 let JULES_KEY = ''; let GOOGLE_MAPS_KEY = '';
-let ACTIVE_BRAIN = 'gemini'; let ACTIVE_CODER = 'imi-core'; let THEME = 'glass'; let LOG_RETENTION = 15;
+let ACTIVE_BRAIN = 'gemini'; let ACTIVE_CODER = 'imi-core'; let THEME = 'glass';
+let ACCENT_COLOR = '#9b4dff'; let LOG_RETENTION = 15;
 let SYNC_INTERVAL_MS = 60000; let syncTimer = null;
 // â‰¡Æ’ÂºÃ¡ Brain AI config
 let BRAIN_MODEL = 'gemini-2.5-flash'; let BRAIN_TEMPERATURE = 0.7; let BRAIN_MAX_TOKENS = 32000; let STRATEGY_VERSION = '1.0.1';
@@ -1431,7 +1432,7 @@ const saveGlobalState = () => {
       customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
       julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, 
       activeBrain: ACTIVE_BRAIN, activeCoder: ACTIVE_CODER,
-      theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
+      theme: THEME, accentColor: ACCENT_COLOR, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
       mcpServersList, projectRoot: currentProjectRoot 
     };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
@@ -1456,7 +1457,7 @@ try {
       GOOGLE_MAPS_KEY = state.config.googleMapsKey || ''; 
       ACTIVE_BRAIN = state.config.activeBrain || 'gemini';
       ACTIVE_CODER = state.config.activeCoder || state.config.activeEngine || 'imi-core';
-      THEME = state.config.theme || 'glass'; LOG_RETENTION = state.config.logRetention || 15;
+      THEME = state.config.theme || 'glass'; ACCENT_COLOR = state.config.accentColor || '#9b4dff'; LOG_RETENTION = state.config.logRetention || 15;
       if (state.config.syncFrequency) SYNC_INTERVAL_MS = state.config.syncFrequency * 1000;
       // Clean up duplicates if any
       const rawMCPs = state.config.mcpServersList || [];
@@ -1486,6 +1487,7 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.activeBrain !== undefined) ACTIVE_BRAIN = config.activeBrain;
   if (config.activeCoder !== undefined) ACTIVE_CODER = config.activeCoder;
   if (config.theme !== undefined) THEME = config.theme;
+  if (config.accentColor !== undefined) ACCENT_COLOR = config.accentColor;
   if (config.logRetention !== undefined) LOG_RETENTION = config.logRetention;
   if (config.brainModel !== undefined) BRAIN_MODEL = config.brainModel;
   if (config.brainTemperature !== undefined) BRAIN_TEMPERATURE = parseFloat(config.brainTemperature);
@@ -1516,7 +1518,7 @@ ipcMain.handle('get-api-config', () => ({
   deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY,
   customApiKey: CUSTOM_API_KEY, customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
   julesApiKey: JULES_KEY, activeBrain: ACTIVE_BRAIN, activeCoder: ACTIVE_CODER, projectRoot: currentProjectRoot,
-  theme: THEME, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
+  theme: THEME, accentColor: ACCENT_COLOR, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
   brainModel: BRAIN_MODEL, brainTemperature: BRAIN_TEMPERATURE, brainMaxTokens: BRAIN_MAX_TOKENS, strategyVersion: STRATEGY_VERSION
 }));
 
@@ -5527,6 +5529,7 @@ async function ddgResolveUrl(siteName) {
     return null;
   } catch { return null; }
 }
+
 
 
 

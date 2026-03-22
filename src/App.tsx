@@ -501,6 +501,7 @@ const App = () => {
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
   const [snapshotMode, setSnapshotMode] = useState(true);
   const [theme, setTheme] = useState('glass');
+  const [accentColor, setAccentColor] = useState('#9b4dff');
   const [logRetention, setLogRetention] = useState(15);
   const [syncFrequency, setSyncFrequency] = useState('60'); // Default 60s
   const [debugMode, setDebugMode] = useState(false);
