@@ -1981,8 +1981,9 @@ const App = () => {
                           </div>
                           <AnimatePresence>
                             {isDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflowY: 'auto', maxHeight: '320px' }}>
-                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)' }}>BRAIN MODEL</div>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '340px' }}>
+                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>BRAIN MODEL</div>
+                                <div style={{ overflowY: 'auto', flex: 1 }}>
                                 {(() => {
                                   const cloudModels = [
                                     { id: 'gemini',     name: 'Gemini',      sub: 'Google · Free',         icon: '✨', key: geminiKey?.trim() },
@@ -2053,9 +2054,10 @@ const App = () => {
                                     );
                                   })}
                                 </>}
-                                <div style={{ padding: '8px 14px', fontSize: '0.58rem', color: 'var(--text-dim)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                </div>{/* end scroll area */}
+                                <div style={{ padding: '7px 14px', fontSize: '0.58rem', color: 'rgba(155,77,255,0.8)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}
                                   onClick={() => { setIsDropdownOpen(false); setActiveTab('settings'); setSettingsActiveSubTab('apis'); }}>
-                                  + Add model keys in Settings →
+                                  ＋ Add a model
                                 </div>
                               </motion.div>
                             )}
@@ -2072,8 +2074,9 @@ const App = () => {
                           </div>
                           <AnimatePresence>
                             {isCoderDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden' }}>
-                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)' }}>CODER ENGINE</div>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '340px' }}>
+                                <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>CODER ENGINE</div>
+                                <div style={{ overflowY: 'auto', flex: 1 }}>
                                 {([
                                   // Always available
                                   { id: 'imi-core', name: 'IMI Core',    desc: 'Built-in · no setup',   icon: <Zap size={12}/>,    always: true,  key: '' },
@@ -2107,10 +2110,11 @@ const App = () => {
                                     {activeEngine === opt.id && !opt.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                   </div>
                                 ))}
+                                </div>{/* end scroll area */}
                                 {ollamaModels.length === 0 && (
-                                  <div style={{ padding: '8px 14px', fontSize: '0.58rem', color: 'var(--text-dim)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                  <div style={{ padding: '7px 14px', fontSize: '0.58rem', color: 'rgba(0,255,136,0.7)', borderTop: '1px solid var(--glass-border)', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }}
                                     onClick={() => { setIsCoderDropdownOpen(false); setActiveTab('devhub'); setMcpHubTab('ai'); }}>
-                                    + Pull local models in Dev Hub →
+                                    ＋ Pull local models in Dev Hub →
                                   </div>
                                 )}
                               </motion.div>
