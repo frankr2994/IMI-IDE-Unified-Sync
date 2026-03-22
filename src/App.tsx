@@ -117,6 +117,7 @@ const App = () => {
     });
   };
   const [profileSubTab, setProfileSubTab] = useState<'code'|'design'|'art'|'writing'|'workflow'|'stack'|'community'>('code');
+  const [styleDnaTab, setStyleDnaTab] = useState<'code'|'stack'|'workflow'|'design'|'writing'>('code');
   const [communityProfiles, setCommunityProfiles] = useState<any[]>([]);
   const [communityProfilesLoading, setCommunityProfilesLoading] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success'|'error'; text: string } | null>(null);
