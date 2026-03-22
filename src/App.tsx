@@ -4432,162 +4432,295 @@ const App = () => {
                   {settingsActiveSubTab === 'style' && (
                     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-                      {/* Header */}
-                      <div style={{ background: 'rgba(79,172,254,0.06)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '12px', padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: '0.88rem', marginBottom: '4px', color: 'white' }}>🎨 Style & Impact Analyzer</div>
-                            <div style={{ color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.5 }}>
-                              Zero tokens — learns your coding style locally and injects it into every code generation prompt.
-                            </div>
-                          </div>
-                          <button
-                            onClick={async () => {
-                              const root = stats.projectRoot;
-                              if (!root) {
-                                setStyleMsg({ type: 'error', text: 'No project root set — go to Preferences and set your project folder first.' });
-                                return;
-                              }
-                              setStyleLoading(true);
-                              setStyleMsg(null);
-                              try {
-                                const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
-                                if (p && !p.error) {
-                                  setStyleProfile(p);
-                                  setStyleMsg({ type: 'success', text: `✅ Analyzed ${p.filesAnalyzed} files — style profile active` });
-                                } else {
-                                  setStyleMsg({ type: 'error', text: p?.error || 'Analysis failed — check project root is a code folder' });
-                                }
-                              } catch(e: any) {
-                                setStyleMsg({ type: 'error', text: e.message || 'Unexpected error' });
-                              }
-                              setStyleLoading(false);
-                            }}
-                            disabled={styleLoading}
-                            style={{ padding: '8px 16px', background: styleLoading ? 'rgba(79,172,254,0.08)' : 'rgba(79,172,254,0.15)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '8px', color: '#4facfe', cursor: styleLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.7rem', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s' }}>
-                            {styleLoading ? '⏳ Analyzing…' : '🔍 Learn My Style'}
-                          </button>
-                        </div>
-                        {/* Inline feedback message */}
-                        {styleMsg && (
-                          <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '7px', fontSize: '0.67rem', fontWeight: 600, background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.08)' : 'rgba(255,65,108,0.08)', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.25)' : 'rgba(255,65,108,0.25)'}`, color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                            <span>{styleMsg.text}</span>
-                            <button onClick={() => setStyleMsg(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px', fontSize: '0.8rem' }}>✕</button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Style Profile */}
-                      {styleProfile ? (
-                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                            <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#4facfe', letterSpacing: '0.12em' }}>✅ STYLE PROFILE LOADED</div>
-                            <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>
-                              {styleProfile.filesAnalyzed} files · {new Date(styleProfile.analyzedAt).toLocaleTimeString()}
-                            </div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                            {[
-                              { label: 'Indent',     value: styleProfile.indent },
-                              { label: 'Quotes',     value: styleProfile.quotes },
-                              { label: 'Semicolons', value: styleProfile.semicolons ? 'yes' : 'no' },
-                              { label: 'Functions',  value: styleProfile.arrowFunctions ? 'arrow =>' : 'named fn' },
-                              { label: 'Variables',  value: styleProfile.constOverLet ? 'const first' : 'let/const' },
-                              { label: 'Async',      value: styleProfile.asyncAwait ? 'async/await' : '.then()' },
-                              { label: 'Naming',     value: styleProfile.naming },
-                              { label: 'Imports',    value: styleProfile.importStyle },
-                              { label: 'TypeScript', value: styleProfile.typescript ? 'yes' : 'no' },
-                              { label: 'JSDoc',      value: styleProfile.jsdocComments ? 'yes' : 'no' },
-                            ].map(s => (
-                              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px' }}>
-                                <span style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{s.label}</span>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'white' }}>{s.value}</span>
+                      {/* ── Profile header card ── */}
+                      {(() => {
+                        const upd = (patch: any) => {
+                          const next = { ...fullProfile, ...patch };
+                          setFullProfile(next);
+                          (ipc as any).invoke('save-full-profile', next).then((saved: any) => { if (saved && !saved.error) setFullProfile(saved); }).catch(() => {});
+                        };
+                        return (
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <input value={fullProfile.name} onChange={e => upd({ name: e.target.value })} placeholder="Profile name…" className="chat-input" style={{ fontSize: '0.82rem', fontWeight: 700, height: '34px', padding: '0 10px' }} />
+                                <input value={fullProfile.description} onChange={e => upd({ description: e.target.value })} placeholder="Short description (optional)…" className="chat-input" style={{ fontSize: '0.68rem', height: '30px', padding: '0 10px' }} />
                               </div>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(79,172,254,0.06)', border: '1px solid rgba(79,172,254,0.15)', borderRadius: '8px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
-                            💡 This style profile is automatically injected into all code generation prompts. IMI will match your patterns without you asking.
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '28px', background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '12px', opacity: 0.5 }}>
-                          <span style={{ fontSize: '2rem' }}>🎨</span>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center' }}>No style profile yet.<br/>Set a project root, then click "Learn My Style".</div>
-                        </div>
-                      )}
-
-                      {/* Impact Analyzer */}
-                      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '18px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: '#00ff88', letterSpacing: '0.12em', marginBottom: '12px' }}>🔭 IMPACT ANALYZER</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '12px', lineHeight: 1.5 }}>
-                          Enter a file path to see what else in your project depends on it — the "blast radius" of a change.
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                          <input
-                            value={impactTarget}
-                            onChange={e => setImpactTarget(e.target.value)}
-                            placeholder="e.g. src/App.tsx or src/utils/auth.ts"
-                            className="chat-input"
-                            style={{ flex: 1, height: '36px', fontSize: '0.68rem', padding: '0 10px' }}
-                          />
-                          <button
-                            onClick={async () => {
-                              if (!impactTarget.trim()) return;
-                              setImpactLoading(true);
-                              setImpactData(null);
-                              try {
-                                const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot });
-                                if (!res) alert('No response from impact analyzer');
-                                else if (res.error) alert(res.error);
-                                else setImpactData(res);
-                              } catch(e: any) { alert(e.message); }
-                              setImpactLoading(false);
-                            }}
-                            disabled={impactLoading || !impactTarget.trim()}
-                            style={{ padding: '0 16px', height: '36px', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.35)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer', fontWeight: 800, fontSize: '0.68rem', whiteSpace: 'nowrap', opacity: impactLoading ? 0.5 : 1 }}>
-                            {impactLoading ? '…' : 'Analyze'}
-                          </button>
-                        </div>
-
-                        {impactData && (
-                          <div>
-                            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', marginBottom: '8px' }}>
-                              {impactData.affected.length === 0
-                                ? `✅ "${impactData.filePath}" has no dependents — safe to change.`
-                                : `⚠ ${impactData.affected.length} file${impactData.affected.length > 1 ? 's' : ''} will be affected:`}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                                <button onClick={async () => {
+                                  const res = await (ipc as any).invoke('export-full-profile', { profile: fullProfile });
+                                  if (res?.path) setProfileMsg({ type: 'success', text: `✅ Saved to ${res.path}` });
+                                  else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
+                                }} style={{ padding: '6px 12px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬇ Export</button>
+                                <button onClick={async () => {
+                                  const res = await (ipc as any).invoke('import-full-profile');
+                                  if (res?.profile) { setFullProfile(res.profile); (ipc as any).invoke('save-full-profile', res.profile); setProfileMsg({ type: 'success', text: `✅ Imported: ${res.profile.name}` }); }
+                                  else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
+                                }} style={{ padding: '6px 12px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬆ Import</button>
+                                <button onClick={async () => {
+                                  const res = await (ipc as any).invoke('add-to-community', { profile: { ...fullProfile, isPublic: true } });
+                                  if (res?.success) setProfileMsg({ type: 'success', text: '✅ Shared to IMI Community Library!' });
+                                  else setProfileMsg({ type: 'error', text: res?.error || 'Share failed' });
+                                }} style={{ padding: '6px 12px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>🌐 Share</button>
+                              </div>
                             </div>
-                            {impactData.affected.length > 0 && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '180px', overflowY: 'auto' }}>
-                                {impactData.affected.map((f, i) => (
-                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px 9px', background: `rgba(${f.depth === 1 ? '255,65,108' : '255,160,0'},0.06)`, border: `1px solid rgba(${f.depth === 1 ? '255,65,108' : '255,160,0'},0.2)`, borderRadius: '6px' }}>
-                                    <span style={{ fontSize: '0.55rem', fontWeight: 900, color: f.depth === 1 ? '#ff416c' : '#ffa000', minWidth: '18px' }}>D{f.depth}</span>
-                                    <span style={{ fontSize: '0.65rem', fontFamily: 'monospace', color: 'rgba(255,255,255,0.8)', flex: 1 }}>{f.path}</span>
-                                    <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>{f.label}</span>
-                                  </div>
-                                ))}
+                            {/* Tags */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+                              {(fullProfile.tags || []).map((t: string, i: number) => (
+                                <span key={i} style={{ fontSize: '0.6rem', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '20px', padding: '2px 8px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  {t}
+                                  <button onClick={() => upd({ tags: fullProfile.tags.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
+                                </span>
+                              ))}
+                              <input value={profileTagInput} onChange={e => setProfileTagInput(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && profileTagInput.trim()) { upd({ tags: [...(fullProfile.tags||[]), profileTagInput.trim()] }); setProfileTagInput(''); e.preventDefault(); } }}
+                                placeholder="+ add tag…" className="chat-input"
+                                style={{ fontSize: '0.6rem', height: '22px', padding: '0 8px', width: '90px', borderRadius: '20px' }} />
+                            </div>
+                            {/* Feedback */}
+                            {profileMsg && (
+                              <div style={{ marginTop: '8px', padding: '6px 10px', borderRadius: '6px', fontSize: '0.63rem', background: profileMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', border: `1px solid ${profileMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, color: profileMsg.type === 'success' ? '#00ff88' : '#ff6b6b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>{profileMsg.text}</span>
+                                <button onClick={() => setProfileMsg(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5, padding: '0 2px' }}>✕</button>
                               </div>
                             )}
+                            {fullProfile.updatedAt > 0 && <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '6px', opacity: 0.5 }}>Last saved {new Date(fullProfile.updatedAt).toLocaleString()}</div>}
                           </div>
-                        )}
+                        );
+                      })()}
+
+                      {/* ── Category sub-tabs ── */}
+                      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto' }}>
+                        {([
+                          { id: 'code',     label: '💻 Code' },
+                          { id: 'design',   label: '🎨 Design' },
+                          { id: 'art',      label: '🖼 Art' },
+                          { id: 'writing',  label: '✍ Writing' },
+                          { id: 'workflow', label: '⚙ Workflow' },
+                          { id: 'stack',    label: '🧰 Stack' },
+                          { id: 'community',label: '🌐 Community' },
+                        ] as { id: typeof profileSubTab; label: string }[]).map(t => (
+                          <button key={t.id} onClick={() => {
+                            setProfileSubTab(t.id);
+                            if (t.id === 'community' && communityProfiles.length === 0) {
+                              setCommunityProfilesLoading(true);
+                              (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false));
+                            }
+                          }}
+                            style={{ padding: '8px 12px', background: 'none', border: 'none', borderBottom: profileSubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: profileSubTab === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.4)', fontSize: '0.62rem', fontWeight: profileSubTab === t.id ? 800 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }} />
+                        ))}
                       </div>
 
-                      {/* How it works */}
-                      <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '14px 16px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: '10px' }}>HOW IT WORKS</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                          {[
-                            { icon: '🔍', text: 'Style Analyzer scans your recent files locally — no API calls, no tokens used' },
-                            { icon: '🎨', text: 'Your style profile (indent, quotes, naming, etc.) is injected into every code generation prompt' },
-                            { icon: '🔭', text: 'Impact Analyzer builds a reverse import graph — finds what breaks when a file changes' },
-                            { icon: '⚡', text: 'Style re-learned automatically when you switch project roots' },
-                          ].map((h, i) => (
-                            <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                              <span style={{ fontSize: '0.8rem', flexShrink: 0 }}>{h.icon}</span>
-                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5 }}>{h.text}</span>
+                      {/* ── Tab content ── */}
+                      {(() => {
+                        const upd = (cat: string, patch: any) => {
+                          const next = { ...fullProfile, [cat]: { ...(fullProfile as any)[cat], ...patch } };
+                          setFullProfile(next);
+                          (ipc as any).invoke('save-full-profile', next).catch(() => {});
+                        };
+                        // Chip selector helper
+                        const Chips = ({ cat, field, options }: { cat: string; field: string; options: string[] }) => {
+                          const val = (fullProfile as any)[cat]?.[field] || '';
+                          return (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                              {options.map(o => (
+                                <button key={o} onClick={() => upd(cat, { [field]: val === o ? '' : o })}
+                                  style={{ padding: '4px 10px', borderRadius: '20px', border: `1px solid ${val === o ? 'var(--primary)' : 'rgba(255,255,255,0.12)'}`, background: val === o ? 'rgba(155,77,255,0.18)' : 'rgba(255,255,255,0.03)', color: val === o ? 'var(--primary)' : 'rgba(255,255,255,0.55)', fontSize: '0.62rem', fontWeight: val === o ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+                                  {o}
+                                </button>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          );
+                        };
+                        const Notes = ({ cat }: { cat: string }) => (
+                          <textarea value={(fullProfile as any)[cat]?.notes || ''} onChange={e => upd(cat, { notes: e.target.value })} placeholder="Any extra notes or preferences…" className="chat-input"
+                            style={{ width: '100%', height: '60px', resize: 'vertical', fontSize: '0.65rem', padding: '8px 10px', boxSizing: 'border-box', lineHeight: 1.5 }} />
+                        );
+                        const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+                          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px', alignItems: 'center' }}>
+                            <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', fontWeight: 600 }}>{label}</div>
+                            <div>{children}</div>
+                          </div>
+                        );
+
+                        // ── CODE ──
+                        if (profileSubTab === 'code') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>
+                                {styleProfile ? `✅ Auto-scanned ${styleProfile.filesAnalyzed} files · ${new Date(styleProfile.analyzedAt).toLocaleTimeString()}` : 'Not scanned yet'}
+                              </div>
+                              <button onClick={async () => {
+                                const root = stats.projectRoot;
+                                if (!root) { setStyleMsg({ type: 'error', text: 'Set a project root in Workspace first' }); return; }
+                                setStyleLoading(true); setStyleMsg(null);
+                                try {
+                                  const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
+                                  if (p && !p.error) {
+                                    setStyleProfile(p);
+                                    const codeUpdate = { indent: p.indent, quotes: p.quotes, semicolons: p.semicolons, arrowFunctions: p.arrowFunctions, constOverLet: p.constOverLet, asyncAwait: p.asyncAwait, typescript: p.typescript, naming: p.naming, importStyle: p.importStyle, jsdocComments: p.jsdocComments, filesAnalyzed: p.filesAnalyzed };
+                                    upd('code', codeUpdate);
+                                    setStyleMsg({ type: 'success', text: `✅ Scanned ${p.filesAnalyzed} files` });
+                                  } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
+                                } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
+                                setStyleLoading(false);
+                              }} disabled={styleLoading} style={{ padding: '5px 12px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>
+                                {styleLoading ? '⏳ Scanning…' : '🔍 Auto-scan Project'}
+                              </button>
+                            </div>
+                            {styleMsg && <div style={{ padding: '6px 10px', borderRadius: '6px', fontSize: '0.62rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
+                            <Row label="Indent"><Chips cat="code" field="indent" options={['2 spaces','4 spaces','tabs']} /></Row>
+                            <Row label="Quotes"><Chips cat="code" field="quotes" options={['single','double','backtick']} /></Row>
+                            <Row label="Semicolons"><Chips cat="code" field="semicolons" options={['true','false'] as any} /></Row>
+                            <Row label="Functions"><Chips cat="code" field="arrowFunctions" options={['true','false'] as any} /></Row>
+                            <Row label="Variables"><Chips cat="code" field="constOverLet" options={['true','false'] as any} /></Row>
+                            <Row label="Async style"><Chips cat="code" field="asyncAwait" options={['true','false'] as any} /></Row>
+                            <Row label="Naming"><Chips cat="code" field="naming" options={['camelCase','PascalCase','snake_case','kebab-case']} /></Row>
+                            <Row label="Imports"><Chips cat="code" field="importStyle" options={['named','default','mixed']} /></Row>
+                            <Row label="TypeScript"><Chips cat="code" field="typescript" options={['true','false'] as any} /></Row>
+                            <Row label="Notes"><Notes cat="code" /></Row>
+                            {/* Impact Analyzer */}
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '14px' }}>
+                              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.1em', marginBottom: '8px' }}>🔭 Impact Analyzer</div>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <input value={impactTarget} onChange={e => setImpactTarget(e.target.value)} placeholder="e.g. src/App.tsx" className="chat-input" style={{ flex: 1, height: '32px', fontSize: '0.65rem', padding: '0 10px' }} />
+                                <button onClick={async () => {
+                                  if (!impactTarget.trim()) return; setImpactLoading(true); setImpactData(null);
+                                  try { const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot }); if (res && !res.error) setImpactData(res); } catch {}
+                                  setImpactLoading(false);
+                                }} disabled={impactLoading || !impactTarget.trim()} style={{ padding: '0 14px', height: '32px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>{impactLoading ? '…' : 'Analyze'}</button>
+                              </div>
+                              {impactData && <div style={{ marginTop: '8px', fontSize: '0.62rem', color: impactData.affected.length ? '#ffa000' : '#00ff88' }}>{impactData.affected.length === 0 ? '✅ No dependents — safe to change' : `⚠ ${impactData.affected.length} files affected`}</div>}
+                            </div>
+                          </div>
+                        );
+
+                        // ── DESIGN ──
+                        if (profileSubTab === 'design') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <Row label="Color palette"><Chips cat="design" field="colorPalette" options={['Dark','Light','High contrast','Colorful','Pastel']} /></Row>
+                            <Row label="Corner radius"><Chips cat="design" field="cornerRadius" options={['Sharp','Subtle','Rounded','Pill']} /></Row>
+                            <Row label="Spacing"><Chips cat="design" field="spacing" options={['Tight','Normal','Comfortable','Spacious']} /></Row>
+                            <Row label="Typography"><Chips cat="design" field="typography" options={['Monospace','Modern sans','Serif','Mixed']} /></Row>
+                            <Row label="Animations"><Chips cat="design" field="animations" options={['None','Subtle','Smooth','Energetic']} /></Row>
+                            <Row label="Density"><Chips cat="design" field="density" options={['Dense','Normal','Spacious']} /></Row>
+                            <Row label="Notes"><Notes cat="design" /></Row>
+                          </div>
+                        );
+
+                        // ── ART ──
+                        if (profileSubTab === 'art') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <Row label="Visual style"><Chips cat="art" field="visualStyle" options={['Minimalist','Maximalist','Flat','Glassmorphic','Neumorphic','Brutalist','Retro','Cyberpunk']} /></Row>
+                            <Row label="Color scheme"><Chips cat="art" field="colorScheme" options={['Dark mono','Light mono','Vibrant','Neon','Pastel','Earth tones','Gradient heavy']} /></Row>
+                            <Row label="Mood"><Chips cat="art" field="mood" options={['Professional','Playful','Serious','Creative','Corporate','Futuristic','Cozy']} /></Row>
+                            <Row label="Medium"><Chips cat="art" field="medium" options={['Digital','Print','3D','Motion','Illustration','Photography','Mixed']} /></Row>
+                            <Row label="Notes"><Notes cat="art" /></Row>
+                          </div>
+                        );
+
+                        // ── WRITING ──
+                        if (profileSubTab === 'writing') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <Row label="Tone"><Chips cat="writing" field="tone" options={['Casual','Professional','Technical','Friendly','Direct','Humorous','Academic']} /></Row>
+                            <Row label="Length"><Chips cat="writing" field="length" options={['Ultra concise','Concise','Balanced','Detailed','Comprehensive']} /></Row>
+                            <Row label="Formality"><Chips cat="writing" field="formality" options={['Very low','Low','Medium','High','Very high']} /></Row>
+                            <Row label="Tech level"><Chips cat="writing" field="techLevel" options={['Beginner','Intermediate','Advanced','Expert']} /></Row>
+                            <Row label="Notes"><Notes cat="writing" /></Row>
+                          </div>
+                        );
+
+                        // ── WORKFLOW ──
+                        if (profileSubTab === 'workflow') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            <Row label="Approach"><Chips cat="workflow" field="approach" options={['Big picture first','Small steps','Iterative','Top-down','Bottom-up']} /></Row>
+                            <Row label="Docs"><Chips cat="workflow" field="documentation" options={['None','Minimal','Inline comments','JSDoc','Full docs']} /></Row>
+                            <Row label="Errors"><Chips cat="workflow" field="errorHandling" options={['Throw always','Explicit try/catch','Silent fail','Log only']} /></Row>
+                            <Row label="Testing"><Chips cat="workflow" field="testing" options={['None','Manual only','Pragmatic','Unit tests','Full TDD']} /></Row>
+                            <Row label="Notes"><Notes cat="workflow" /></Row>
+                          </div>
+                        );
+
+                        // ── STACK ──
+                        if (profileSubTab === 'stack') {
+                          const stackField = (field: 'languages'|'frameworks'|'tools'|'modelUsage', label: string, suggestions: string[]) => {
+                            const arr: string[] = (fullProfile.stack as any)[field] || [];
+                            const inp = stackChipInput[field] || '';
+                            return (
+                              <div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>{label}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '6px' }}>
+                                  {arr.map((v: string, i: number) => (
+                                    <span key={i} style={{ fontSize: '0.6rem', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '20px', padding: '2px 8px', color: '#4facfe', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      {v}
+                                      <button onClick={() => upd('stack', { [field]: arr.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.7rem' }}>×</button>
+                                    </span>
+                                  ))}
+                                  <input value={inp} onChange={e => setStackChipInput(p => ({...p, [field]: e.target.value}))}
+                                    onKeyDown={e => { if (e.key === 'Enter' && inp.trim()) { upd('stack', { [field]: [...arr, inp.trim()] }); setStackChipInput(p => ({...p, [field]: ''})); e.preventDefault(); } }}
+                                    placeholder="type + Enter…" className="chat-input" style={{ fontSize: '0.6rem', height: '22px', padding: '0 8px', width: '100px', borderRadius: '20px' }} />
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {suggestions.filter(s => !arr.includes(s)).map(s => (
+                                    <button key={s} onClick={() => upd('stack', { [field]: [...arr, s] })}
+                                      style={{ padding: '2px 8px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.35)', fontSize: '0.58rem', cursor: 'pointer' }}>+ {s}</button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          };
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                              {stackField('languages', 'Languages', ['TypeScript','JavaScript','Python','Rust','Go','Java','C++','C#','Swift','Kotlin','PHP','Ruby','Dart'])}
+                              {stackField('frameworks', 'Frameworks & Libraries', ['React','Next.js','Vue','Angular','Svelte','Node.js','Express','Electron','Tailwind','Prisma','tRPC','FastAPI','Django','Laravel'])}
+                              {stackField('tools', 'Tools & Software', ['VS Code','Cursor','Vim','IntelliJ','Figma','Sketch','Adobe XD','Git','GitHub','Docker','Vercel','Netlify','Supabase','Postgres','Redis'])}
+                              <div>
+                                <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Preferred AI Model</div>
+                                <Chips cat="stack" field="preferredModel" options={['Gemini','Claude','ChatGPT','Groq','DeepSeek','Mistral','Ollama (local)']} />
+                              </div>
+                              {stackField('modelUsage', 'I use AI for', ['Coding','Debugging','Writing','Design','Planning','Learning','Refactoring','Code review','Documentation'])}
+                              <Row label="Notes"><Notes cat="stack" /></Row>
+                            </div>
+                          );
+                        }
+
+                        // ── COMMUNITY ──
+                        if (profileSubTab === 'community') return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'white' }}>Community Library</div>
+                              <button onClick={() => { setCommunityProfilesLoading(true); (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false)); }} style={{ padding: '5px 10px', background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '7px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem' }}>
+                                <RefreshCw size={10} style={{ display: 'inline', marginRight: '4px' }} />Refresh
+                              </button>
+                            </div>
+                            {communityProfilesLoading && <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-dim)', fontSize: '0.7rem' }}>Loading…</div>}
+                            {!communityProfilesLoading && communityProfiles.length === 0 && (
+                              <div style={{ textAlign: 'center', padding: '32px', background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}>
+                                <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>🌐</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '6px' }}>No community profiles yet</div>
+                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)' }}>Be the first — fill out your profile and click Share!</div>
+                              </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px,1fr))', gap: '10px' }}>
+                              {communityProfiles.map((p: any) => (
+                                <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px' }}>
+                                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white', marginBottom: '2px' }}>{p.name || 'Unnamed'}</div>
+                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '8px' }}>by @{p.author || 'unknown'}</div>
+                                  {p.description && <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', marginBottom: '8px', lineHeight: 1.4 }}>{p.description}</div>}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
+                                    {(p.tags || []).slice(0,5).map((t: string, i: number) => (
+                                      <span key={i} style={{ fontSize: '0.55rem', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', padding: '1px 7px', color: 'var(--primary)' }}>{t}</span>
+                                    ))}
+                                  </div>
+                                  <button onClick={() => { setFullProfile(p); (ipc as any).invoke('save-full-profile', p); setProfileMsg({ type: 'success', text: `✅ Applied: ${p.name}` }); setProfileSubTab('code'); }} style={{ width: '100%', padding: '6px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>Apply Profile</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+
+                        return null;
+                      })()}
                     </motion.div>
                   )}
 
