@@ -1428,11 +1428,14 @@ const saveGlobalState = () => {
     const config = { 
       geminiKey: GEMINI_KEY, githubToken: GITHUB_TOKEN, openaiKey: OPENAI_KEY, 
       claudeKey: CLAUDE_KEY, deepseekKey: DEEPSEEK_KEY, mistralKey: MISTRAL_KEY, 
-      llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, customApiKey: CUSTOM_API_KEY, 
-      customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
+      llamaKey: LLAMA_KEY, perplexityKey: PERPLEXITY_KEY, 
+      groqKey: GROQ_KEY, grokKey: GROK_KEY, cohereKey: COHERE_KEY,
+      customApiKey: CUSTOM_API_KEY, customApiUrl: CUSTOM_API_URL, customApiModel: CUSTOM_API_MODEL,
       julesApiKey: JULES_KEY, googleMapsKey: GOOGLE_MAPS_KEY, 
       activeBrain: ACTIVE_BRAIN, activeCoder: ACTIVE_CODER,
       theme: THEME, accentColor: ACCENT_COLOR, logRetention: LOG_RETENTION, syncFrequency: SYNC_INTERVAL_MS / 1000,
+      brainModel: BRAIN_MODEL, brainTemperature: BRAIN_TEMPERATURE, brainMaxTokens: BRAIN_MAX_TOKENS,
+      strategyVersion: STRATEGY_VERSION,
       mcpServersList, projectRoot: currentProjectRoot 
     };
     fs.writeFileSync(GLOBAL_STATE_PATH, JSON.stringify({ tokenUsage: tokenStats, config }, null, 2));
@@ -1493,6 +1496,8 @@ ipcMain.handle('save-api-config', (e, config) => {
   if (config.brainTemperature !== undefined) BRAIN_TEMPERATURE = parseFloat(config.brainTemperature);
   if (config.brainMaxTokens !== undefined) BRAIN_MAX_TOKENS = parseInt(config.brainMaxTokens);
   if (config.strategyVersion !== undefined) STRATEGY_VERSION = config.strategyVersion;
+  if (config.activeBrain !== undefined) ACTIVE_BRAIN = config.activeBrain;
+  if (config.activeCoder !== undefined) ACTIVE_CODER = config.activeCoder;
   if (config.syncFrequency !== undefined) {
     SYNC_INTERVAL_MS = parseInt(config.syncFrequency) * 1000;
     if (syncTimer) clearInterval(syncTimer);

@@ -710,6 +710,9 @@ const App = () => {
 
   const saveConfig = async (overrides: any = {}) => {
     setIsSaving(true);
+    // Sanitize overrides: if it's a React event (has nativeEvent or target), ignore it
+    const cleanOverrides = (overrides && (overrides.nativeEvent || overrides.target)) ? {} : overrides;
+    
     await (ipc as any).invoke('save-api-config', { 
       geminiKey, githubToken, 
       openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey,
@@ -726,7 +729,7 @@ const App = () => {
       brainMaxTokens,
       brainModel,
       strategyVersion,
-      ...overrides
+      ...cleanOverrides
     });
     setTimeout(() => setIsSaving(false), 2000);
   };
@@ -4869,7 +4872,7 @@ const App = () => {
                 {/* Footer — Save button */}
                 <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }}>
                   <button
-                    onClick={saveConfig}
+                    onClick={() => saveConfig()}
                     className="btn-premium"
                     style={{ width: '100%', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
                   >
