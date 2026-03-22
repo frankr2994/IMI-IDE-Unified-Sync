@@ -4203,40 +4203,45 @@ const App = () => {
 
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card full-height-panel" style={{ padding: '0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '2rem 2rem 1rem 2rem' }}>
-                  <h3 style={{ fontSize: '1.8rem', fontWeight: 900 }}>System Configuration</h3>
-                  <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Manage your workspace, credentials, and AI fleet.</p>
+
+                {/* ── Header ── */}
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Settings size={15} style={{ color: 'var(--primary)' }} />
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'white', letterSpacing: '0.02em' }}>Settings</div>
+                    <div style={{ fontSize: '0.58rem', color: 'var(--text-dim)', marginTop: '1px' }}>Configure your workspace, APIs, and AI preferences</div>
+                  </div>
                 </div>
 
-                {/* Sub-Navigation */}
-                <div style={{ display: 'flex', gap: '20px', padding: '0 2rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
-                  {[
-                    { id: 'general',    label: 'PREFERENCES',   icon: <Settings2 size={14}/> },
-                    { id: 'appearance', label: 'APPEARANCE',    icon: <Palette size={14}/> },
-                    { id: 'apis',       label: 'APIs & KEYS',   icon: <Key size={14}/> },
-                    { id: 'style',      label: 'STYLE & IMPACT', icon: <GitBranch size={14}/> },
-                    { id: 'sync',       label: 'GITHUB & SYNC', icon: <RefreshCw size={14}/> },
-                    { id: 'telemetry',  label: 'TELEMETRY',     icon: <Gauge size={14}/> },
-                    { id: 'automation', label: 'AUTOMATION',    icon: <ShieldCheck size={14}/> }
-                  ].map(tab => (
-                    <button 
-                      key={tab.id}
-                      onClick={() => setSettingsActiveSubTab(tab.id)}
-                      style={{ 
-                        padding: '15px 5px', background: 'none', border: 'none', 
-                        color: settingsActiveSubTab === tab.id ? 'var(--primary)' : 'var(--text-dim)',
-                        fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.1em', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        borderBottom: settingsActiveSubTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      {tab.icon} {tab.label}
-                    </button>
-                  ))}
-                </div>
+                {/* ── Body: left sidebar + right content ── */}
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
-                <div style={{ padding: '2rem', height: '450px', overflowY: 'auto' }}>
+                  {/* Sidebar */}
+                  <div style={{ width: '172px', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.15)' }}>
+                    {([
+                      { id: 'general',    label: 'Preferences',    icon: <Settings2 size={13}/> },
+                      { id: 'appearance', label: 'Appearance',     icon: <Palette size={13}/> },
+                      { id: 'apis',       label: 'APIs & Keys',    icon: <Key size={13}/> },
+                      { id: 'style',      label: 'Style & Impact', icon: <GitBranch size={13}/> },
+                      { id: 'sync',       label: 'GitHub & Sync',  icon: <RefreshCw size={13}/> },
+                      { id: 'telemetry',  label: 'Telemetry',      icon: <Gauge size={13}/> },
+                      { id: 'automation', label: 'Automation',     icon: <ShieldCheck size={13}/> },
+                    ] as { id: string; label: string; icon: React.ReactNode }[]).map(tab => {
+                      const active = settingsActiveSubTab === tab.id;
+                      return (
+                        <button key={tab.id} onClick={() => setSettingsActiveSubTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '8px 11px', borderRadius: '7px', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', background: active ? 'rgba(155,77,255,0.18)' : 'transparent', color: active ? 'var(--primary)' : 'rgba(255,255,255,0.5)', width: '100%' }}
+                          onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color = active ? 'var(--primary)' : 'rgba(255,255,255,0.75)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = active ? 'rgba(155,77,255,0.18)' : 'transparent'; (e.currentTarget as HTMLElement).style.color = active ? 'var(--primary)' : 'rgba(255,255,255,0.5)'; }}>
+                          <span style={{ flexShrink: 0, opacity: active ? 1 : 0.7 }}>{tab.icon}</span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: active ? 700 : 400 }}>{tab.label}</span>
+                          {active && <div style={{ marginLeft: 'auto', width: '3px', height: '14px', borderRadius: '2px', background: 'var(--primary)', flexShrink: 0 }} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Content area */}
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
                   
                   {/* CATEGORY: GENERAL PREFERENCES */}
                   {settingsActiveSubTab === 'general' && (
@@ -4798,19 +4803,21 @@ const App = () => {
                     </motion.div>
                   )}
 
-                </div>
+                  </div>{/* end content area */}
+                </div>{/* end body flex */}
 
-                <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
-                  <button 
-                    onClick={saveConfig} 
-                    className="btn-premium" 
+                {/* Footer — Save button */}
+                <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }}>
+                  <button
+                    onClick={saveConfig}
+                    className="btn-premium"
                     style={{ width: '100%', background: isSaving ? '#00ffaa' : undefined, color: isSaving ? '#000' : undefined }}
                   >
                     {isSaving ? (
                       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        <ShieldCheck size={18} /> SETTINGS SYNCHRONIZED
+                        <ShieldCheck size={16} /> Settings Saved
                       </span>
-                    ) : 'SAVE ALL CONFIGURATIONS'}
+                    ) : 'Save All Settings'}
                   </button>
                 </div>
             </motion.div>
