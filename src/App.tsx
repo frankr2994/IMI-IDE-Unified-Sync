@@ -4754,8 +4754,7 @@ const App = () => {
                             </div>
                             {q.length > 0 && (
                               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {results.length > 0
-                                  ? results.map(r => {
+                                {results.length > 0 && results.map(r => {
                                       const slot = KEY_SLOT_MAP[r.name];
                                       const isOpen = apiKeyAddOpen === r.name;
                                       const inputVal = apiKeyAddVal[r.name] || '';
@@ -4819,14 +4818,24 @@ const App = () => {
                                         </div>
                                       );
                                     })
-                                  : (
-                                      <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(155,77,255,0.25)', borderRadius: '10px' }}>
-                                        <div style={{ fontSize: '0.7rem', color: 'white', fontWeight: 700, marginBottom: '6px' }}>"{apiKeySearch}" not in local directory</div>
-                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '10px' }}>IMI has a built-in list of 35+ services. For anything else, search the web — it'll take you straight to their API key page.</div>
-                                        <button onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key how to get')}`)} className="btn-premium" style={{ padding: '8px 18px', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>🌐 Search Web for "{apiKeySearch}" API Key →</button>
-                                      </div>
-                                    )
                                 }
+                                {results.length === 0 && (
+                                  <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', padding: '4px 2px' }}>No local match for <strong style={{ color: 'white' }}>"{apiKeySearch}"</strong></div>
+                                )}
+                                {/* Always show web search — works for ANY service */}
+                                <button
+                                  onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key get')}`)}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(155,77,255,0.06)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '10px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ fontSize: '1.1rem' }}>🌐</span>
+                                    <div>
+                                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>Search web for "{apiKeySearch}" API key</div>
+                                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '1px' }}>Opens Google — works for any service not in the list</div>
+                                    </div>
+                                  </div>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--primary)', fontWeight: 700, flexShrink: 0 }}>→</span>
+                                </button>
                               </div>
                             )}
                           </div>
