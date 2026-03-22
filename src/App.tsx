@@ -3437,6 +3437,174 @@ const App = () => {
                 </div>
                 )}
 
+                {/* ── API KEYS TAB ── */}
+                {mcpHubTab === 'keys' && (() => {
+                  const API_DIRECTORY = [
+                    { name: 'Anthropic (Claude)', emoji: '🧠', url: 'https://console.anthropic.com/account/keys', cat: 'AI Models' },
+                    { name: 'OpenAI (GPT)',        emoji: '🤖', url: 'https://platform.openai.com/api-keys',          cat: 'AI Models' },
+                    { name: 'Gemini',              emoji: '✨', url: 'https://aistudio.google.com/app/apikey',         cat: 'AI Models' },
+                    { name: 'Groq',                emoji: '⚡', url: 'https://console.groq.com/keys',                  cat: 'AI Models' },
+                    { name: 'Mistral',             emoji: '🌊', url: 'https://console.mistral.ai/api-keys/',           cat: 'AI Models' },
+                    { name: 'Cohere',              emoji: '🔵', url: 'https://dashboard.cohere.com/api-keys',          cat: 'AI Models' },
+                    { name: 'Perplexity',          emoji: '🔍', url: 'https://www.perplexity.ai/settings/api',        cat: 'AI Models' },
+                    { name: 'OpenRouter',          emoji: '🔀', url: 'https://openrouter.ai/keys',                    cat: 'AI Models' },
+                    { name: 'Together AI',         emoji: '🤝', url: 'https://api.together.xyz/settings/api-keys',    cat: 'AI Models' },
+                    { name: 'Replicate',           emoji: '🔁', url: 'https://replicate.com/account/api-tokens',      cat: 'AI Models' },
+                    { name: 'ElevenLabs',          emoji: '🎙️', url: 'https://elevenlabs.io/app/settings/api-keys',   cat: 'Voice & Audio' },
+                    { name: 'AssemblyAI',          emoji: '🎤', url: 'https://www.assemblyai.com/app/',               cat: 'Voice & Audio' },
+                    { name: 'Deepgram',            emoji: '🎧', url: 'https://console.deepgram.com/',                 cat: 'Voice & Audio' },
+                    { name: 'Stability AI',        emoji: '🎨', url: 'https://platform.stability.ai/account/keys',   cat: 'Images & Media' },
+                    { name: 'Fal.ai',              emoji: '🖼️', url: 'https://fal.ai/dashboard/keys',                cat: 'Images & Media' },
+                    { name: 'Cloudinary',          emoji: '☁️', url: 'https://cloudinary.com/console',               cat: 'Images & Media' },
+                    { name: 'Serper',              emoji: '🔎', url: 'https://serper.dev/api-key',                    cat: 'Search & Data' },
+                    { name: 'Brave Search',        emoji: '🦁', url: 'https://api.search.brave.com/app/keys',        cat: 'Search & Data' },
+                    { name: 'Google Maps',         emoji: '🗺️', url: 'https://console.cloud.google.com/',            cat: 'Search & Data' },
+                    { name: 'Alpha Vantage',       emoji: '📈', url: 'https://www.alphavantage.co/support/#api-key', cat: 'Finance' },
+                    { name: 'Polygon.io',          emoji: '📊', url: 'https://polygon.io/dashboard/api-keys',        cat: 'Finance' },
+                    { name: 'Pinecone',            emoji: '🌲', url: 'https://app.pinecone.io/',                      cat: 'Databases' },
+                    { name: 'Supabase',            emoji: '⚡', url: 'https://supabase.com/dashboard/',              cat: 'Databases' },
+                    { name: 'PlanetScale',         emoji: '🪐', url: 'https://app.planetscale.com/settings',         cat: 'Databases' },
+                    { name: 'Stripe',              emoji: '💳', url: 'https://dashboard.stripe.com/apikeys',         cat: 'Payments' },
+                    { name: 'Twilio',              emoji: '📱', url: 'https://console.twilio.com/',                   cat: 'Payments' },
+                    { name: 'SendGrid',            emoji: '📧', url: 'https://app.sendgrid.com/settings/api_keys',   cat: 'Payments' },
+                    { name: 'GitHub',              emoji: '🐙', url: 'https://github.com/settings/tokens',           cat: 'Dev & Infra' },
+                    { name: 'Vercel',              emoji: '▲',  url: 'https://vercel.com/account/tokens',            cat: 'Dev & Infra' },
+                    { name: 'AWS',                 emoji: '☁️', url: 'https://console.aws.amazon.com/iam/',          cat: 'Dev & Infra' },
+                  ];
+
+                  const KEY_SLOT_MAP: Record<string, { get: string; set: (v: string) => void }> = {
+                    'Anthropic (Claude)': { get: claudeKey,       set: setClaudeKey },
+                    'OpenAI (GPT)':       { get: openaiKey,       set: setOpenaiKey },
+                    'Gemini':             { get: geminiKey,       set: setGeminiKey },
+                    'Groq':               { get: groqKey,         set: setGroqKey },
+                    'Mistral':            { get: mistralKey,      set: setMistralKey },
+                    'Cohere':             { get: cohereKey,       set: setCohereKey },
+                    'Perplexity':         { get: perplexityKey,   set: setPerplexityKey },
+                    'OpenRouter':         { get: customApiKey,    set: setCustomApiKey },
+                    'Google Maps':        { get: googleMapsKey,   set: setGoogleMapsKey },
+                    'GitHub':             { get: githubToken,     set: setGithubToken },
+                  };
+
+                  const q = apiKeySearch.toLowerCase().trim();
+                  const results = q.length > 0
+                    ? API_DIRECTORY.filter(s => s.name.toLowerCase().includes(q) || s.cat.toLowerCase().includes(q))
+                    : API_DIRECTORY;
+
+                  // Connected keys — all slots + extraKeys
+                  const allSlots = [
+                    { emoji: '🧠', name: 'Anthropic (Claude)', val: claudeKey },
+                    { emoji: '🤖', name: 'OpenAI (GPT)',        val: openaiKey },
+                    { emoji: '✨', name: 'Gemini',              val: geminiKey },
+                    { emoji: '⚡', name: 'Groq',                val: groqKey },
+                    { emoji: '🌊', name: 'Mistral',             val: mistralKey },
+                    { emoji: '🔵', name: 'Cohere',              val: cohereKey },
+                    { emoji: '🔍', name: 'Perplexity',          val: perplexityKey },
+                    { emoji: '🔀', name: 'OpenRouter',          val: customApiKey },
+                    { emoji: '🗺️', name: 'Google Maps',         val: googleMapsKey },
+                    { emoji: '🐙', name: 'GitHub',              val: githubToken },
+                  ];
+                  const extraEntries = Object.entries(extraKeys).map(([name, val]) => ({ emoji: '🔑', name, val }));
+                  const saved = [...allSlots, ...extraEntries].filter(k => k.val && k.val.length > 0);
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {/* Search bar */}
+                      <div style={{ position: 'relative' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+                        <input
+                          value={apiKeySearch}
+                          onChange={e => setApiKeySearch(e.target.value)}
+                          placeholder="Search any API key… e.g. OpenAI, Stripe, ElevenLabs"
+                          className="chat-input"
+                          style={{ width: '100%', paddingLeft: '45px', height: '48px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      {/* Results */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {results.map(svc => {
+                          const slot = KEY_SLOT_MAP[svc.name];
+                          const currentVal = slot ? slot.get : (extraKeys[svc.name] || '');
+                          const isOpen = apiKeyAddOpen === svc.name;
+                          const hasKey = currentVal.length > 0;
+                          return (
+                            <div key={svc.name} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{svc.emoji}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>{svc.name}</div>
+                                  <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>{svc.cat}</div>
+                                </div>
+                                {hasKey && <span style={{ fontSize: '0.58rem', padding: '2px 8px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '6px', color: '#22c55e', fontWeight: 700 }}>LIVE</span>}
+                                <button onClick={() => (ipc as any).send('open-external-url', svc.url)} style={{ padding: '4px 10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>Get Key →</button>
+                                <button onClick={() => setApiKeyAddOpen(isOpen ? null : svc.name)} style={{ padding: '4px 10px', background: isOpen ? 'rgba(155,77,255,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${isOpen ? 'rgba(155,77,255,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '6px', color: isOpen ? 'var(--primary)' : 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
+                                  {hasKey ? '✏️ Update' : '⬇ Add Key'}
+                                </button>
+                              </div>
+                              {isOpen && (
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                  <input
+                                    type="password"
+                                    value={apiKeyAddVal[svc.name] || ''}
+                                    onChange={e => setApiKeyAddVal(v => ({ ...v, [svc.name]: e.target.value }))}
+                                    placeholder={`Paste your ${svc.name} API key…`}
+                                    className="chat-input"
+                                    style={{ flex: 1, height: '36px', fontSize: '0.75rem' }}
+                                  />
+                                  <button onClick={async () => {
+                                    const val = apiKeyAddVal[svc.name] || '';
+                                    if (!val.trim()) return;
+                                    if (slot) {
+                                      slot.set(val.trim());
+                                    } else {
+                                      const updated = { ...extraKeys, [svc.name]: val.trim() };
+                                      setExtraKeys(updated);
+                                    }
+                                    setApiKeyAddOpen(null);
+                                    setApiKeyAddVal(v => { const n = { ...v }; delete n[svc.name]; return n; });
+                                    setTimeout(() => (ipc as any).invoke('save-api-config', {}), 100);
+                                  }} style={{ padding: '0 16px', height: '36px', background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '8px', color: '#22c55e', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                                    ✓ Save
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {/* Always show web search */}
+                        {q.length > 0 && (
+                          <button onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key get')}`)} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: '10px', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.75rem', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            🌐 <span>Search web for <strong style={{ color: 'rgba(255,255,255,0.75)' }}>"{apiKeySearch}"</strong> API key</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Connected Keys */}
+                      {saved.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}>Connected Keys</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {saved.map(k => (
+                              <div key={k.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '8px' }}>
+                                <span style={{ fontSize: '0.9rem' }}>{k.emoji}</span>
+                                <span style={{ flex: 1, fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>{k.name}</span>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'monospace' }}>••••{k.val.slice(-4)}</span>
+                                <span style={{ fontSize: '0.55rem', padding: '2px 7px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '5px', color: '#22c55e', fontWeight: 700 }}>LIVE</span>
+                                <button onClick={() => {
+                                  const slot = KEY_SLOT_MAP[k.name];
+                                  if (slot) { slot.set(''); }
+                                  else { const n = { ...extraKeys }; delete n[k.name]; setExtraKeys(n); }
+                                  setTimeout(() => (ipc as any).invoke('save-api-config', {}), 100);
+                                }} style={{ background: 'none', border: 'none', color: 'rgba(255,65,108,0.5)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px', lineHeight: 1 }}>×</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* ── AGENT MONITOR TAB ── */}
                 {mcpHubTab === 'agent' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
