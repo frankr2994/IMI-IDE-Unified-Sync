@@ -1295,10 +1295,11 @@ const App = () => {
     document.body.className = theme === 'glass' ? '' : `theme-${theme}`;
   }, [theme]);
 
-  // Auto-refresh installed models whenever AI Models or Installed Tools tab is opened
+  // Auto-refresh installed models + tools whenever relevant Dev Hub tabs are opened
   useEffect(() => {
-    if (activeTab === 'tools' && (mcpHubTab === 'ai' || mcpHubTab === 'tools')) {
-      loadOllamaModels();
+    if (activeTab === 'tools') {
+      if (mcpHubTab === 'ai') loadOllamaModels();
+      if (mcpHubTab === 'tools') { loadOllamaModels(); loadTools(); }
     }
   }, [activeTab, mcpHubTab]);
 
