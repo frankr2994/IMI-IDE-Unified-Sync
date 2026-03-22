@@ -2830,7 +2830,7 @@ User: `;
       const filePath = winFilePathMatch[0].trim().replace(/[/\\]+$/, '');
       console.log(`[ROUTE] â†’ shell.openPath (Windows file): ${filePath}`);
       shell.openPath(filePath);
-      event.sender.send('command-chunk', { messageId, chunk: `ðŸš€ Opening: ${filePath}` });
+      event.sender.send('command-chunk', { messageId, chunk: `🚀 Opening: ${filePath}` });
       event.sender.send('command-end', { messageId, code: 0 });
       return;
     }
@@ -3116,8 +3116,17 @@ User: `;
     const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4;
     // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
-    const ollamaLightPrefix = chatPrefix;
-    const activePrefix = isCodingAction ? blueprintPrefix : ollamaLightPrefix;
+    const ollamaLocalPrefix = `You are a helpful AI assistant inside IMI. You can chat, answer questions, explain code, and help with planning.
+
+CRITICAL — YOU ARE A LOCAL CHAT MODEL:
+- You CANNOT create files, run shell commands, open browsers, or execute any tools. IMI's backend handles all of that automatically before your response.
+- Do NOT generate fake tool output. Never write "⚡ On it — generating...", "Created ...", "🚀 Opening in browser...", or any similar fake action messages.
+- If asked to create a file, run a command, or open a website, say honestly: "I'm a local model and can't execute actions directly. Try rephrasing your request so IMI's action system can catch it, or switch your Brain to Gemini."
+- Be concise and direct. No filler words. No "Certainly!" or "Great question!".
+
+User: `;
+    const ollamaLightPrefix = isCodingAction ? chatPrefix : ollamaLocalPrefix;
+    const activePrefix = ollamaLightPrefix;
     // Warn if user sent an image but the model likely doesn't support vision
     const visionModels = ['llava', 'moondream', 'bakllava', 'minicpm', 'qwen2-vl', 'llava-phi', 'llava-llama'];
     const modelSupportsVision = visionModels.some(v => ollamaModel.toLowerCase().includes(v));
@@ -3581,7 +3590,7 @@ CRITICAL RULES:
     `;
     if (mainWindow) mainWindow.webContents.executeJavaScript(autoPilotScript);
 
-    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- ðŸš€ AUTO-ROUTING TO ANTIGRAVITY ---\n\nThe Brain's spec has been saved. The CDP Injection tunnel is actively bypassing security and forcing your IDE to begin implementation...` });
+    event.sender.send('command-chunk', { messageId, chunk: `\n\n--- 🚀 AUTO-ROUTING TO ANTIGRAVITY ---\n\nThe Brain's spec has been saved. The CDP Injection tunnel is actively bypassing security and forcing your IDE to begin implementation...` });
     event.sender.send('command-end', { messageId, code: 0 });
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Idle');
     return;
@@ -3626,7 +3635,7 @@ CRITICAL RULES:
     return;
   }
 
-  event.sender.send('command-chunk', { messageId, chunk: `\nðŸš€ [Jules] Submitting task to GitHub repo: ${repoString}...\n` });
+  event.sender.send('command-chunk', { messageId, chunk: `\n🚀 [Jules] Submitting task to GitHub repo: ${repoString}...\n` });
 
   // Write prompt to temp file (avoids CMD 8192-char limit)
   const julesPromptPath = path.join(os.tmpdir(), `jules_prompt_${Date.now()}.txt`);
@@ -3949,7 +3958,10 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
     typescript: 'ts', ts: 'ts', json: 'json', markdown: 'md', md: 'md', bash: 'sh', shell: 'sh',
     text: 'txt', txt: 'txt', react: 'tsx', node: 'js', script: 'py', program: 'py', app: 'html' };
   const cmdL = command.toLowerCase();
-  let ext = overrides.fileType || 'html'; // default html (most common for games/apps)
+  // Default: html for apps/games/programs, txt for plain "file" requests
+  const _isPlainFile = /\b(create|make|new|add)\b.{0,20}\b(file)\b/i.test(command)
+    && !/\b(game|app|application|program|tool|website|calculator|script|html|python|js|py)\b/i.test(command);
+  let ext = overrides.fileType || (_isPlainFile ? 'txt' : 'html');
   if (!overrides.fileType) {
     for (const [key, val] of Object.entries(extMap)) {
       if (cmdL.includes(key)) { ext = val; break; }
@@ -4085,7 +4097,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
     } else if (!wasExplicitPath) {
       exec(`code "${filePath}"`, () => {});
     }
-    const openNote = willOpen ? `\nðŸš€ Opening in browser...` : '';
+    const openNote = willOpen ? `\n🚀 Opening in browser...` : '';
     event.sender.send('command-chunk', { messageId, chunk: `âœ… **Created** \`${displayName}\`!${openNote}` });
   } catch(e) {
     event.sender.send('command-chunk', { messageId, chunk: `âŒ Write failed: ${e.message}` });
@@ -4287,7 +4299,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${fileExt.toUpperCase()} f
         if (willOpenFolder) {
           shell.openExternal(`file:///${filePath.replace(/\\/g, '/')}`);
         }
-        const openNoteFolder = willOpenFolder ? `\nðŸš€ Opening in browser...` : '';
+        const openNoteFolder = willOpenFolder ? `\n🚀 Opening in browser...` : '';
         event.sender.send('command-chunk', { messageId, chunk: `âœ… **Created** \`${fileName}\` inside "${folderName}".${openNoteFolder}` });
       } catch(e) {
         event.sender.send('command-chunk', { messageId, chunk: `âŒ File generation error: ${e.message}\n` });
