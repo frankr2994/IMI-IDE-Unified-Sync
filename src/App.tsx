@@ -4648,34 +4648,34 @@ const App = () => {
                             const inp = stackChipInput[field] || '';
                             return (
                               <div>
-                                <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>{label}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '6px' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: 600 }}>{label}</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', marginBottom: '8px' }}>
                                   {arr.map((v: string, i: number) => (
-                                    <span key={i} style={{ fontSize: '0.6rem', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '20px', padding: '2px 8px', color: '#4facfe', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span key={i} style={{ fontSize: '0.72rem', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '20px', padding: '4px 10px', color: '#4facfe', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                       {v}
-                                      <button onClick={() => upd('stack', { [field]: arr.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.7rem' }}>×</button>
+                                      <button onClick={() => upd('stack', { [field]: arr.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.8rem' }}>×</button>
                                     </span>
                                   ))}
                                   <input value={inp} onChange={e => setStackChipInput(p => ({...p, [field]: e.target.value}))}
                                     onKeyDown={e => { if (e.key === 'Enter' && inp.trim()) { upd('stack', { [field]: [...arr, inp.trim()] }); setStackChipInput(p => ({...p, [field]: ''})); e.preventDefault(); } }}
-                                    placeholder="type + Enter…" className="chat-input" style={{ fontSize: '0.6rem', height: '22px', padding: '0 8px', width: '100px', borderRadius: '20px' }} />
+                                    placeholder="type + Enter…" className="chat-input" style={{ fontSize: '0.72rem', height: '28px', padding: '0 10px', width: '110px', borderRadius: '20px' }} />
                                 </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                                   {suggestions.filter(s => !arr.includes(s)).map(s => (
                                     <button key={s} onClick={() => upd('stack', { [field]: [...arr, s] })}
-                                      style={{ padding: '2px 8px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.35)', fontSize: '0.58rem', cursor: 'pointer' }}>+ {s}</button>
+                                      style={{ padding: '3px 10px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.4)', fontSize: '0.68rem', cursor: 'pointer' }}>+ {s}</button>
                                   ))}
                                 </div>
                               </div>
                             );
                           };
                           return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
                               {stackField('languages', 'Languages', ['TypeScript','JavaScript','Python','Rust','Go','Java','C++','C#','Swift','Kotlin','PHP','Ruby','Dart'])}
                               {stackField('frameworks', 'Frameworks & Libraries', ['React','Next.js','Vue','Angular','Svelte','Node.js','Express','Electron','Tailwind','Prisma','tRPC','FastAPI','Django','Laravel'])}
                               {stackField('tools', 'Tools & Software', ['VS Code','Cursor','Vim','IntelliJ','Figma','Sketch','Adobe XD','Git','GitHub','Docker','Vercel','Netlify','Supabase','Postgres','Redis'])}
                               <div>
-                                <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>Preferred AI Model</div>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: 600 }}>Preferred AI Model</div>
                                 <Chips cat="stack" field="preferredModel" options={['Gemini','Claude','ChatGPT','Groq','DeepSeek','Mistral','Ollama (local)']} />
                               </div>
                               {stackField('modelUsage', 'I use AI for', ['Coding','Debugging','Writing','Design','Planning','Learning','Refactoring','Code review','Documentation'])}
@@ -4688,31 +4688,31 @@ const App = () => {
                         if (profileSubTab === 'community') return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'white' }}>Community Library</div>
-                              <button onClick={() => { setCommunityProfilesLoading(true); (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false)); }} style={{ padding: '5px 10px', background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '7px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.6rem' }}>
-                                <RefreshCw size={10} style={{ display: 'inline', marginRight: '4px' }} />Refresh
+                              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>Community Library</div>
+                              <button onClick={() => { setCommunityProfilesLoading(true); (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false)); }} style={{ padding: '7px 12px', background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <RefreshCw size={12} />Refresh
                               </button>
                             </div>
-                            {communityProfilesLoading && <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-dim)', fontSize: '0.7rem' }}>Loading…</div>}
+                            {communityProfilesLoading && <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-dim)', fontSize: '0.8rem' }}>Loading…</div>}
                             {!communityProfilesLoading && communityProfiles.length === 0 && (
-                              <div style={{ textAlign: 'center', padding: '32px', background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '10px' }}>
-                                <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>🌐</div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '6px' }}>No community profiles yet</div>
-                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)' }}>Be the first — fill out your profile and click Share!</div>
+                              <div style={{ textAlign: 'center', padding: '40px', background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '12px' }}>
+                                <div style={{ fontSize: '2.2rem', marginBottom: '10px' }}>🌐</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginBottom: '6px' }}>No community profiles yet</div>
+                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)' }}>Be the first — fill out your profile and click Share!</div>
                               </div>
                             )}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px,1fr))', gap: '10px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px,1fr))', gap: '14px' }}>
                               {communityProfiles.map((p: any) => (
-                                <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px' }}>
-                                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white', marginBottom: '2px' }}>{p.name || 'Unnamed'}</div>
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginBottom: '8px' }}>by @{p.author || 'unknown'}</div>
-                                  {p.description && <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', marginBottom: '8px', lineHeight: 1.4 }}>{p.description}</div>}
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
+                                <div key={p.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '18px' }}>
+                                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'white', marginBottom: '3px' }}>{p.name || 'Unnamed'}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '10px' }}>by @{p.author || 'unknown'}</div>
+                                  {p.description && <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginBottom: '10px', lineHeight: 1.5 }}>{p.description}</div>}
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '12px' }}>
                                     {(p.tags || []).slice(0,5).map((t: string, i: number) => (
-                                      <span key={i} style={{ fontSize: '0.55rem', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', padding: '1px 7px', color: 'var(--primary)' }}>{t}</span>
+                                      <span key={i} style={{ fontSize: '0.65rem', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '20px', padding: '2px 8px', color: 'var(--primary)' }}>{t}</span>
                                     ))}
                                   </div>
-                                  <button onClick={() => { setFullProfile(p); (ipc as any).invoke('save-full-profile', p); setProfileMsg({ type: 'success', text: `✅ Applied: ${p.name}` }); setProfileSubTab('code'); }} style={{ width: '100%', padding: '6px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>Apply Profile</button>
+                                  <button onClick={() => { setFullProfile(p); (ipc as any).invoke('save-full-profile', p); setProfileMsg({ type: 'success', text: `✅ Applied: ${p.name}` }); setProfileSubTab('code'); }} style={{ width: '100%', padding: '8px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>Apply Profile</button>
                                 </div>
                               ))}
                             </div>
