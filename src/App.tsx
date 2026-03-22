@@ -476,7 +476,7 @@ const App = () => {
   const [julesApiKey, setJulesApiKey] = useState('');
   const [googleMapsKey, setGoogleMapsKey] = useState('');
   const [gitInstalled, setGitInstalled] = useState(true);
-  const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('general');
+  const [settingsActiveSubTab, setSettingsActiveSubTab] = useState('workspace');
   const [addServiceExpanded, setAddServiceExpanded] = useState(false);
   const [settingsSearch, setSettingsSearch] = useState('');
   const [lastSnapshot, setLastSnapshot] = useState<any>(null);
