@@ -4440,51 +4440,51 @@ const App = () => {
                           (ipc as any).invoke('save-full-profile', next).then((saved: any) => { if (saved && !saved.error) setFullProfile(saved); }).catch(() => {});
                         };
                         return (
-                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
-                            <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', alignItems: 'flex-start' }}>
-                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <input value={fullProfile.name} onChange={e => upd({ name: e.target.value })} placeholder="Profile name…" className="chat-input" style={{ fontSize: '0.82rem', fontWeight: 700, height: '34px', padding: '0 10px' }} />
-                                <input value={fullProfile.description} onChange={e => upd({ description: e.target.value })} placeholder="Short description (optional)…" className="chat-input" style={{ fontSize: '0.68rem', height: '30px', padding: '0 10px' }} />
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px', padding: '20px' }}>
+                            <div style={{ display: 'flex', gap: '14px', marginBottom: '14px', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <input value={fullProfile.name} onChange={e => upd({ name: e.target.value })} placeholder="Profile name…" className="chat-input" style={{ fontSize: '1rem', fontWeight: 700, height: '40px', padding: '0 12px' }} />
+                                <input value={fullProfile.description} onChange={e => upd({ description: e.target.value })} placeholder="Short description (optional)…" className="chat-input" style={{ fontSize: '0.8rem', height: '36px', padding: '0 12px' }} />
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
                                 <button onClick={async () => {
                                   const res = await (ipc as any).invoke('export-full-profile', { profile: fullProfile });
                                   if (res?.path) setProfileMsg({ type: 'success', text: `✅ Saved to ${res.path}` });
                                   else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
-                                }} style={{ padding: '6px 12px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬇ Export</button>
+                                }} style={{ padding: '8px 16px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', color: '#4facfe', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬇ Export</button>
                                 <button onClick={async () => {
                                   const res = await (ipc as any).invoke('import-full-profile');
                                   if (res?.profile) { setFullProfile(res.profile); (ipc as any).invoke('save-full-profile', res.profile); setProfileMsg({ type: 'success', text: `✅ Imported: ${res.profile.name}` }); }
                                   else if (res?.error) setProfileMsg({ type: 'error', text: res.error });
-                                }} style={{ padding: '6px 12px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '7px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬆ Import</button>
+                                }} style={{ padding: '8px 16px', background: 'rgba(155,77,255,0.12)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>⬆ Import</button>
                                 <button onClick={async () => {
                                   const res = await (ipc as any).invoke('add-to-community', { profile: { ...fullProfile, isPublic: true } });
                                   if (res?.success) setProfileMsg({ type: 'success', text: '✅ Shared to IMI Community Library!' });
                                   else setProfileMsg({ type: 'error', text: res?.error || 'Share failed' });
-                                }} style={{ padding: '6px 12px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700, whiteSpace: 'nowrap' }}>🌐 Share</button>
+                                }} style={{ padding: '8px 16px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap' }}>🌐 Share</button>
                               </div>
                             </div>
                             {/* Tags */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px', alignItems: 'center' }}>
                               {(fullProfile.tags || []).map((t: string, i: number) => (
-                                <span key={i} style={{ fontSize: '0.6rem', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '20px', padding: '2px 8px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span key={i} style={{ fontSize: '0.72rem', background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '20px', padding: '4px 10px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                   {t}
-                                  <button onClick={() => upd({ tags: fullProfile.tags.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.7rem', lineHeight: 1 }}>×</button>
+                                  <button onClick={() => upd({ tags: fullProfile.tags.filter((_: string, j: number) => j !== i) })} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, opacity: 0.6, fontSize: '0.8rem', lineHeight: 1 }}>×</button>
                                 </span>
                               ))}
                               <input value={profileTagInput} onChange={e => setProfileTagInput(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && profileTagInput.trim()) { upd({ tags: [...(fullProfile.tags||[]), profileTagInput.trim()] }); setProfileTagInput(''); e.preventDefault(); } }}
                                 placeholder="+ add tag…" className="chat-input"
-                                style={{ fontSize: '0.6rem', height: '22px', padding: '0 8px', width: '90px', borderRadius: '20px' }} />
+                                style={{ fontSize: '0.72rem', height: '28px', padding: '0 10px', width: '100px', borderRadius: '20px' }} />
                             </div>
                             {/* Feedback */}
                             {profileMsg && (
-                              <div style={{ marginTop: '8px', padding: '6px 10px', borderRadius: '6px', fontSize: '0.63rem', background: profileMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', border: `1px solid ${profileMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, color: profileMsg.type === 'success' ? '#00ff88' : '#ff6b6b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.75rem', background: profileMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', border: `1px solid ${profileMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}`, color: profileMsg.type === 'success' ? '#00ff88' : '#ff6b6b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span>{profileMsg.text}</span>
                                 <button onClick={() => setProfileMsg(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.5, padding: '0 2px' }}>✕</button>
                               </div>
                             )}
-                            {fullProfile.updatedAt > 0 && <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', marginTop: '6px', opacity: 0.5 }}>Last saved {new Date(fullProfile.updatedAt).toLocaleString()}</div>}
+                            {fullProfile.updatedAt > 0 && <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '8px', opacity: 0.5 }}>Last saved {new Date(fullProfile.updatedAt).toLocaleString()}</div>}
                           </div>
                         );
                       })()}
@@ -4547,7 +4547,7 @@ const App = () => {
                         if (profileSubTab === 'code') return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                                 {styleProfile ? `✅ Auto-scanned ${styleProfile.filesAnalyzed} files · ${new Date(styleProfile.analyzedAt).toLocaleTimeString()}` : 'Not scanned yet'}
                               </div>
                               <button onClick={async () => {
@@ -4564,11 +4564,11 @@ const App = () => {
                                   } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
                                 } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
                                 setStyleLoading(false);
-                              }} disabled={styleLoading} style={{ padding: '5px 12px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>
+                              }} disabled={styleLoading} style={{ padding: '7px 16px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', color: '#4facfe', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
                                 {styleLoading ? '⏳ Scanning…' : '🔍 Auto-scan Project'}
                               </button>
                             </div>
-                            {styleMsg && <div style={{ padding: '6px 10px', borderRadius: '6px', fontSize: '0.62rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
+                            {styleMsg && <div style={{ padding: '8px 12px', borderRadius: '7px', fontSize: '0.75rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
                             <Row label="Indent"><Chips cat="code" field="indent" options={['2 spaces','4 spaces','tabs']} /></Row>
                             <Row label="Quotes"><Chips cat="code" field="quotes" options={['single','double','backtick']} /></Row>
                             <Row label="Semicolons"><Chips cat="code" field="semicolons" options={['true','false'] as any} /></Row>
@@ -4580,17 +4580,17 @@ const App = () => {
                             <Row label="TypeScript"><Chips cat="code" field="typescript" options={['true','false'] as any} /></Row>
                             <Row label="Notes"><Notes cat="code" /></Row>
                             {/* Impact Analyzer */}
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '14px' }}>
-                              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.1em', marginBottom: '8px' }}>🔭 Impact Analyzer</div>
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '18px' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em', marginBottom: '10px' }}>🔭 Impact Analyzer</div>
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <input value={impactTarget} onChange={e => setImpactTarget(e.target.value)} placeholder="e.g. src/App.tsx" className="chat-input" style={{ flex: 1, height: '32px', fontSize: '0.65rem', padding: '0 10px' }} />
+                                <input value={impactTarget} onChange={e => setImpactTarget(e.target.value)} placeholder="e.g. src/App.tsx" className="chat-input" style={{ flex: 1, height: '36px', fontSize: '0.75rem', padding: '0 12px' }} />
                                 <button onClick={async () => {
                                   if (!impactTarget.trim()) return; setImpactLoading(true); setImpactData(null);
                                   try { const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot }); if (res && !res.error) setImpactData(res); } catch {}
                                   setImpactLoading(false);
-                                }} disabled={impactLoading || !impactTarget.trim()} style={{ padding: '0 14px', height: '32px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>{impactLoading ? '…' : 'Analyze'}</button>
+                                }} disabled={impactLoading || !impactTarget.trim()} style={{ padding: '0 16px', height: '36px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>{impactLoading ? '…' : 'Analyze'}</button>
                               </div>
-                              {impactData && <div style={{ marginTop: '8px', fontSize: '0.62rem', color: impactData.affected.length ? '#ffa000' : '#00ff88' }}>{impactData.affected.length === 0 ? '✅ No dependents — safe to change' : `⚠ ${impactData.affected.length} files affected`}</div>}
+                              {impactData && <div style={{ marginTop: '10px', fontSize: '0.75rem', color: impactData.affected.length ? '#ffa000' : '#00ff88' }}>{impactData.affected.length === 0 ? '✅ No dependents — safe to change' : `⚠ ${impactData.affected.length} files affected`}</div>}
                             </div>
                           </div>
                         );
