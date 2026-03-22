@@ -2424,15 +2424,23 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         const cmdL = command.toLowerCase();
         const urlMatch = command.match(/https?:\/\/[^\s]+/i);
         // Match "head to X", "go to X", "open X", "navigate to X", "visit X", "launch X"
-        // but skip filler words like "up", "my", "the", "a", "browser", "chrome", "internet"
-        const FILLER = new Set(['up','my','the','a','an','browser','chrome','internet','web','website','webpage']);
-        const siteMatch = cmdL.match(/(?:head\s+to|go\s+to|open\s+up\s+(?:my\s+)?(?:browser\s+(?:and\s+)?)?(?:head\s+to|go\s+to)?|open|visit|navigate\s+to|launch|take\s+me\s+to)\s+([a-z0-9.-]+(?:\s+[a-z0-9.-]+)*)/i);
+        // Extended FILLER set — all common words that are NOT site names
+        const FILLER = new Set([
+          'up','my','the','a','an','browser','chrome','internet','web','website','webpage',
+          'and','show','it','me','us','that','this','here','please','now','again','just',
+          'to','for','in','on','at','of','is','it','its','so','do','go','get','see',
+          'open','launch','visit','navigate','page','site','link','url','app'
+        ]);
+        // Only match when a real destination word follows the action verb
+        const siteMatch = cmdL.match(/(?:head\s+to|go\s+to|navigate\s+to|take\s+me\s+to|visit|launch)\s+([a-z0-9.-]+(?:\s+[a-z0-9.-]+)*)|(?:open)\s+([a-z0-9.-]+(?:\.[a-z]{2,})(?:\s+[a-z0-9.-]+)*)/i);
         let raw = urlMatch ? urlMatch[0] : null;
         if (!raw && siteMatch) {
           // Walk through captured words, skip fillers, take first real word
-          const words = siteMatch[1].trim().split(/\s+/);
-          const site = words.find(w => !FILLER.has(w));
-          if (site) raw = site;
+          const captured = (siteMatch[1] || siteMatch[2] || '').trim();
+          const words = captured.split(/\s+/);
+          const site = words.find(w => !FILLER.has(w) && w.length > 2);
+          // Only use it if it looks like a real site (has a dot OR is a known brand ≥4 chars)
+          if (site && (site.includes('.') || site.length >= 4)) raw = site;
         }
         if (raw) {
           let url;
@@ -2441,16 +2449,25 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           } else if (raw.includes('.')) {
             url = `https://${raw}`;
           } else {
-            // No dot = ambiguous name — ask DDG for the real URL before guessing
+            // No dot = try DDG lookup; if that fails, fall through to AI (don't guess .com blindly)
             const resolved = await ddgResolveUrl(raw);
-            url = resolved || `https://${raw}.com`;
+            if (!resolved) {
+              // No confident URL found — fall through to AI (don't guess blindly)
+              raw = null;
+              url = null;
+            } else {
+              url = resolved;
+            }
           }
-          shell.openExternal(url);
-          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
-          event.sender.send('command-end', { messageId, code: 0 });
-          skillEngine.recordHit(matchedSkill.id, 400, director);
-          return;
+          if (url) {
+            shell.openExternal(url);
+            event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
+            event.sender.send('command-end', { messageId, code: 0 });
+            skillEngine.recordHit(matchedSkill.id, 400, director);
+            return;
+          }
         }
+        // No URL could be confidently extracted — fall through to AI
       }
       if (matchedSkill.handler === 'stats') {
         const reply = `⚡ [Skill: ${matchedSkill.name}]\n📊 Project: ${currentProjectRoot}\n🧠 Brain: ${ACTIVE_BRAIN} | Coder: ${ACTIVE_CODER}\n⚡ Skill efficiency: ${skillEngine.getEfficiency()}% | Tokens saved: ${skillEngine.stats.tokensSaved.toLocaleString()}\n💾 Free RAM: ${(os.freemem()/1024/1024/1024).toFixed(2)}GB`;
