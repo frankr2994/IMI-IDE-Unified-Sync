@@ -4726,6 +4726,14 @@ const App = () => {
                           { name: 'Twilio', emoji: '📱', desc: 'SMS, voice & WhatsApp messaging API', link: 'https://console.twilio.com/us1/account/keys-credentials/api-keys', tags: ['twilio','sms','voice','whatsapp','messaging'] },
                           { name: 'Weather API', emoji: '🌤️', desc: 'Current & forecast weather data worldwide', link: 'https://www.weatherapi.com/signup.aspx', tags: ['weather','forecast','temperature','weatherapi'] },
                           { name: 'ipinfo', emoji: '📍', desc: 'IP geolocation & network data API', link: 'https://ipinfo.io/signup', tags: ['ipinfo','ip','geolocation','location'] },
+                          { name: 'Grok (xAI)', emoji: '𝕏', desc: 'Elon\'s Grok-3 model by xAI', link: 'https://console.x.ai/', tags: ['grok','xai','x.ai','elon','grok3','grok-3'] },
+                          { name: 'DeepSeek', emoji: '🔥', desc: 'DeepSeek R1 — cost-effective reasoning model', link: 'https://platform.deepseek.com/api_keys', tags: ['deepseek','deep seek','r1','chinese','cheap'] },
+                          { name: 'Perplexity', emoji: '🔍', desc: 'Web-search augmented AI responses', link: 'https://www.perplexity.ai/settings/api', tags: ['perplexity','pplx','search','web ai'] },
+                          { name: 'GitHub', emoji: '🐙', desc: 'Personal Access Token — enables sync & Jules', link: 'https://github.com/settings/tokens', tags: ['github','git','token','pat','personal access'] },
+                          { name: 'Gemini', emoji: '✨', desc: 'Google Gemini — free tier, powers IMI Core', link: 'https://aistudio.google.com/apikey', tags: ['gemini','google','aistudio','ai studio','free'] },
+                          { name: 'Claude', emoji: '🧠', desc: 'Anthropic Claude 3.5 Sonnet & Opus', link: 'https://console.anthropic.com/settings/keys', tags: ['claude','anthropic','sonnet','opus','haiku'] },
+                          { name: 'ChatGPT', emoji: '🤖', desc: 'OpenAI GPT-4o, o1 & DALL-E', link: 'https://platform.openai.com/api-keys', tags: ['chatgpt','openai','gpt','gpt4','gpt-4','dall-e'] },
+                          { name: 'Groq', emoji: '⚡', desc: 'Fastest LLM inference — Llama 70B & more', link: 'https://console.groq.com/keys', tags: ['groq','fast','llama','speed','inference'] },
                         ];
                         const q = apiKeySearch.toLowerCase().trim();
                         const results = q.length > 0
@@ -4812,9 +4820,10 @@ const App = () => {
                                       );
                                     })
                                   : (
-                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '10px' }}>
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>No match in directory — search the web for <strong style={{ color: 'white' }}>"{apiKeySearch} API key"</strong></div>
-                                        <button onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key how to get')}`)} className="btn-premium" style={{ padding: '6px 14px', fontSize: '0.62rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '12px' }}>Search Web →</button>
+                                      <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(155,77,255,0.25)', borderRadius: '10px' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'white', fontWeight: 700, marginBottom: '6px' }}>"{apiKeySearch}" not in local directory</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginBottom: '10px' }}>IMI has a built-in list of 35+ services. For anything else, search the web — it'll take you straight to their API key page.</div>
+                                        <button onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key how to get')}`)} className="btn-premium" style={{ padding: '8px 18px', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>🌐 Search Web for "{apiKeySearch}" API Key →</button>
                                       </div>
                                     )
                                 }
