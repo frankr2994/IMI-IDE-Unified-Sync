@@ -2852,16 +2852,31 @@ User: `;
       // Extract explicit URLs first, then resolve bare site names
       const urls = [...command.matchAll(/https?:\/\/[^\s,]+/g)].map(m => m[0]);
       // Words that are browser/UI names, not website names
-      const skipWords = /^(chrome|crome|chromium|firefox|edge|safari|browser|browsers|internet|a|an|the|my|up|it|new|tab|tabs|some|and|then|next|also|please|now)$/;
-      const siteNames = [...cmdL.matchAll(/(?:head\s+to|go\s+to|open|visit|launch|navigate\s+to|take\s+me\s+to)\s+([a-z0-9.-]+)/g)]
+      const skipWords = /^(chrome|crome|chromium|firefox|edge|safari|browser|browsers|internet|a|an|the|my|up|it|its|new|tab|tabs|some|and|or|then|next|also|please|now|me|us|show|open|that|this|here|again|for|to|of)$/;
+      const siteNames = [...cmdL.matchAll(/(?:head\s+to|go\s+to|visit|launch|navigate\s+to|take\s+me\s+to)\s+([a-z0-9.-]+)/g)]
         .map(m => m[1].trim())
-        .filter(s => !skipWords.test(s) && s.length > 1)
+        .filter(s => !skipWords.test(s) && s.length > 2)
         .map(s => s.includes('.') ? `https://${s}` : `https://${s}.com`);
-      const allUrls = [...new Set([...urls, ...siteNames])];
+      // Also extract named sites from "open <site>" only when site has a dot (e.g. "open stockanalysis.com")
+      const openDotSites = [...cmdL.matchAll(/\bopen\s+([a-z0-9-]+\.[a-z]{2,}(?:\.[a-z]{2,})?(?:\/[^\s]*)?)/g)]
+        .map(m => `https://${m[1].trim()}`);
+      let allUrls = [...new Set([...urls, ...siteNames, ...openDotSites])];
+      // Fallback: if no URL found but command is just "open the browser" / "show it to me" / "show me it"
+      // — look back through conversation history for the most recent URL that was mentioned
+      if (allUrls.length === 0 && /\b(show|open|take me|load|go|it|browser)\b/i.test(cmdL)) {
+        for (let i = history.length - 1; i >= 0; i--) {
+          const histText = history[i]?.text || history[i]?.content || '';
+          const histUrl = histText.match(/https?:\/\/[^\s)>\]"']+/);
+          if (histUrl) { allUrls = [histUrl[0]]; break; }
+          // Also check for bare domain mentions in AI responses like "finance.yahoo.com"
+          const bareDomain = histText.match(/\b([a-z0-9-]+\.(?:com|org|net|io|co|gov|edu|tv|app)[^\s)>\]"']*)/i);
+          if (bareDomain) { allUrls = [`https://${bareDomain[1]}`]; break; }
+        }
+      }
       if (allUrls.length > 0) {
         console.log(`[ROUTE] → isSimpleOpen (shell.openExternal) urls=${allUrls.join(',')}`);
         allUrls.forEach(u => shell.openExternal(u));
-        event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `🌐 Opening: ${u}`).join('\n') });
+        event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `🌐 Opening: **${u}**`).join('\n') });
         event.sender.send('command-end', { messageId, code: 0 });
         return;
       }
