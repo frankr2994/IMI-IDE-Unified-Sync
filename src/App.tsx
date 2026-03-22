@@ -4373,10 +4373,9 @@ const App = () => {
                   {/* Sidebar */}
                   <div style={{ width: '172px', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.15)' }}>
                     {([
-                      { id: 'workspace', label: 'Workspace',      icon: <Settings2 size={13}/> },
-                      { id: 'apis',      label: 'APIs & Keys',    icon: <Key size={13}/> },
-                      { id: 'style',     label: 'Style & Impact', icon: <GitBranch size={13}/> },
-                      { id: 'advanced',  label: 'Advanced',       icon: <ShieldCheck size={13}/> },
+                      { id: 'workspace', label: 'Workspace',   icon: <Settings2 size={13}/> },
+                      { id: 'apis',      label: 'APIs & Keys', icon: <Key size={13}/> },
+                      { id: 'advanced',  label: 'Advanced',    icon: <ShieldCheck size={13}/> },
                     ] as { id: string; label: string; icon: React.ReactNode }[]).map(tab => {
                       const active = settingsActiveSubTab === tab.id;
                       return (
@@ -4565,6 +4564,23 @@ const App = () => {
                         </div>
                       </section>
 
+                    </motion.div>
+                  )}
+
+                  {/* ── APIS & KEYS ── */}
+                  {settingsActiveSubTab === 'apis' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      <section>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', textTransform: 'uppercase' }}>API Keys</div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '2rem' }}>🔑</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)' }}>API Keys are managed in Dev Hub</div>
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, maxWidth: '320px' }}>Search for any API key, pull it directly from results, and manage your connected services — all in one place.</div>
+                          <button onClick={() => { setActiveTab('tools'); }} style={{ padding: '10px 24px', background: 'rgba(155,77,255,0.2)', border: '1px solid rgba(155,77,255,0.4)', borderRadius: '10px', color: 'rgba(155,77,255,1)', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+                            Open Dev Hub →
+                          </button>
+                        </div>
+                      </section>
                     </motion.div>
                   )}
 
