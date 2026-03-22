@@ -4332,27 +4332,48 @@ const App = () => {
                     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
                       {/* Header */}
-                      <div style={{ background: 'linear-gradient(135deg, rgba(79,172,254,0.1), rgba(0,255,136,0.06))', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '14px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: '1rem', marginBottom: '4px' }}>🎨 Style & Impact Analyzer</div>
-                          <div style={{ color: 'var(--text-dim)', fontSize: '0.72rem', lineHeight: 1.5 }}>
-                            Zero tokens — learns your coding style locally, predicts change impact from the import graph.
+                      <div style={{ background: 'rgba(79,172,254,0.06)', border: '1px solid rgba(79,172,254,0.2)', borderRadius: '12px', padding: '16px 18px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', marginBottom: '4px', color: 'white' }}>🎨 Style & Impact Analyzer</div>
+                            <div style={{ color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.5 }}>
+                              Zero tokens — learns your coding style locally and injects it into every code generation prompt.
+                            </div>
                           </div>
+                          <button
+                            onClick={async () => {
+                              const root = stats.projectRoot;
+                              if (!root) {
+                                setStyleMsg({ type: 'error', text: 'No project root set — go to Preferences and set your project folder first.' });
+                                return;
+                              }
+                              setStyleLoading(true);
+                              setStyleMsg(null);
+                              try {
+                                const p = await (ipc as any).invoke('analyze-style', { projectRoot: root });
+                                if (p && !p.error) {
+                                  setStyleProfile(p);
+                                  setStyleMsg({ type: 'success', text: `✅ Analyzed ${p.filesAnalyzed} files — style profile active` });
+                                } else {
+                                  setStyleMsg({ type: 'error', text: p?.error || 'Analysis failed — check project root is a code folder' });
+                                }
+                              } catch(e: any) {
+                                setStyleMsg({ type: 'error', text: e.message || 'Unexpected error' });
+                              }
+                              setStyleLoading(false);
+                            }}
+                            disabled={styleLoading}
+                            style={{ padding: '8px 16px', background: styleLoading ? 'rgba(79,172,254,0.08)' : 'rgba(79,172,254,0.15)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '8px', color: '#4facfe', cursor: styleLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.7rem', whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.2s' }}>
+                            {styleLoading ? '⏳ Analyzing…' : '🔍 Learn My Style'}
+                          </button>
                         </div>
-                        <button
-                          onClick={async () => {
-                            setStyleLoading(true);
-                            try {
-                              const p = await (ipc as any).invoke('analyze-style', { projectRoot: stats.projectRoot });
-                              if (p && !p.error) setStyleProfile(p);
-                              else alert(p?.error || 'Analysis failed');
-                            } catch(e: any) { alert(e.message); }
-                            setStyleLoading(false);
-                          }}
-                          disabled={styleLoading || !stats.projectRoot}
-                          style={{ padding: '9px 18px', background: 'rgba(79,172,254,0.15)', border: '1px solid rgba(79,172,254,0.4)', borderRadius: '9px', color: '#4facfe', cursor: 'pointer', fontWeight: 800, fontSize: '0.72rem', whiteSpace: 'nowrap', opacity: (!stats.projectRoot || styleLoading) ? 0.5 : 1 }}>
-                          {styleLoading ? '⏳ Analyzing…' : '🔍 Learn My Style'}
-                        </button>
+                        {/* Inline feedback message */}
+                        {styleMsg && (
+                          <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '7px', fontSize: '0.67rem', fontWeight: 600, background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.08)' : 'rgba(255,65,108,0.08)', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.25)' : 'rgba(255,65,108,0.25)'}`, color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <span>{styleMsg.text}</span>
+                            <button onClick={() => setStyleMsg(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px', fontSize: '0.8rem' }}>✕</button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Style Profile */}
