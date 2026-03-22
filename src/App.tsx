@@ -2702,8 +2702,9 @@ const App = () => {
                     { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
                     { id: 'agent',  label: '🤖 Agent Monitor',      sub: 'loop stats' },
                   ].map(t => (
-                    <button key={t.id} onClick={() => { setMcpHubTab(t.id as any); if (t.id === 'ai') loadOllamaModels(); if (t.id === 'agent') { (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {}); } }} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
-                      {t.label} <span style={{ opacity: 0.6, fontSize: '0.65rem', marginLeft: '4px' }}>{t.sub}</span>
+                    <button key={t.id} onClick={() => { setMcpHubTab(t.id as any); if (t.id === 'ai') loadOllamaModels(); if (t.id === 'agent') { (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {}); } }} style={{ padding: '10px 16px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', marginBottom: '-1px', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '0.78rem' }}>{t.label}</span>
+                      <span style={{ opacity: 0.55, fontSize: '0.6rem', fontWeight: 400 }}>{t.sub}</span>
                     </button>
                   ))}
                 </div>
