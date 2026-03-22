@@ -4819,102 +4819,45 @@ const App = () => {
                         );
                       })()}
 
-                      {/* AI MODELS group */}
+                      {/* CONNECTED KEYS — compact list of everything saved */}
                       {(() => {
-                        const allAiServices = [
-                          { emoji: '✨', name: 'Gemini', desc: 'Google · Free tier · Powers IMI Core', val: geminiKey, set: setGeminiKey, ph: 'AIza…', link: 'https://aistudio.google.com/apikey', badge: 'RECOMMENDED', core: true,  saveKey: 'geminiKey' },
-                          { emoji: '🤖', name: 'ChatGPT', desc: 'OpenAI GPT-4o & o1 series', val: openaiKey, set: setOpenaiKey, ph: 'sk-…', link: 'https://platform.openai.com/api-keys', core: false, saveKey: 'openaiKey' },
-                          { emoji: '🧠', name: 'Claude', desc: 'Anthropic · Claude 3.5 Sonnet', val: claudeKey, set: setClaudeKey, ph: 'sk-ant-…', link: 'https://console.anthropic.com/settings/keys', core: false, saveKey: 'claudeKey' },
-                          { emoji: '🔥', name: 'DeepSeek', desc: 'DeepSeek R1 · Cost-effective', val: deepseekKey, set: setDeepseekKey, ph: 'sk-…', link: 'https://platform.deepseek.com/api_keys', core: false, saveKey: 'deepseekKey' },
-                          { emoji: '🌊', name: 'Mistral', desc: 'Mistral Large & Mixtral', val: mistralKey, set: setMistralKey, ph: 'API key…', link: 'https://console.mistral.ai/api-keys/', core: false, saveKey: 'mistralKey' },
-                          { emoji: '🔍', name: 'Perplexity', desc: 'Web-search augmented AI', val: perplexityKey, set: setPerplexityKey, ph: 'pplx-…', link: 'https://www.perplexity.ai/settings/api', core: false, saveKey: 'perplexityKey' },
-                          { emoji: '⚡', name: 'Groq', desc: 'Llama 70B · Fastest inference on the planet', val: groqKey, set: setGroqKey, ph: 'gsk_…', link: 'https://console.groq.com/keys', core: false, saveKey: 'groqKey' },
-                          { emoji: '𝕏',  name: 'Grok (xAI)', desc: 'Elon\'s Grok-3 model by xAI', val: grokKey, set: setGrokKey, ph: 'xai-…', link: 'https://console.x.ai/', core: false, saveKey: 'grokKey' },
-                          { emoji: '🪐', name: 'Cohere', desc: 'Command R+ · Great for RAG & business tasks', val: cohereKey, set: setCohereKey, ph: 'API key…', link: 'https://dashboard.cohere.com/api-keys', core: false, saveKey: 'cohereKey' },
+                        const allKeys = [
+                          { emoji: '✨', name: 'Gemini',      val: geminiKey,      set: setGeminiKey,      saveKey: 'geminiKey' },
+                          { emoji: '🤖', name: 'ChatGPT',     val: openaiKey,      set: setOpenaiKey,      saveKey: 'openaiKey' },
+                          { emoji: '🧠', name: 'Claude',      val: claudeKey,      set: setClaudeKey,      saveKey: 'claudeKey' },
+                          { emoji: '🔥', name: 'DeepSeek',    val: deepseekKey,    set: setDeepseekKey,    saveKey: 'deepseekKey' },
+                          { emoji: '🌊', name: 'Mistral',     val: mistralKey,     set: setMistralKey,     saveKey: 'mistralKey' },
+                          { emoji: '🔍', name: 'Perplexity',  val: perplexityKey,  set: setPerplexityKey,  saveKey: 'perplexityKey' },
+                          { emoji: '⚡', name: 'Groq',        val: groqKey,        set: setGroqKey,        saveKey: 'groqKey' },
+                          { emoji: '𝕏',  name: 'Grok',        val: grokKey,        set: setGrokKey,        saveKey: 'grokKey' },
+                          { emoji: '🪐', name: 'Cohere',      val: cohereKey,      set: setCohereKey,      saveKey: 'cohereKey' },
+                          { emoji: '🐙', name: 'GitHub',      val: githubToken,    set: setGithubToken,    saveKey: 'githubToken' },
+                          { emoji: '🤝', name: 'Jules AI',    val: julesApiKey,    set: setJulesApiKey,    saveKey: 'julesApiKey' },
+                          { emoji: '🗺️', name: 'Google Maps', val: googleMapsKey,  set: setGoogleMapsKey,  saveKey: 'googleMapsKey' },
                         ];
-                        const activeServices = allAiServices.filter(s => s.core || s.val);
-                        const inactiveServices = allAiServices.filter(s => !s.core && !s.val);
-                        const renderCard = (item: typeof allAiServices[0]) => (
-                          <div key={item.name} style={{ background: item.val ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${item.val ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '14px', padding: '16px', transition: 'border-color 0.2s' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
-                                <div>
-                                  <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {item.name}
-                                    {(item as any).badge && <span style={{ fontSize: '0.52rem', background: 'rgba(155,77,255,0.25)', color: 'var(--primary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 900, letterSpacing: '0.08em' }}>{(item as any).badge}</span>}
-                                  </div>
-                                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '1px' }}>{item.desc}</div>
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {item.val
-                                    ? <>
-                                        <span style={{ fontSize: '0.6rem', background: 'rgba(0,255,136,0.15)', color: '#00ff88', padding: '3px 8px', borderRadius: '6px', fontWeight: 900 }}>✓ Connected</span>
-                                        {!item.core && <button onPointerDown={e => { e.preventDefault(); item.set(''); saveConfig({ [(item as any).saveKey]: '' }); }} style={{ fontSize: '0.6rem', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', color: '#ff416c', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }} title="Remove key">×</button>}
-                                      </>
-                                    : <button onClick={() => (ipc as any).send('open-external-url', item.link)} style={{ fontSize: '0.6rem', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-dim)', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Get Key →</button>
-                                  }
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{ position: 'relative' }}>
-                              <input type="password" value={item.val} onChange={e => item.set(e.target.value)} onBlur={() => saveConfig()} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.85rem', paddingLeft: '14px', paddingRight: item.val ? '38px' : '14px', borderRadius: '10px', boxSizing: 'border-box' }} />
-                              {item.val && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
-                            </div>
+                        const saved = allKeys.filter(k => k.val.trim());
+                        if (saved.length === 0) return (
+                          <div style={{ padding: '18px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '14px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.72rem' }}>
+                            No keys saved yet — search above to add one
                           </div>
                         );
                         return (
-                          <div>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>🤖</span> AI MODELS
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                              {activeServices.map(renderCard)}
-                            </div>
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px', overflow: 'hidden' }}>
+                            <div style={{ padding: '12px 16px 8px', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>✓ Connected Keys</div>
+                            {saved.map((k, i) => (
+                              <div key={k.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', borderTop: i === 0 ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                                <span style={{ fontSize: '1rem', flexShrink: 0 }}>{k.emoji}</span>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white', flex: '0 0 100px' }}>{k.name}</div>
+                                <div style={{ flex: 1, fontSize: '0.68rem', color: 'var(--text-dim)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {'•'.repeat(12)} {k.val.slice(-4)}
+                                </div>
+                                <span style={{ fontSize: '0.55rem', background: 'rgba(0,255,136,0.12)', color: '#00ff88', padding: '2px 7px', borderRadius: '5px', fontWeight: 900, flexShrink: 0 }}>LIVE</span>
+                                <button onPointerDown={e => { e.preventDefault(); k.set(''); saveConfig({ [k.saveKey]: '' }); }} style={{ fontSize: '0.62rem', background: 'rgba(255,65,108,0.08)', border: '1px solid rgba(255,65,108,0.25)', color: '#ff416c', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, flexShrink: 0 }} title="Remove key">× Remove</button>
+                              </div>
+                            ))}
                           </div>
                         );
                       })()}
-
-                      {/* DEV TOOLS group */}
-                      <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>🔧</span> DEV TOOLS
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                          {[
-                            { emoji: '🐙', name: 'GitHub', desc: 'Personal Access Token · enables sync & Jules', val: githubToken, set: setGithubToken, ph: 'ghp_…', link: 'https://github.com/settings/tokens', saveKey: 'githubToken' },
-                            { emoji: '🤝', name: 'Jules AI', desc: 'GitHub-based AI coding agent', val: julesApiKey, set: setJulesApiKey, ph: 'Jules key or GitHub token…', link: 'https://jules.google.com', saveKey: 'julesApiKey' },
-                          ].map(item => (
-                            <div key={item.name} style={{ background: item.val ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${item.val ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: '14px', padding: '16px', transition: 'border-color 0.2s' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
-                                  <div>
-                                    <div style={{ fontSize: '0.82rem', fontWeight: 900, color: 'white' }}>{item.name}</div>
-                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '1px' }}>{item.desc}</div>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                                  {item.val
-                                    ? <>
-                                        <span style={{ fontSize: '0.6rem', background: 'rgba(0,255,136,0.15)', color: '#00ff88', padding: '3px 8px', borderRadius: '6px', fontWeight: 900 }}>✓ Connected</span>
-                                        <button onPointerDown={e => { e.preventDefault(); item.set(''); saveConfig({ [(item as any).saveKey]: '' }); }} style={{ fontSize: '0.6rem', background: 'rgba(255,65,108,0.1)', border: '1px solid rgba(255,65,108,0.3)', color: '#ff416c', padding: '3px 7px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }} title="Remove key">×</button>
-                                      </>
-                                    : <button onClick={() => (ipc as any).send('open-external-url', item.link)} style={{ fontSize: '0.6rem', background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--text-dim)', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Get Token →</button>
-                                  }
-                                </div>
-                              </div>
-                              <div style={{ position: 'relative' }}>
-                                <input type="password" value={item.val} onChange={e => item.set(e.target.value)} onBlur={() => saveConfig()} placeholder={item.ph} className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.85rem', paddingLeft: '14px', paddingRight: item.val ? '38px' : '14px', borderRadius: '10px', boxSizing: 'border-box' }} />
-                                {item.val && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
 
                     </motion.div>
                   )}
