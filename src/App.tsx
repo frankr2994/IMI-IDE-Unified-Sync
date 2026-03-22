@@ -109,6 +109,13 @@ const App = () => {
     stack:    { languages: [] as string[], frameworks: [] as string[], tools: [] as string[], preferredModel: '', modelUsage: [] as string[], notes: '' },
   };
   const [fullProfile, setFullProfile] = useState<typeof DEFAULT_FULL_PROFILE>(DEFAULT_FULL_PROFILE);
+  const updFullProfile = (cat: string, patch: any) => {
+    setFullProfile((prev: typeof DEFAULT_FULL_PROFILE) => {
+      const next = { ...prev, [cat]: { ...(prev as any)[cat], ...patch } };
+      (ipc as any).invoke('save-full-profile', next).catch(() => {});
+      return next;
+    });
+  };
   const [profileSubTab, setProfileSubTab] = useState<'code'|'design'|'art'|'writing'|'workflow'|'stack'|'community'>('code');
   const [communityProfiles, setCommunityProfiles] = useState<any[]>([]);
   const [communityProfilesLoading, setCommunityProfilesLoading] = useState(false);
@@ -4196,7 +4203,7 @@ const App = () => {
                         if (p && !p.error) {
                           setStyleProfile(p);
                           const codeUpdate = { indent: p.indent, quotes: p.quotes, semicolons: p.semicolons, arrowFunctions: p.arrowFunctions, constOverLet: p.constOverLet, asyncAwait: p.asyncAwait, typescript: p.typescript, naming: p.naming, importStyle: p.importStyle, jsdocComments: p.jsdocComments, filesAnalyzed: p.filesAnalyzed };
-                          upd('code', codeUpdate);
+                          updFullProfile('code', codeUpdate);
                           setStyleMsg({ type: 'success', text: `✅ Scanned ${p.filesAnalyzed} files — style learned` });
                         } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
                       } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
@@ -4623,12 +4630,12 @@ const App = () => {
                                   const data = JSON.parse(ev.target?.result as string);
                                   if (data.imi !== 'style-profile') { setStyleMsg({ type: 'error', text: '❌ Not a valid IMI style profile file' }); return; }
                                   setFullProfile((prev: typeof DEFAULT_FULL_PROFILE) => ({ ...prev, ...data }));
-                                  if (data.code) { setStyleProfile(data.code); upd('code', data.code); }
-                                  if (data.design) upd('design', data.design);
-                                  if (data.art) upd('art', data.art);
-                                  if (data.writing) upd('writing', data.writing);
-                                  if (data.workflow) upd('workflow', data.workflow);
-                                  if (data.stack) upd('stack', data.stack);
+                                  if (data.code) { setStyleProfile(data.code); updFullProfile('code', data.code); }
+                                  if (data.design) updFullProfile('design', data.design);
+                                  if (data.art) updFullProfile('art', data.art);
+                                  if (data.writing) updFullProfile('writing', data.writing);
+                                  if (data.workflow) updFullProfile('workflow', data.workflow);
+                                  if (data.stack) updFullProfile('stack', data.stack);
                                   setStyleMsg({ type: 'success', text: `✅ Imported "${data.name || 'Style Profile'}" — all settings applied` });
                                 } catch { setStyleMsg({ type: 'error', text: '❌ Could not parse file — make sure it\'s a valid .imistyle.json' }); }
                               };
