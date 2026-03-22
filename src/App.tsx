@@ -3616,12 +3616,10 @@ const App = () => {
                   {([
                     { id: 'mine',       label: 'MY SKILLS',  count: skills.length },
                     { id: 'community',  label: '🌐 COMMUNITY', count: communitySkills.length || null },
-                    { id: 'optimizer',  label: 'OPTIMIZER',  count: null },
-                    { id: 'benchmarks', label: 'BENCHMARKS', count: Object.keys(benchmarkData).length || null },
-                  ] as { id: 'mine'|'community'|'optimizer'|'benchmarks'; label: string; count: number|null }[]).map(tab => (
+                    { id: 'benchmarks', label: '📊 PERFORMANCE', count: Object.keys(benchmarkData).length || null },
+                  ] as { id: 'mine'|'community'|'benchmarks'; label: string; count: number|null }[]).map(tab => (
                     <button key={tab.id} onClick={async () => {
-                      setSkillsSubTab(tab.id);
-                      if (tab.id === 'optimizer') { const h = await (ipc as any).invoke('skills-get-history'); if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); } }
+                      setSkillsSubTab(tab.id as any);
                       if (tab.id === 'benchmarks') { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }
                       if (tab.id === 'community' && communitySkills.length === 0) {
                         setCommunityLoading(true);
@@ -4430,7 +4428,7 @@ const App = () => {
 
                   {/* ── STYLE PROFILE MANAGER ─────────────────────────────── */}
                   {settingsActiveSubTab === 'style' && (
-                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '660px', width: '100%' }}>
 
                       {/* ── Profile header card ── */}
                       {(() => {
