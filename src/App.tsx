@@ -482,6 +482,8 @@ const App = () => {
   const [githubToken, setGithubToken] = useState('');
   const [openaiKey, setOpenaiKey] = useState('');
   const [apiKeySearch, setApiKeySearch] = useState('');
+  const [apiKeyAddOpen, setApiKeyAddOpen] = useState<string | null>(null);
+  const [apiKeyAddVal, setApiKeyAddVal] = useState<Record<string, string>>({});
   const [claudeKey, setClaudeKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
