@@ -2183,8 +2183,8 @@ const App = () => {
                       <button type="button" onClick={() => { setDebateMode(d => !d); if (planMode) setPlanMode(false); }} title={debateMode ? 'Debate Mode ON — Brain & Coder debate then execute' : 'Debate Mode — Brain plans, Coder critiques, then apply'} style={{ height: '38px', width: '38px', background: debateMode ? 'rgba(255,160,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debateMode ? 'rgba(255,160,0,0.55)' : 'var(--glass-border)'}`, borderRadius: '9px', color: debateMode ? '#ffa000' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚔</button>
 
                       {/* Style Profile indicator */}
-                      <button type="button" title={styleProfile ? `Style learned: ${styleProfile?.filesAnalyzed ?? '?'} files · ${styleProfile?.indent ?? '?'}, ${styleProfile?.quotes ?? '?'} quotes${styleProfile?.semicolons ? ', semi' : ', no-semi'}` : 'No style profile — go to Settings → Style & Impact to learn'} onClick={async () => { setActiveTab('settings'); setSettingsActiveSubTab('style'); }} style={{ height: '38px', width: '38px', background: styleProfile ? 'rgba(79,172,254,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleProfile ? 'rgba(79,172,254,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: styleProfile ? '#4facfe' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                        🎨
+                      <button type="button" title={styleProfile ? `Style learned: ${styleProfile?.filesAnalyzed ?? '?'} files · ${styleProfile?.indent ?? '?'}, ${styleProfile?.quotes ?? '?'} quotes${styleProfile?.semicolons ? ', semi' : ', no-semi'}` : 'No style profile — go to Settings → Style & Impact to learn'} onClick={async () => { setActiveTab('settings'); setSettingsActiveSubTab('style'); }} style={{ height: '38px', width: '38px', background: styleProfile ? 'rgba(79,172,254,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleProfile ? 'rgba(79,172,254,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: styleProfile ? '#4facfe' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                        <Palette size={15}/>
                         {styleProfile && <span style={{ position: 'absolute', top: '4px', right: '4px', width: '5px', height: '5px', borderRadius: '50%', background: '#4facfe' }} />}
                       </button>
 
@@ -4507,7 +4507,7 @@ const App = () => {
                               (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false));
                             }
                           }}
-                            style={{ padding: '8px 12px', background: 'none', border: 'none', borderBottom: profileSubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: profileSubTab === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.4)', fontSize: '0.62rem', fontWeight: profileSubTab === t.id ? 800 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }} />
+                            style={{ padding: '10px 14px', background: 'none', border: 'none', borderBottom: profileSubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: profileSubTab === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.45)', fontSize: '0.73rem', fontWeight: profileSubTab === t.id ? 800 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }} />
                         ))}
                       </div>
 
@@ -4522,10 +4522,10 @@ const App = () => {
                         const Chips = ({ cat, field, options }: { cat: string; field: string; options: string[] }) => {
                           const val = (fullProfile as any)[cat]?.[field] || '';
                           return (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
                               {options.map(o => (
                                 <button key={o} onClick={() => upd(cat, { [field]: val === o ? '' : o })}
-                                  style={{ padding: '4px 10px', borderRadius: '20px', border: `1px solid ${val === o ? 'var(--primary)' : 'rgba(255,255,255,0.12)'}`, background: val === o ? 'rgba(155,77,255,0.18)' : 'rgba(255,255,255,0.03)', color: val === o ? 'var(--primary)' : 'rgba(255,255,255,0.55)', fontSize: '0.62rem', fontWeight: val === o ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+                                  style={{ padding: '6px 14px', borderRadius: '20px', border: `1px solid ${val === o ? 'var(--primary)' : 'rgba(255,255,255,0.15)'}`, background: val === o ? 'rgba(155,77,255,0.22)' : 'rgba(255,255,255,0.04)', color: val === o ? 'var(--primary)' : 'rgba(255,255,255,0.65)', fontSize: '0.75rem', fontWeight: val === o ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
                                   {o}
                                 </button>
                               ))}
@@ -4534,18 +4534,18 @@ const App = () => {
                         };
                         const Notes = ({ cat }: { cat: string }) => (
                           <textarea value={(fullProfile as any)[cat]?.notes || ''} onChange={e => upd(cat, { notes: e.target.value })} placeholder="Any extra notes or preferences…" className="chat-input"
-                            style={{ width: '100%', height: '60px', resize: 'vertical', fontSize: '0.65rem', padding: '8px 10px', boxSizing: 'border-box', lineHeight: 1.5 }} />
+                            style={{ width: '100%', height: '80px', resize: 'vertical', fontSize: '0.75rem', padding: '10px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
                         );
                         const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-                          <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', fontWeight: 600 }}>{label}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px', alignItems: 'start', paddingTop: '4px' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600, paddingTop: '7px' }}>{label}</div>
                             <div>{children}</div>
                           </div>
                         );
 
                         // ── CODE ──
                         if (profileSubTab === 'code') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>
                                 {styleProfile ? `✅ Auto-scanned ${styleProfile.filesAnalyzed} files · ${new Date(styleProfile.analyzedAt).toLocaleTimeString()}` : 'Not scanned yet'}
@@ -4597,7 +4597,7 @@ const App = () => {
 
                         // ── DESIGN ──
                         if (profileSubTab === 'design') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <Row label="Color palette"><Chips cat="design" field="colorPalette" options={['Dark','Light','High contrast','Colorful','Pastel']} /></Row>
                             <Row label="Corner radius"><Chips cat="design" field="cornerRadius" options={['Sharp','Subtle','Rounded','Pill']} /></Row>
                             <Row label="Spacing"><Chips cat="design" field="spacing" options={['Tight','Normal','Comfortable','Spacious']} /></Row>
@@ -4610,7 +4610,7 @@ const App = () => {
 
                         // ── ART ──
                         if (profileSubTab === 'art') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <Row label="Visual style"><Chips cat="art" field="visualStyle" options={['Minimalist','Maximalist','Flat','Glassmorphic','Neumorphic','Brutalist','Retro','Cyberpunk']} /></Row>
                             <Row label="Color scheme"><Chips cat="art" field="colorScheme" options={['Dark mono','Light mono','Vibrant','Neon','Pastel','Earth tones','Gradient heavy']} /></Row>
                             <Row label="Mood"><Chips cat="art" field="mood" options={['Professional','Playful','Serious','Creative','Corporate','Futuristic','Cozy']} /></Row>
@@ -4621,7 +4621,7 @@ const App = () => {
 
                         // ── WRITING ──
                         if (profileSubTab === 'writing') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <Row label="Tone"><Chips cat="writing" field="tone" options={['Casual','Professional','Technical','Friendly','Direct','Humorous','Academic']} /></Row>
                             <Row label="Length"><Chips cat="writing" field="length" options={['Ultra concise','Concise','Balanced','Detailed','Comprehensive']} /></Row>
                             <Row label="Formality"><Chips cat="writing" field="formality" options={['Very low','Low','Medium','High','Very high']} /></Row>
@@ -4632,7 +4632,7 @@ const App = () => {
 
                         // ── WORKFLOW ──
                         if (profileSubTab === 'workflow') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <Row label="Approach"><Chips cat="workflow" field="approach" options={['Big picture first','Small steps','Iterative','Top-down','Bottom-up']} /></Row>
                             <Row label="Docs"><Chips cat="workflow" field="documentation" options={['None','Minimal','Inline comments','JSDoc','Full docs']} /></Row>
                             <Row label="Errors"><Chips cat="workflow" field="errorHandling" options={['Throw always','Explicit try/catch','Silent fail','Log only']} /></Row>
