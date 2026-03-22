@@ -4346,7 +4346,7 @@ const App = () => {
 
                   {/* ── STYLE PROFILE MANAGER ─────────────────────────────── */}
                   {settingsActiveSubTab === 'style' && (
-                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '660px', width: '100%' }}>
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
 
                       {/* ── Profile header card ── */}
                       {(() => {
