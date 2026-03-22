@@ -2655,7 +2655,7 @@ const App = () => {
                     { id: 'github', label: '🐙 GitHub Libraries',  sub: 'repos & tools' },
                     { id: 'tools',  label: '🛠 Installed Tools',    sub: 'system check' },
                     { id: 'ai',     label: '🤖 AI Models',         sub: 'run locally' },
-                    { id: 'agent',  label: '🧠 Agent SDK',         sub: 'how Claude thinks' },
+                    { id: 'agent',  label: '🤖 Agent Monitor',      sub: 'loop stats' },
                   ].map(t => (
                     <button key={t.id} onClick={() => { setMcpHubTab(t.id as any); if (t.id === 'ai') loadOllamaModels(); if (t.id === 'agent') { (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {}); } }} style={{ padding: '10px 20px', background: mcpHubTab === t.id ? 'var(--primary)' : 'transparent', border: 'none', borderBottom: mcpHubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', borderRadius: '8px 8px 0 0', color: mcpHubTab === t.id ? 'white' : 'var(--text-dim)', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
                       {t.label} <span style={{ opacity: 0.6, fontSize: '0.65rem', marginLeft: '4px' }}>{t.sub}</span>
@@ -3400,9 +3400,9 @@ const App = () => {
                     {/* Header */}
                     <div style={{ background: 'linear-gradient(135deg, rgba(155,77,255,0.15), rgba(0,212,255,0.08))', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--primary)', marginBottom: '4px' }}>IMI · AGENT MONITOR</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white' }}>Agent Mode Dashboard</div>
-                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginTop: '3px' }}>Multi-step AI reasoning — reads files, patches code, runs builds, fixes errors</div>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.2em', color: 'var(--primary)', marginBottom: '4px' }}>IMI · AGENT MODE</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'white' }}>Agent Monitor</div>
+                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginTop: '3px' }}>Live stats for IMI's built-in agent loop — tool calls, run history, and config at a glance</div>
                       </div>
                       <button onClick={() => (ipc as any).invoke('get-agent-stats').then((s: any) => setAgentStats(s)).catch(() => {})}
                         style={{ background: 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', padding: '8px 14px', color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>
@@ -3925,98 +3925,14 @@ const App = () => {
               )}
 
               {/* ── OPTIMIZER ── */}
-              {skillsSubTab === 'optimizer' && (
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-
-                  {/* Efficiency + run */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '20px 24px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', marginBottom: '14px' }}>
-                    <div style={{ flexShrink: 0 }}>
-                      <div style={{ fontSize: '3.2rem', fontWeight: 900, lineHeight: 1, color: skillEfficiency >= 90 ? '#00ff88' : skillEfficiency >= 60 ? '#ffa500' : 'var(--primary)' }}>{skillEfficiency}<span style={{ fontSize: '1.2rem', opacity: 0.6 }}>%</span></div>
-                      <div style={{ fontSize: '0.5rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', marginTop: '4px' }}>EFFICIENCY</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ height: '8px', background: 'rgba(255,255,255,0.07)', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginBottom: '6px' }}>
-                        <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, skillEfficiency)}%`, background: skillEfficiency >= 90 ? '#00ff88' : 'var(--primary)', borderRadius: '4px', transition: 'width 0.6s ease' }} />
-                        <div style={{ position: 'absolute', left: '90%', top: 0, height: '100%', width: '1px', background: 'rgba(255,255,255,0.3)' }} />
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{skillEfficiency >= 90 ? 'Goal reached' : `${90 - skillEfficiency}% to goal`}</span>
-                        <span style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)' }}>90% target</span>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '8px', marginTop: '12px' }}>
-                        {[
-                          { label: 'INTERCEPTED', value: skillStats.skillHits || 0, color: '#00ff88' },
-                          { label: 'AI CALLS', value: skillStats.totalRequests || 0, color: '#4facfe' },
-                          { label: 'TOKENS SAVED', value: (skillStats.tokensSaved || 0).toLocaleString(), color: 'var(--primary)' },
-                        ].map(s => (
-                          <div key={s.label} style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 900, color: s.color, fontFamily: 'monospace' }}>{s.value}</div>
-                            <div style={{ fontSize: '0.48rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.1em', marginTop: '2px' }}>{s.label}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                      <button onClick={async () => {
-                        setOptimizerRunning(true);
-                        const result = await (ipc as any).invoke('skills-optimize');
-                        const h = await (ipc as any).invoke('skills-get-history');
-                        if (result) setOptimizerLastResult(result);
-                        if (h) { setOptimizerHistory(h.history || []); setSkillEfficiency(h.efficiency || 0); }
-                        setOptimizerLastRun(Date.now()); setOptimizerRunning(false); fetchStats();
-                      }} disabled={optimizerRunning} style={{ height: '36px', padding: '0 18px', background: optimizerRunning ? 'rgba(155,77,255,0.08)' : 'rgba(155,77,255,0.15)', border: '1px solid rgba(155,77,255,0.3)', borderRadius: '8px', color: 'var(--primary)', cursor: optimizerRunning ? 'default' : 'pointer', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', opacity: optimizerRunning ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                        {optimizerRunning ? 'RUNNING…' : 'RUN NOW'}
-                      </button>
-                      {optimizerLastRun && <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)', textAlign: 'right' }}>Last run {Math.round((Date.now() - optimizerLastRun) / 1000)}s ago</span>}
-                    </div>
-                  </div>
-
-                  {/* Last result */}
-                  {optimizerLastResult && (
-                    <div style={{ padding: '10px 14px', background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: '8px', fontSize: '0.62rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ color: '#00ff88', fontWeight: 900 }}>Optimization complete</span>
-                      <span style={{ color: 'var(--text-dim)' }}>Efficiency: <b style={{ color: 'white' }}>{optimizerLastResult.efficiency}%</b></span>
-                      {optimizerLastResult.removed > 0 ? <span style={{ color: '#ff416c' }}>{optimizerLastResult.removed} weak skill{optimizerLastResult.removed !== 1 ? 's' : ''} removed</span> : <span style={{ color: 'var(--text-dim)' }}>No weak skills found</span>}
-                    </div>
-                  )}
-
-                  {/* AI call history */}
-                  <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', overflow: 'hidden' }}>
-                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em' }}>LEARNING — QUERIES THAT REACHED AI</span>
-                      <span style={{ fontSize: '0.52rem', color: 'var(--text-dim)' }}>{optimizerHistory.length} entries</span>
-                    </div>
-                    {optimizerHistory.length === 0 ? (
-                      <div style={{ padding: '30px', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-dim)', opacity: 0.5 }}>
-                        No history yet — use the Command Center and the engine will learn your patterns
-                      </div>
-                    ) : (
-                      <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-                        {[...optimizerHistory].reverse().map((entry: any, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '7px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                            <span style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', flexShrink: 0 }}>{new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            <span style={{ flex: 1, fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>"{entry.command}"</span>
-                            <span style={{ fontSize: '0.48rem', padding: '1px 6px', background: 'rgba(255,165,0,0.08)', border: '1px solid rgba(255,165,0,0.18)', borderRadius: '3px', color: '#ffa500', flexShrink: 0, fontWeight: 900, letterSpacing: '0.06em' }}>AI</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.55rem', color: 'var(--text-dim)' }}>
-                      Same pattern <b style={{ color: 'rgba(255,255,255,0.6)' }}>3+ times</b> → engine auto-creates a skill · Auto-optimizes every <b style={{ color: 'rgba(255,255,255,0.6)' }}>5 minutes</b>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* BENCHMARKS SUB-TAB */}
+              {/* PERFORMANCE SUB-TAB */}
               {skillsSubTab === 'benchmarks' && (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
                   {/* Header row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>
-                      <div style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: '3px' }}>MODEL BENCHMARKS</div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Per-model request count, response time, and success rate</div>
+                      <div style={{ fontSize: '0.58rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: '3px' }}>AI MODEL PERFORMANCE</div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Tracks automatically as you send messages — shows speed and reliability per model</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={async () => { const d = await (ipc as any).invoke('get-benchmarks'); setBenchmarkData(d || {}); }} style={{ height: '30px', padding: '0 12px', background: 'rgba(155,77,255,0.08)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '6px', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.58rem', fontWeight: 900, letterSpacing: '0.06em' }}>REFRESH</button>
@@ -4025,8 +3941,10 @@ const App = () => {
                   </div>
 
                   {Object.keys(benchmarkData).length === 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '60px 0', opacity: 0.35 }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>No data yet — send AI requests to start tracking</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '60px 0', opacity: 0.5 }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '4px' }}>📊</div>
+                      <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 700 }}>Nothing tracked yet</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center', maxWidth: '300px' }}>Just start chatting — every AI request auto-populates this with speed and success rate per model</div>
                     </div>
                   ) : (
                     <>
