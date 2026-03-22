@@ -4241,86 +4241,170 @@ const App = () => {
                   <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
                   
                   {/* CATEGORY: GENERAL PREFERENCES */}
-                  {settingsActiveSubTab === 'general' && (
-                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}>
-                      <div style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '15px' }}>PROJECT WORKSPACE</div>
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
-                          <button onClick={async () => {
-                            const picked = await (ipc as any).invoke('browse-folder');
-                            if (picked) setProjectRootInput(picked);
-                          }} className="btn-premium" style={{ width: 'auto', padding: '0 18px', background: 'rgba(155,77,255,0.15)' }}>📁 BROWSE</button>
-                          <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 25px' }}>UPDATE ROOT</button>
-                        </div>
-                        <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px' }}>Current: {stats.projectRoot}</p>
-                      </div>
+                  {settingsActiveSubTab === 'workspace' && (
+                    <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '15px', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em', marginBottom: '20px' }}>APPEARANCE & UI</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-                          <div>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '12px' }}>THEME SELECTOR</div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                              {['glass', 'dark', 'neon'].map(t => (
-                                <button key={t} onClick={() => { setTheme(t); saveConfig(); }} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.05)', color: '#fff', fontWeight: 800, fontSize: '0.65rem', cursor: 'pointer', textTransform: 'uppercase' }}>{t}</button>
-                              ))}
+                      {/* ── Project Root ── */}
+                      <section>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', textTransform: 'uppercase' }}>Project Folder</div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input value={projectRootInput} onChange={e => setProjectRootInput(e.target.value)} placeholder="C:\Users\...\MyProject" className="chat-input" style={{ flex: 1 }} />
+                            <button onClick={async () => { const p = await (ipc as any).invoke('browse-folder'); if (p) setProjectRootInput(p); }} className="btn-premium" style={{ width: 'auto', padding: '0 14px', background: 'rgba(155,77,255,0.15)', fontSize: '0.72rem' }}>📁 Browse</button>
+                            <button onClick={updateRoot} className="btn-premium" style={{ width: 'auto', padding: '0 18px', fontSize: '0.72rem' }}>Apply</button>
+                          </div>
+                          {stats.projectRoot && <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '8px', opacity: 0.7 }}>Current: {stats.projectRoot}</div>}
+                        </div>
+                      </section>
+
+                      {/* ── Appearance ── */}
+                      <section>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', textTransform: 'uppercase' }}>Appearance</div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+                          {/* Accent + Theme row */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Accent Color</div>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {[
+                                  { name: 'Purple', value: '#9b4dff' }, { name: 'Blue',   value: '#4facfe' },
+                                  { name: 'Cyan',   value: '#00f2ff' }, { name: 'Green',  value: '#00ff88' },
+                                  { name: 'Pink',   value: '#f857a6' }, { name: 'Orange', value: '#ffa500' },
+                                  { name: 'Red',    value: '#ff416c' },
+                                ].map(c => (
+                                  <button key={c.value} onPointerDown={e => { e.preventDefault(); document.documentElement.style.setProperty('--primary', c.value); document.documentElement.style.setProperty('--primary-glow', c.value + '99'); }}
+                                    style={{ width: '26px', height: '26px', background: c.value, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.15s' }}
+                                    title={c.name}
+                                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1.25)'}
+                                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Theme</div>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                {['glass', 'dark', 'neon'].map(t => (
+                                  <button key={t} onClick={() => { setTheme(t); saveConfig(); }} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.04)', color: '#fff', fontWeight: 700, fontSize: '0.65rem', cursor: 'pointer', textTransform: 'capitalize' }}>{t}</button>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5 }}>LOG RETENTION</div>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{logRetention} LOGS</div>
+
+                          {/* Font + Sidebar row */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Font Size</div>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {[{ label: 'S', size: '14px', zoom: 0.9 }, { label: 'M', size: '16px', zoom: 1.0 }, { label: 'L', size: '18px', zoom: 1.1 }, { label: 'XL', size: '20px', zoom: 1.2 }].map(opt => (
+                                  <button key={opt.label} onPointerDown={e => { e.preventDefault(); document.documentElement.style.fontSize = opt.size; (window as any).electronAPI?.setZoom?.(opt.zoom); }}
+                                    style={{ flex: 1, padding: '7px 4px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700 }}>
+                                    {opt.label}<div style={{ fontSize: '0.5rem', opacity: 0.4, marginTop: '2px' }}>{opt.size}</div>
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                            <input type="range" min="5" max="50" value={logRetention} onChange={e => setLogRetention(parseInt(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Sidebar Width</div>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {[{ label: 'Compact', width: '220px' }, { label: 'Normal', width: '260px' }, { label: 'Wide', width: '300px' }].map(opt => (
+                                  <button key={opt.label} onPointerDown={e => { e.preventDefault(); const el = document.querySelector('.dashboard-container') as HTMLElement; if (el) el.style.gridTemplateColumns = `${opt.width} 1fr`; }}
+                                    style={{ flex: 1, padding: '7px 4px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Glass + Log retention row */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Glass Intensity</div>
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {[
+                                  { label: 'Subtle', bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)' },
+                                  { label: 'Normal', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.12)' },
+                                  { label: 'Strong', bg: 'rgba(255,255,255,0.09)', border: 'rgba(255,255,255,0.22)' },
+                                ].map(opt => (
+                                  <button key={opt.label} onPointerDown={e => { e.preventDefault(); document.documentElement.style.setProperty('--card-bg', opt.bg); document.documentElement.style.setProperty('--glass-border', opt.border); }}
+                                    style={{ flex: 1, padding: '7px 4px', background: opt.bg, border: `1px solid ${opt.border}`, borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700 }}>
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)' }}>Log Retention</div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)' }}>{logRetention}</div>
+                              </div>
+                              <input type="range" min="5" max="50" value={logRetention} onChange={e => setLogRetention(parseInt(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.5rem', opacity: 0.35, marginTop: '3px' }}><span>5</span><span>50 logs</span></div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      {/* AI BRAIN CONFIGURATION */}
-                      <div style={{ background: 'rgba(155,77,255,0.05)', padding: '20px', borderRadius: '15px', border: '1px solid rgba(155,77,255,0.2)', marginTop: '20px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.15em' }}>🧠 BRAIN CONFIGURATION</div>
-                          <div style={{ fontSize: '0.6rem', background: 'rgba(155,77,255,0.15)', color: 'var(--primary)', padding: '3px 10px', borderRadius: '6px', fontWeight: 800 }}>STRATEGY v{strategyVersion}</div>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                              <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5 }}>TEMPERATURE</div>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{brainTemperature.toFixed(1)}</div>
+                      </section>
+
+                      {/* ── Brain Configuration ── */}
+                      <section>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', textTransform: 'uppercase' }}>Brain Configuration</div>
+                        <div style={{ background: 'rgba(155,77,255,0.04)', border: '1px solid rgba(155,77,255,0.2)', borderRadius: '12px', padding: '16px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)' }}>Temperature</div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)' }}>{brainTemperature.toFixed(1)}</div>
+                              </div>
+                              <input type="range" min="0" max="2" step="0.1" value={brainTemperature} onChange={e => setBrainTemperature(parseFloat(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.5rem', opacity: 0.35, marginTop: '3px' }}><span>Precise</span><span>Creative</span></div>
                             </div>
-                            <input type="range" min="0" max="2" step="0.1" value={brainTemperature}
-                              onChange={e => setBrainTemperature(parseFloat(e.target.value))}
-                              onMouseUp={() => saveConfig()}
-                              style={{ width: '100%', accentColor: 'var(--primary)' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', opacity: 0.4, marginTop: '4px' }}>
-                              <span>Precise</span><span>Creative</span>
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)' }}>Max Tokens</div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)' }}>{brainMaxTokens.toLocaleString()}</div>
+                              </div>
+                              <input type="range" min="256" max="8192" step="256" value={brainMaxTokens} onChange={e => setBrainMaxTokens(parseInt(e.target.value))} onMouseUp={() => saveConfig()} style={{ width: '100%', accentColor: 'var(--primary)' }} />
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.5rem', opacity: 0.35, marginTop: '3px' }}><span>Short</span><span>Deep</span></div>
                             </div>
-                          </div>
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                              <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5 }}>MAX TOKENS</div>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)' }}>{brainMaxTokens.toLocaleString()}</div>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Brain Model</div>
+                              <select value={brainModel} onChange={e => { setBrainModel(e.target.value); saveConfig(); }} className="chat-input" style={{ height: '38px', fontSize: '0.68rem', color: 'white', padding: '0 10px', width: '100%', background: '#1a1025' }}>
+                                <option value="gemini-2.5-flash" style={{ background: '#1a1025' }}>Gemini 2.5 Flash ⚡</option>
+                                <option value="gemini-2.5-pro"   style={{ background: '#1a1025' }}>Gemini 2.5 Pro 🧠</option>
+                                <option value="gemini-2.0-flash" style={{ background: '#1a1025' }}>Gemini 2.0 Flash</option>
+                                <option value="gemini-2.0-flash-lite" style={{ background: '#1a1025' }}>Gemini 2.0 Flash-Lite</option>
+                              </select>
                             </div>
-                            <input type="range" min="256" max="8192" step="256" value={brainMaxTokens}
-                              onChange={e => setBrainMaxTokens(parseInt(e.target.value))}
-                              onMouseUp={() => saveConfig()}
-                              style={{ width: '100%', accentColor: 'var(--primary)' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.55rem', opacity: 0.4, marginTop: '4px' }}>
-                              <span>Short</span><span>Deep</span>
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '0.6rem', fontWeight: 900, opacity: 0.5, marginBottom: '8px' }}>BRAIN MODEL</div>
-                            <select value={brainModel} onChange={e => { setBrainModel(e.target.value); saveConfig(); }}
-                              className="chat-input" style={{ height: '40px', fontSize: '0.7rem', color: 'white', padding: '0 10px', width: '100%' }}>
-                              <option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option>
-                              <option value="gemini-2.5-pro">Gemini 2.5 Pro 🧠</option>
-                              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash-Lite</option>
-                            </select>
                           </div>
                         </div>
-                      </div>
+                      </section>
+
+                      {/* ── Sync ── */}
+                      <section>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', marginBottom: '10px', textTransform: 'uppercase' }}>GitHub Sync</div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '16px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Sync Frequency</div>
+                              <select value={syncFrequency} onChange={e => { setSyncFrequency(e.target.value); setTimeout(() => saveConfig(), 100); }} className="chat-input" style={{ height: '38px', fontSize: '0.72rem', color: 'white', padding: '0 12px', background: '#1a1025' }}>
+                                <option value="60"  style={{ background: '#1a1025' }}>Every 60 seconds</option>
+                                <option value="300" style={{ background: '#1a1025' }}>Every 5 minutes</option>
+                                <option value="600" style={{ background: '#1a1025' }}>Every 10 minutes</option>
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Conflict Strategy</div>
+                              <select className="chat-input" style={{ height: '38px', fontSize: '0.72rem', color: 'white', padding: '0 12px', background: '#1a1025' }}>
+                                <option value="rebase" style={{ background: '#1a1025' }}>Auto-Rebase (Clean)</option>
+                                <option value="stash"  style={{ background: '#1a1025' }}>Stash & Pull (Safe)</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
                     </motion.div>
                   )}
 
