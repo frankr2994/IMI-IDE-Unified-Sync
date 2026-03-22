@@ -4678,6 +4678,83 @@ const App = () => {
                         </button>
                       </div>
 
+                      {/* API KEY FINDER */}
+                      {(() => {
+                        const API_DIRECTORY = [
+                          { name: 'OpenRouter', emoji: '🔀', desc: 'Unified gateway — access 200+ models with one key', link: 'https://openrouter.ai/keys', tags: ['openrouter','router','unified','llm'] },
+                          { name: 'Hugging Face', emoji: '🤗', desc: 'Open-source models, datasets, and inference API', link: 'https://huggingface.co/settings/tokens', tags: ['huggingface','hf','hugging','open source','models'] },
+                          { name: 'Together AI', emoji: '🤝', desc: 'Fast open-source LLM inference — Llama, Mistral & more', link: 'https://api.together.xyz/settings/api-keys', tags: ['together','togetherai','llama','fast'] },
+                          { name: 'Replicate', emoji: '♾️', desc: 'Run image, video & audio AI models via API', link: 'https://replicate.com/account/api-tokens', tags: ['replicate','image','video','diffusion','stable'] },
+                          { name: 'Stability AI', emoji: '🎨', desc: 'Stable Diffusion — image generation API', link: 'https://platform.stability.ai/account/credits', tags: ['stability','stable diffusion','image gen','sdxl'] },
+                          { name: 'ElevenLabs', emoji: '🎙️', desc: 'Best-in-class AI voice & text-to-speech', link: 'https://elevenlabs.io/app/settings/api-keys', tags: ['elevenlabs','voice','tts','speech','audio'] },
+                          { name: 'Serper', emoji: '🔍', desc: 'Google Search API — real-time web results', link: 'https://serper.dev/api-key', tags: ['serper','search','google','web search'] },
+                          { name: 'Tavily', emoji: '🌐', desc: 'AI-native search API built for LLM agents', link: 'https://app.tavily.com/home', tags: ['tavily','search','agent','web'] },
+                          { name: 'Pinecone', emoji: '🌲', desc: 'Vector database — semantic search & RAG', link: 'https://app.pinecone.io', tags: ['pinecone','vector','rag','embeddings','database'] },
+                          { name: 'Supabase', emoji: '⚡', desc: 'Open-source Firebase alternative with vector support', link: 'https://supabase.com/dashboard/account/tokens', tags: ['supabase','database','postgres','vector'] },
+                          { name: 'AssemblyAI', emoji: '🎧', desc: 'Speech-to-text & audio intelligence API', link: 'https://www.assemblyai.com/dashboard/signup', tags: ['assemblyai','transcription','speech','stt'] },
+                          { name: 'Anthropic', emoji: '🧠', desc: 'Claude API — Anthropic AI models', link: 'https://console.anthropic.com/settings/keys', tags: ['anthropic','claude','claude 3','sonnet','opus'] },
+                          { name: 'OpenAI', emoji: '🤖', desc: 'GPT-4o, o1, DALL·E, Whisper & more', link: 'https://platform.openai.com/api-keys', tags: ['openai','gpt','chatgpt','gpt4','dall-e','whisper'] },
+                          { name: 'Cohere', emoji: '🪐', desc: 'Command R+ · Great for RAG & enterprise', link: 'https://dashboard.cohere.com/api-keys', tags: ['cohere','command r','rag','enterprise'] },
+                          { name: 'Mistral', emoji: '🌊', desc: 'Mistral Large, Mixtral MoE models', link: 'https://console.mistral.ai/api-keys/', tags: ['mistral','mixtral','moe','french'] },
+                          { name: 'Groq', emoji: '⚡', desc: 'Fastest LLM inference — Llama 70B & more', link: 'https://console.groq.com/keys', tags: ['groq','fast','llama','speed'] },
+                          { name: 'Cloudflare AI', emoji: '☁️', desc: 'Run AI on Cloudflare Workers edge network', link: 'https://dash.cloudflare.com/profile/api-tokens', tags: ['cloudflare','workers ai','edge','cdn'] },
+                          { name: 'Fireworks AI', emoji: '🎆', desc: 'Fast inference for open-source models', link: 'https://fireworks.ai/account/api-keys', tags: ['fireworks','fast','open source','inference'] },
+                          { name: 'Deepgram', emoji: '🌊', desc: 'Real-time & batch speech-to-text API', link: 'https://console.deepgram.com/signup', tags: ['deepgram','speech','stt','transcription','realtime'] },
+                          { name: 'NewsAPI', emoji: '📰', desc: 'Real-time news articles from 80,000+ sources', link: 'https://newsapi.org/register', tags: ['news','newsapi','articles','headlines'] },
+                          { name: 'Alpha Vantage', emoji: '📈', desc: 'Free stock market, forex & crypto data', link: 'https://www.alphavantage.co/support/#api-key', tags: ['alpha vantage','stocks','finance','crypto','forex'] },
+                          { name: 'Polygon.io', emoji: '📊', desc: 'Real-time & historical stock market data', link: 'https://polygon.io/dashboard/signup', tags: ['polygon','stocks','market','financial data'] },
+                          { name: 'Google Maps', emoji: '🗺️', desc: 'Maps, Places, Geocoding & Directions API', link: 'https://console.cloud.google.com/apis/credentials', tags: ['google maps','maps','geocoding','places','directions'] },
+                          { name: 'Stripe', emoji: '💳', desc: 'Payment processing API', link: 'https://dashboard.stripe.com/apikeys', tags: ['stripe','payment','checkout','billing'] },
+                          { name: 'SendGrid', emoji: '📧', desc: 'Transactional email API by Twilio', link: 'https://app.sendgrid.com/settings/api_keys', tags: ['sendgrid','email','smtp','transactional'] },
+                          { name: 'Twilio', emoji: '📱', desc: 'SMS, voice & WhatsApp messaging API', link: 'https://console.twilio.com/us1/account/keys-credentials/api-keys', tags: ['twilio','sms','voice','whatsapp','messaging'] },
+                          { name: 'Weather API', emoji: '🌤️', desc: 'Current & forecast weather data worldwide', link: 'https://www.weatherapi.com/signup.aspx', tags: ['weather','forecast','temperature','weatherapi'] },
+                          { name: 'ipinfo', emoji: '📍', desc: 'IP geolocation & network data API', link: 'https://ipinfo.io/signup', tags: ['ipinfo','ip','geolocation','location'] },
+                        ];
+                        const q = apiKeySearch.toLowerCase().trim();
+                        const results = q.length > 0
+                          ? API_DIRECTORY.filter(s => s.name.toLowerCase().includes(q) || s.tags.some(t => t.includes(q)) || s.desc.toLowerCase().includes(q))
+                          : [];
+                        return (
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '14px', padding: '16px 18px' }}>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: '12px', textTransform: 'uppercase' }}>🔍 FIND AN API KEY</div>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                value={apiKeySearch}
+                                onChange={e => setApiKeySearch(e.target.value)}
+                                placeholder="Search any service — OpenRouter, Hugging Face, Stripe, Weather..."
+                                className="chat-input"
+                                style={{ width: '100%', height: '42px', fontSize: '0.82rem', paddingLeft: '14px', paddingRight: '14px', borderRadius: '10px', boxSizing: 'border-box' }}
+                              />
+                              {apiKeySearch && <button onClick={() => setApiKeySearch('')} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>}
+                            </div>
+                            {q.length > 0 && (
+                              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {results.length > 0
+                                  ? results.map(r => (
+                                      <div key={r.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          <span style={{ fontSize: '1.1rem' }}>{r.emoji}</span>
+                                          <div>
+                                            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white' }}>{r.name}</div>
+                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '1px' }}>{r.desc}</div>
+                                          </div>
+                                        </div>
+                                        <button onClick={() => (ipc as any).send('open-external-url', r.link)} className="btn-premium" style={{ padding: '6px 14px', fontSize: '0.62rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '12px' }}>Get Key →</button>
+                                      </div>
+                                    ))
+                                  : (
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '10px' }}>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>No match in directory — search the web for <strong style={{ color: 'white' }}>"{apiKeySearch} API key"</strong></div>
+                                        <button onClick={() => (ipc as any).send('open-external-url', `https://www.google.com/search?q=${encodeURIComponent(apiKeySearch + ' API key how to get')}`)} className="btn-premium" style={{ padding: '6px 14px', fontSize: '0.62rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '12px' }}>Search Web →</button>
+                                      </div>
+                                    )
+                                }
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* AI MODELS group */}
                       {(() => {
                         const allAiServices = [
