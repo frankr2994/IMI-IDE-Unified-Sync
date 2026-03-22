@@ -4406,14 +4406,14 @@ const App = () => {
                       })()}
 
                       {/* ── Category sub-tabs ── */}
-                      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid rgba(255,255,255,0.07)', overflowX: 'auto' }}>
+                      <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid var(--glass-border)', overflowX: 'auto', background: 'rgba(255,255,255,0.02)', borderRadius: '10px 10px 0 0', padding: '0 4px' }}>
                         {([
-                          { id: 'code',     label: '💻 Code' },
-                          { id: 'design',   label: '🎨 Design' },
-                          { id: 'art',      label: '🖼 Art' },
-                          { id: 'writing',  label: '✍ Writing' },
-                          { id: 'workflow', label: '⚙ Workflow' },
-                          { id: 'stack',    label: '🧰 Stack' },
+                          { id: 'code',     label: 'Code' },
+                          { id: 'design',   label: 'Design' },
+                          { id: 'art',      label: 'Art' },
+                          { id: 'writing',  label: 'Writing' },
+                          { id: 'workflow', label: 'Workflow' },
+                          { id: 'stack',    label: 'Stack' },
                           { id: 'community',label: '🌐 Community' },
                         ] as { id: typeof profileSubTab; label: string }[]).map(t => (
                           <button key={t.id} onClick={() => {
@@ -4423,7 +4423,11 @@ const App = () => {
                               (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false));
                             }
                           }}
-                            style={{ padding: '10px 14px', background: 'none', border: 'none', borderBottom: profileSubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: profileSubTab === t.id ? 'var(--primary)' : 'rgba(255,255,255,0.45)', fontSize: '0.73rem', fontWeight: profileSubTab === t.id ? 800 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }} />
+                            style={{ padding: '10px 14px', background: 'none', border: 'none', borderBottom: profileSubTab === t.id ? '2px solid var(--primary)' : '2px solid transparent', color: profileSubTab === t.id ? 'var(--primary)' : 'var(--text-dim)', fontSize: '0.65rem', fontWeight: profileSubTab === t.id ? 800 : 600, letterSpacing: '0.04em', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color 0.15s, border-color 0.15s', marginBottom: '-1px' }}
+                            onMouseEnter={e => { if (profileSubTab !== t.id) (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.75)'; }}
+                            onMouseLeave={e => { if (profileSubTab !== t.id) (e.currentTarget as HTMLElement).style.color = 'var(--text-dim)'; }}>
+                            {t.label}
+                          </button>
                         ))}
                       </div>
 
@@ -4434,14 +4438,14 @@ const App = () => {
                           setFullProfile(next);
                           (ipc as any).invoke('save-full-profile', next).catch(() => {});
                         };
-                        // Chip selector helper
+                        // Chip selector helper — matches IMI's existing button style
                         const Chips = ({ cat, field, options }: { cat: string; field: string; options: string[] }) => {
                           const val = (fullProfile as any)[cat]?.[field] || '';
                           return (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                               {options.map(o => (
                                 <button key={o} onClick={() => upd(cat, { [field]: val === o ? '' : o })}
-                                  style={{ padding: '6px 14px', borderRadius: '20px', border: `1px solid ${val === o ? 'var(--primary)' : 'rgba(255,255,255,0.15)'}`, background: val === o ? 'rgba(155,77,255,0.22)' : 'rgba(255,255,255,0.04)', color: val === o ? 'var(--primary)' : 'rgba(255,255,255,0.65)', fontSize: '0.75rem', fontWeight: val === o ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+                                  style={{ padding: '6px 12px', borderRadius: '8px', border: `1px solid ${val === o ? 'var(--primary)' : 'var(--glass-border)'}`, background: val === o ? 'rgba(155,77,255,0.18)' : 'rgba(255,255,255,0.04)', color: val === o ? 'var(--primary)' : 'rgba(255,255,255,0.65)', fontSize: '0.7rem', fontWeight: val === o ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', letterSpacing: '0.01em' }}>
                                   {o}
                                 </button>
                               ))}
@@ -4449,12 +4453,12 @@ const App = () => {
                           );
                         };
                         const Notes = ({ cat }: { cat: string }) => (
-                          <textarea value={(fullProfile as any)[cat]?.notes || ''} onChange={e => upd(cat, { notes: e.target.value })} placeholder="Any extra notes or preferences…" className="chat-input"
-                            style={{ width: '100%', height: '80px', resize: 'vertical', fontSize: '0.75rem', padding: '10px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                          <textarea value={(fullProfile as any)[cat]?.notes || ''} onChange={e => upd(cat, { notes: e.target.value })} placeholder="Extra notes or preferences…" className="chat-input"
+                            style={{ width: '100%', height: '76px', resize: 'vertical', fontSize: '0.72rem', padding: '10px 14px', boxSizing: 'border-box', lineHeight: 1.6 }} />
                         );
                         const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-                          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px', alignItems: 'start', paddingTop: '4px' }}>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600, paddingTop: '7px' }}>{label}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '12px', alignItems: 'start' }}>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontWeight: 700, paddingTop: '8px', letterSpacing: '0.01em' }}>{label}</div>
                             <div>{children}</div>
                           </div>
                         );
