@@ -738,6 +738,7 @@ RULES:
 - Use take_screenshot to see the actual UI before making visual changes.
 - Use run_command for git, npm, node, python — but never destructive commands.
 - NEVER ask the user for their GitHub username — you already have it above.
+- BROWSER REFERENCE RESOLUTION: When the user says "open it", "go to it", "show me", or "open the browser" after you have listed or recommended websites, automatically resolve "it" to the most relevant URL from that list (prefer the first or top-recommended one). Never navigate to a partial word or conjunction — always use the full domain (e.g. stockanalysis.com, not "and.com").
 - Maximum 20 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
 `;
 
