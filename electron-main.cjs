@@ -2992,6 +2992,17 @@ User: `;
         } else {
           tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(fullText.length / 4);
           saveGlobalState();
+
+          // Auto-open any URLs Gemini mentions when the request was browser-related
+          if (isSimpleOpen || /\b(open|browser|website|show me|visit|go to|navigate)\b/i.test(command)) {
+            const mentionedUrls = [...fullText.matchAll(/https?:\/\/[^\s)>\]"',]+/g)].map(m => m[0]);
+            if (mentionedUrls.length > 0) {
+              const urlToOpen = mentionedUrls[mentionedUrls.length - 1]; // use the last/most specific URL
+              shell.openExternal(urlToOpen);
+              event.sender.send('command-chunk', { messageId, chunk: `\n\n🌐 Opened: **${urlToOpen}**` });
+            }
+          }
+
           event.sender.send('command-end', { messageId, code: 0 });
           const isClarifying = fullText.includes('\u2753') || fullText.includes('?') && fullText.includes('\u2022') && fullText.toLowerCase().includes('did you mean');
           if (isCodingAction && payload.engine && payload.engine !== 'gemini' && !isClarifying) {
