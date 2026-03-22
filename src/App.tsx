@@ -653,6 +653,7 @@ const App = () => {
       setGoogleMapsKey((config.googleMapsKey || '').trim());
       setProjectRootInput(config.projectRoot || '');
       if (config.theme) setTheme(config.theme);
+      if (config.accentColor) { setAccentColor(config.accentColor); document.documentElement.style.setProperty('--primary', config.accentColor); document.documentElement.style.setProperty('--primary-glow', config.accentColor + '99'); }
       if (config.logRetention) setLogRetention(config.logRetention);
       if (config.syncFrequency) setSyncFrequency(config.syncFrequency);
       if (config.brainTemperature !== undefined) setBrainTemperature(config.brainTemperature);
@@ -718,6 +719,7 @@ const App = () => {
       activeCoder: activeEngine,
       projectRoot: projectRootInput,
       theme,
+      accentColor,
       logRetention,
       syncFrequency,
       brainTemperature,
@@ -4210,8 +4212,14 @@ const App = () => {
                                   { name: 'Pink',   value: '#f857a6' }, { name: 'Orange', value: '#ffa500' },
                                   { name: 'Red',    value: '#ff416c' },
                                 ].map(c => (
-                                  <button key={c.value} onPointerDown={e => { e.preventDefault(); document.documentElement.style.setProperty('--primary', c.value); document.documentElement.style.setProperty('--primary-glow', c.value + '99'); }}
-                                    style={{ width: '26px', height: '26px', background: c.value, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.15)', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.15s' }}
+                                  <button key={c.value} onPointerDown={e => { 
+                                    e.preventDefault(); 
+                                    setAccentColor(c.value);
+                                    document.documentElement.style.setProperty('--primary', c.value); 
+                                    document.documentElement.style.setProperty('--primary-glow', c.value + '99'); 
+                                    saveConfig({ accentColor: c.value });
+                                  }}
+                                    style={{ width: '26px', height: '26px', background: c.value, borderRadius: '50%', border: accentColor === c.value ? '2px solid white' : '2px solid rgba(255,255,255,0.15)', cursor: 'pointer', flexShrink: 0, transition: 'transform 0.15s' }}
                                     title={c.name}
                                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1.25)'}
                                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'scale(1)'}
@@ -4223,7 +4231,7 @@ const App = () => {
                               <div style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Theme</div>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 {['glass', 'dark', 'neon'].map(t => (
-                                  <button key={t} onClick={() => { setTheme(t); saveConfig(); }} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.04)', color: '#fff', fontWeight: 700, fontSize: '0.65rem', cursor: 'pointer', textTransform: 'capitalize' }}>{t}</button>
+                                  <button key={t} onClick={() => { setTheme(t); saveConfig({ theme: t }); }} style={{ flex: 1, padding: '7px', borderRadius: '8px', border: '1px solid var(--glass-border)', background: theme === t ? 'var(--primary)' : 'rgba(255,255,255,0.04)', color: '#fff', fontWeight: 700, fontSize: '0.65rem', cursor: 'pointer', textTransform: 'capitalize' }}>{t}</button>
                                 ))}
                               </div>
                             </div>
