@@ -484,6 +484,7 @@ const App = () => {
   const [apiKeySearch, setApiKeySearch] = useState('');
   const [apiKeyAddOpen, setApiKeyAddOpen] = useState<string | null>(null);
   const [apiKeyAddVal, setApiKeyAddVal] = useState<Record<string, string>>({});
+  const [extraKeys, setExtraKeys] = useState<Record<string, string>>({});
   const [claudeKey, setClaudeKey] = useState('');
   const [deepseekKey, setDeepseekKey] = useState('');
   const [mistralKey, setMistralKey] = useState('');
@@ -654,6 +655,7 @@ const App = () => {
       setCustomApiModel((config.customApiModel || '').trim());
       setJulesApiKey((config.julesApiKey || '').trim());
       setGoogleMapsKey((config.googleMapsKey || '').trim());
+      if (config.extraKeys && typeof config.extraKeys === 'object') setExtraKeys(config.extraKeys);
       setProjectRootInput(config.projectRoot || '');
       if (config.theme) setTheme(config.theme);
       if (config.accentColor) { setAccentColor(config.accentColor); document.documentElement.style.setProperty('--primary', config.accentColor); document.documentElement.style.setProperty('--primary-glow', config.accentColor + '99'); }
@@ -720,7 +722,7 @@ const App = () => {
       geminiKey, githubToken, 
       openaiKey, claudeKey, deepseekKey, mistralKey, llamaKey, perplexityKey,
       groqKey, grokKey, cohereKey,
-      customApiKey, customApiUrl, customApiModel, julesApiKey, googleMapsKey, 
+      customApiKey, customApiUrl, customApiModel, julesApiKey, googleMapsKey, extraKeys,
       activeBrain: activeDirector,
       activeCoder: activeEngine,
       projectRoot: projectRootInput,
