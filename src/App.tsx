@@ -162,6 +162,7 @@ const App = () => {
   const terminalOutputRef = React.useRef<HTMLDivElement>(null);
   const [terminalHeight, setTerminalHeight] = useState(320);
   const terminalDragRef = React.useRef<{ dragging: boolean; startY: number; startH: number }>({ dragging: false, startY: 0, startH: 320 });
+  const importStyleRef = React.useRef<HTMLInputElement>(null);
   const debatePanelRef = React.useRef<HTMLDivElement>(null);
 
   // 🛠 Installed Tools
@@ -4494,6 +4495,27 @@ const App = () => {
                         // ── CODE ──
                         if (profileSubTab === 'code') return (
                           <TabCard>
+                            {/* Hidden import file input */}
+                            <input ref={importStyleRef} type="file" accept=".json,.imistyle.json" style={{ display: 'none' }} onChange={e => {
+                              const file = e.target.files?.[0]; if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = ev => {
+                                try {
+                                  const data = JSON.parse(ev.target?.result as string);
+                                  if (data.imi !== 'style-profile') { setStyleMsg({ type: 'error', text: '❌ Not a valid IMI style profile file' }); return; }
+                                  setFullProfile((prev: typeof DEFAULT_FULL_PROFILE) => ({ ...prev, ...data }));
+                                  if (data.code) { setStyleProfile(data.code); upd('code', data.code); }
+                                  if (data.design) upd('design', data.design);
+                                  if (data.art) upd('art', data.art);
+                                  if (data.writing) upd('writing', data.writing);
+                                  if (data.workflow) upd('workflow', data.workflow);
+                                  if (data.stack) upd('stack', data.stack);
+                                  setStyleMsg({ type: 'success', text: `✅ Imported "${data.name || 'Style Profile'}" — all settings applied` });
+                                } catch { setStyleMsg({ type: 'error', text: '❌ Could not parse file — make sure it\'s a valid .imistyle.json' }); }
+                              };
+                              reader.readAsText(file);
+                              e.target.value = '';
+                            }} />
                             {/* Scan bar */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
@@ -4515,6 +4537,26 @@ const App = () => {
                                 setStyleLoading(false);
                               }} disabled={styleLoading} className="btn-premium" style={{ height: '32px', padding: '0 14px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em', flexShrink: 0 }}>
                                 {styleLoading ? '⏳ SCANNING…' : '🔍 AUTO-SCAN'}
+                              </button>
+                            </div>
+                            {/* Export / Import row */}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', flex: 1 }}>Share your style like a preset — export to a file, send it to any dev, they import it and IMI codes exactly like you.</div>
+                              <button onClick={() => {
+                                const exportData = { imi: 'style-profile', version: '1.0', exportedAt: new Date().toISOString(), ...fullProfile, code: { ...fullProfile.code, ...(styleProfile ? { filesAnalyzed: styleProfile.filesAnalyzed, analyzedAt: styleProfile.analyzedAt } : {}) } };
+                                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${(fullProfile.name || 'my-style').replace(/\s+/g,'-').toLowerCase()}.imistyle.json`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                                setStyleMsg({ type: 'success', text: `✅ Exported "${fullProfile.name || 'My Style Profile'}"` });
+                              }} style={{ height: '32px', padding: '0 14px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em', flexShrink: 0, background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '7px', color: '#00ff88', cursor: 'pointer' }}>
+                                ⬆ Export
+                              </button>
+                              <button onClick={() => importStyleRef.current?.click()} style={{ height: '32px', padding: '0 14px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em', flexShrink: 0, background: 'rgba(79,172,254,0.1)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '7px', color: '#4facfe', cursor: 'pointer' }}>
+                                ⬇ Import
                               </button>
                             </div>
                             {styleMsg && <div style={{ padding: '7px 12px', borderRadius: '7px', fontSize: '0.68rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
@@ -5030,7 +5072,7 @@ const App = () => {
           style={{
             position: 'fixed',
             bottom: 0,
-            left: '300px',
+            left: 0,
             right: 0,
             height: terminalHeight,
             background: 'rgba(6, 6, 16, 0.98)',
