@@ -4873,21 +4873,6 @@ const App = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                               {activeServices.map(renderCard)}
                             </div>
-                            {inactiveServices.length > 0 && (
-                              <div style={{ marginTop: '12px' }}>
-                                <button
-                                  onClick={() => setAddServiceExpanded(p => !p)}
-                                  style={{ width: '100%', padding: '10px 16px', background: 'rgba(155,77,255,0.06)', border: '1px dashed rgba(155,77,255,0.3)', borderRadius: '10px', color: 'rgba(155,77,255,0.9)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}
-                                >
-                                  {addServiceExpanded ? '▲ Hide' : '+ Add a service'} {!addServiceExpanded && `· ${inactiveServices.length} available`}
-                                </button>
-                                {addServiceExpanded && (
-                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '12px' }}>
-                                    {inactiveServices.map(renderCard)}
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
                         );
                       })()}
@@ -4930,34 +4915,6 @@ const App = () => {
                         </div>
                       </div>
 
-                      {/* CUSTOM / LOCAL group */}
-                      <div>
-                        <div style={{ fontSize: '0.65rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--primary)', opacity: 0.8, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>⚙️</span> CUSTOM / LOCAL MODEL
-                        </div>
-                        <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', padding: '18px' }}>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '16px', lineHeight: 1.5 }}>
-                            Connect any OpenAI-compatible endpoint — Ollama, vLLM, LM Studio, or a self-hosted model.
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                            <div>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>ENDPOINT URL</div>
-                              <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} onBlur={() => saveConfig()} placeholder="http://localhost:11434/v1" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', boxSizing: 'border-box' }} />
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>MODEL ID</div>
-                              <input type="text" value={customApiModel} onChange={e => setCustomApiModel(e.target.value)} onBlur={() => saveConfig()} placeholder="llama3.1" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', boxSizing: 'border-box' }} />
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 900, opacity: 0.5, marginBottom: '6px', letterSpacing: '0.08em' }}>BEARER TOKEN <span style={{ opacity: 0.5, fontWeight: 400 }}>(optional)</span></div>
-                            <div style={{ position: 'relative' }}>
-                              <input type="password" value={customApiKey} onChange={e => setCustomApiKey(e.target.value)} onBlur={() => saveConfig()} placeholder="Bearer token if required…" className="chat-input" style={{ width: '100%', height: '42px', fontSize: '0.82rem', paddingRight: customApiKey ? '38px' : '14px', boxSizing: 'border-box' }} />
-                              {customApiKey && <CheckCircle2 size={16} color="#00ffaa" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
 
                     </motion.div>
                   )}
