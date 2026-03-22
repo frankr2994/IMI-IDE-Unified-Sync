@@ -4751,7 +4751,7 @@ const App = () => {
                                       const slot = KEY_SLOT_MAP[r.name];
                                       const isOpen = apiKeyAddOpen === r.name;
                                       const inputVal = apiKeyAddVal[r.name] || '';
-                                      const alreadySaved = slot && slot.get().trim().length > 0;
+                                      const alreadySaved = slot ? slot.get().trim().length > 0 : !!extraKeys[r.name];
                                       return (
                                         <div key={r.name} style={{ background: alreadySaved ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${alreadySaved ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: '10px', overflow: 'hidden', transition: 'border-color 0.2s' }}>
                                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
@@ -4793,15 +4793,18 @@ const App = () => {
                                                   if (slot) {
                                                     slot.set(inputVal.trim());
                                                     saveConfig({ [slot.saveKey]: inputVal.trim() });
+                                                  } else {
+                                                    const updated = { ...extraKeys, [r.name]: inputVal.trim() };
+                                                    setExtraKeys(updated);
+                                                    saveConfig({ extraKeys: updated });
                                                   }
                                                   setApiKeyAddVal(p => ({ ...p, [r.name]: '' }));
                                                   setApiKeyAddOpen(null);
                                                 }}
                                                 className="btn-premium"
-                                                style={{ padding: '0 16px', height: '38px', fontSize: '0.68rem', whiteSpace: 'nowrap', background: slot ? undefined : 'rgba(255,255,255,0.1)', opacity: slot ? 1 : 0.6 }}
-                                                title={slot ? 'Save to IMI' : 'This service is not directly integrated — add it via Custom API'}
+                                                style={{ padding: '0 16px', height: '38px', fontSize: '0.68rem', whiteSpace: 'nowrap' }}
                                               >
-                                                {slot ? '✓ Save' : '📋 Copy'}
+                                                ✓ Save
                                               </button>
                                             </div>
                                           )}
@@ -4838,7 +4841,24 @@ const App = () => {
                           { emoji: '🗺️', name: 'Google Maps', val: googleMapsKey,  set: setGoogleMapsKey,  saveKey: 'googleMapsKey' },
                           { emoji: '🔀', name: 'OpenRouter',  val: customApiKey,   set: setCustomApiKey,   saveKey: 'customApiKey' },
                         ];
-                        const saved = allKeys.filter(k => k.val.trim());
+                        // Merge in any extra keys saved from search
+                        const extraEntries = Object.entries(extraKeys).filter(([,v]) => v.trim()).map(([name, val]) => {
+                          const dir = [
+                            { name: 'OpenRouter', emoji: '🔀' }, { name: 'Hugging Face', emoji: '🤗' },
+                            { name: 'Together AI', emoji: '🤝' }, { name: 'Replicate', emoji: '♾️' },
+                            { name: 'Stability AI', emoji: '🎨' }, { name: 'ElevenLabs', emoji: '🎙️' },
+                            { name: 'Serper', emoji: '🔍' }, { name: 'Tavily', emoji: '🌐' },
+                            { name: 'Pinecone', emoji: '🌲' }, { name: 'Supabase', emoji: '⚡' },
+                            { name: 'AssemblyAI', emoji: '🎧' }, { name: 'Cloudflare AI', emoji: '☁️' },
+                            { name: 'Fireworks AI', emoji: '🎆' }, { name: 'Deepgram', emoji: '🌊' },
+                            { name: 'NewsAPI', emoji: '📰' }, { name: 'Alpha Vantage', emoji: '📈' },
+                            { name: 'Polygon.io', emoji: '📊' }, { name: 'Stripe', emoji: '💳' },
+                            { name: 'SendGrid', emoji: '📧' }, { name: 'Twilio', emoji: '📱' },
+                            { name: 'Weather API', emoji: '🌤️' }, { name: 'ipinfo', emoji: '📍' },
+                          ].find(d => d.name === name);
+                          return { emoji: dir?.emoji || '🔑', name, val, set: (v: string) => { const u = { ...extraKeys, [name]: v }; setExtraKeys(u); saveConfig({ extraKeys: u }); }, saveKey: name };
+                        });
+                        const saved = [...allKeys.filter(k => k.val.trim()), ...extraEntries];
                         if (saved.length === 0) return (
                           <div style={{ padding: '18px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '14px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.72rem' }}>
                             No keys saved yet — search above to add one
