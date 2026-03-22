@@ -2017,7 +2017,7 @@ const App = () => {
                           </div>
                           <AnimatePresence>
                             {isDropdownOpen && (
-                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '340px' }}>
+                              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: '200px', minWidth: '200px', maxWidth: '200px', background: 'rgba(20, 20, 30, 0.98)', border: '1px solid var(--glass-border)', borderRadius: '12px', zIndex: 100, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '340px' }}>
                                 <div style={{ padding: '8px 14px 6px', fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.12em', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>BRAIN MODEL</div>
                                 <div style={{ overflowY: 'auto', flex: 1 }}>
                                 {(() => {
@@ -2073,7 +2073,7 @@ const App = () => {
                                         <span style={{ fontSize: '0.85rem', width: '16px', textAlign: 'center', flexShrink: 0, color: m.tooLarge ? '#ff416c' : '#00ff88' }}>⬡</span>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                           <div style={{ lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
-                                          <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2, whiteSpace: 'nowrap' }}>Local · {m.size} {m.tooLarge ? "· ⚠ Can't Run" : '· Ready'}</div>
+                                          <div style={{ fontSize: '0.48rem', opacity: 0.5, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Local · {m.size} {m.tooLarge ? "· ⚠ Can't Run" : '· Ready'}</div>
                                         </div>
                                         {activeDirector === id && !m.tooLarge && <span style={{ fontSize: '0.5rem', color: '#00ff88' }}>●</span>}
                                       </div>
@@ -3184,59 +3184,6 @@ const App = () => {
                 {/* ── AI Models Tab ── */}
                 {mcpHubTab === 'ai' && (
                 <div>
-                  {/* Installed models */}
-                  <div style={{ marginBottom: '28px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em' }}>INSTALLED MODELS</div>
-                      <button onClick={loadOllamaModels} style={{ height: '28px', padding: '0 12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '7px', color: 'white', cursor: 'pointer', fontSize: '0.65rem' }}>🔄 Refresh</button>
-                    </div>
-                    {ollamaInstalled === false
-                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,65,108,0.06)', border: '1px solid rgba(255,65,108,0.35)', borderRadius: '12px' }}>
-                          <div style={{ fontWeight: 900, fontSize: '0.85rem', color: '#ff416c', marginBottom: '6px' }}>⚠️ Ollama is not installed</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '14px' }}>Ollama is required to run local AI models. Free, runs silently in the background. IMI will install it for you.</div>
-                          {depInstalling['ollama'] ? (
-                            <div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                <span style={{ fontSize: '0.72rem', color: '#00ff88', fontWeight: 700 }}>
-                                  {depInstalling['ollama'].status === 'downloading' ? `⬇ Downloading Ollama… ${depInstalling['ollama'].received || 0}MB / ${depInstalling['ollama'].total || 0}MB` :
-                                   depInstalling['ollama'].status === 'installing' ? '⚙️ Installing…' :
-                                   depInstalling['ollama'].status === 'done' ? '✅ Installed!' : `❌ ${depInstalling['ollama'].error}`}
-                                </span>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 900 }}>{depInstalling['ollama'].percent}%</span>
-                              </div>
-                              <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${depInstalling['ollama'].percent}%`, background: depInstalling['ollama'].status === 'done' ? '#00ff88' : 'linear-gradient(90deg,#ff416c,#ff6b6b)', borderRadius: '4px', transition: 'width 0.3s' }} />
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                              <button onClick={async () => { await (ipc as any).invoke('install-dep', 'ollama'); }} style={{ height: '36px', padding: '0 20px', background: 'rgba(255,65,108,0.15)', border: '1px solid rgba(255,65,108,0.4)', borderRadius: '8px', color: '#ff416c', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 900 }}>⬇ Install Ollama</button>
-                              <button onClick={loadOllamaModels} style={{ height: '36px', padding: '0 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'white', cursor: 'pointer', fontSize: '0.72rem' }}>🔄 Check again</button>
-                            </div>
-                          )}
-                        </div>
-                      : ollamaModels.length === 0
-                      ? <div style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                          ✅ Ollama installed. No models pulled yet — search below and hit <strong>Pull</strong>.
-                          <div style={{ marginTop: '8px', fontSize: '0.68rem', color: 'var(--primary)', fontWeight: 700 }}>💡 Recommended: <code>qwen2.5-coder:7b</code> (4.7GB)</div>
-                        </div>
-                      : <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {ollamaModels.map(m => (
-                            <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: m.tooLarge ? 'rgba(255,65,108,0.04)' : 'rgba(0,255,136,0.04)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.25)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '10px' }}>
-                              <span style={{ fontSize: '1.2rem' }}>{m.tooLarge ? '⚠️' : '🦙'}</span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>{shortModelName(m.name)}</div>
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{m.size} · {m.modified}</span>
-                                {m.tooLarge && <div style={{ fontSize: '0.62rem', color: '#ff416c', marginTop: '2px', fontWeight: 700 }}>⚠️ Too large for your GPU ({m.vramGB?.toFixed(0)}GB VRAM) — won't run. Delete and pull a smaller model.</div>}
-                              </div>
-                              <span style={{ fontSize: '0.6rem', padding: '2px 8px', background: m.tooLarge ? 'rgba(255,65,108,0.12)' : 'rgba(0,255,136,0.1)', border: `1px solid ${m.tooLarge ? 'rgba(255,65,108,0.3)' : 'rgba(0,255,136,0.2)'}`, borderRadius: '4px', color: m.tooLarge ? '#ff416c' : '#00ff88', fontWeight: 800 }}>{m.tooLarge ? "Can't Run" : 'Ready'}</span>
-                              <button onClick={async () => { if(confirm(`Delete ${m.name}?`)) { await (ipc as any).invoke('ollama-delete', m.name); loadOllamaModels(); } }} style={{ background: 'transparent', border: 'none', color: '#ff416c', cursor: 'pointer', opacity: 0.6, fontSize: '1rem' }}>✕</button>
-                            </div>
-                          ))}
-                        </div>
-                    }
-                  </div>
-
                   {/* Live HuggingFace search */}
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', letterSpacing: '0.12em', marginBottom: '10px' }}>
