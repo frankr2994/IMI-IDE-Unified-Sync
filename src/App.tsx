@@ -1550,7 +1550,6 @@ const App = () => {
             { id: 'command center',  label: 'Command Center',  icon: <TerminalIcon size={14}/> },
             { id: 'tools',           label: 'Dev Hub',         icon: <Layers size={14}/> },
             { id: 'skills',          label: 'Skills',          icon: <Zap size={14}/> },
-            { id: 'navigator',       label: 'Navigator',       icon: <GitBranch size={14}/> },
             { id: 'style',           label: 'Style',           icon: <Palette size={14}/> },
           ] as { id: string; label: string; icon: React.ReactNode }[]).map(item => (
             <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`sidebar-btn ${activeTab === item.id ? 'active' : ''}`}>
@@ -1591,10 +1590,10 @@ const App = () => {
         <header style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', marginBottom: '5px' }}>
-              {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : activeTab === 'navigator' ? 'NAVIGATOR' : activeTab === 'style' ? 'STYLE DNA' : 'SYSTEM'}
+              {activeTab === 'dashboard' ? 'OVERVIEW' : activeTab === 'command center' ? 'COMMAND CENTER' : activeTab === 'tools' ? 'DEV HUB' : activeTab === 'skills' ? 'SKILLS' : activeTab === 'style' ? 'STYLE DNA' : 'SYSTEM'}
             </div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em', margin: 0, color: '#fff' }}>
-              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'command center' ? 'Command Center' : activeTab === 'tools' ? 'Dev Hub' : activeTab === 'skills' ? 'Skills' : activeTab === 'navigator' ? 'Navigator' : activeTab === 'style' ? 'Style' : 'System'}
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'command center' ? 'Command Center' : activeTab === 'tools' ? 'Dev Hub' : activeTab === 'skills' ? 'Skills' : activeTab === 'style' ? 'Style' : 'System'}
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
