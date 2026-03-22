@@ -4298,42 +4298,50 @@ const App = () => {
                   </div>
 
                   {/* ── CODE tab ── */}
-                  {styleDnaTab === 'code' && (
-                    <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {dnaSection('JavaScript / TypeScript', <Terminal size={13} style={{ color: '#4facfe' }} />, <>
-                        {dnaRow('Indentation', dnaChip('code', 'indent', ['2 spaces', '4 spaces', 'tabs']))}
-                        {dnaRow('Quotes', dnaChip('code', 'quotes', ['single', 'double', 'backtick']))}
-                        {dnaRow('Semicolons', dnaChip('code', 'semicolons', ['Yes', 'No']))}
-                        {dnaRow('Arrow Functions', dnaChip('code', 'arrowFunctions', ['Yes', 'No']))}
-                        {dnaRow('const over let', dnaChip('code', 'constOverLet', ['Yes', 'No']))}
-                        {dnaRow('Async / Await', dnaChip('code', 'asyncAwait', ['Yes', 'No']))}
-                        {dnaRow('TypeScript', dnaChip('code', 'typescript', ['Yes', 'No']))}
-                        {dnaRow('Naming convention', dnaChip('code', 'naming', ['camelCase', 'PascalCase', 'snake_case', 'kebab-case']))}
-                        {dnaRow('Import style', dnaChip('code', 'importStyle', ['named', 'default', 'mixed']))}
-                        {dnaRow('JSDoc comments', dnaChip('code', 'jsdocComments', ['Yes', 'No']))}
-                      </>)}
-                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                        {dnaSection('Python', <span style={{ fontSize: '0.8rem' }}>🐍</span>, <>
-                          {dnaRow('Indentation', dnaChip('workflow', 'pythonIndent', ['4 spaces', '2 spaces', 'tabs']))}
+                  {styleDnaTab === 'code' && (() => {
+                    const [codeLang, setCodeLang] = (React as any).useState('js');
+                    return (
+                      <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* Language switcher */}
+                        <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+                          {[{id:'js',label:'JS / TS'},{id:'python',label:'Python'},{id:'other',label:'Rust / Go / Other'}].map(l => (
+                            <button key={l.id} onClick={() => setCodeLang(l.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: `1px solid ${codeLang===l.id?'rgba(79,172,254,0.5)':'var(--glass-border)'}`, background: codeLang===l.id?'rgba(79,172,254,0.12)':'rgba(255,255,255,0.03)', color: codeLang===l.id?'#4facfe':'rgba(255,255,255,0.45)', fontSize: '0.62rem', fontWeight: codeLang===l.id?800:500, cursor: 'pointer' }}>{l.label}</button>
+                          ))}
+                        </div>
+
+                        {codeLang === 'js' && <>
+                          {dnaRow('Indent', dnaChip('code', 'indent', ['2 spaces', '4 spaces', 'tabs']))}
+                          {dnaRow('Quotes', dnaChip('code', 'quotes', ['single', 'double', 'backtick']))}
+                          {dnaRow('Semicolons', dnaChip('code', 'semicolons', ['Yes', 'No']))}
+                          {dnaRow('Arrow functions', dnaChip('code', 'arrowFunctions', ['Yes', 'No']))}
+                          {dnaRow('const over let', dnaChip('code', 'constOverLet', ['Yes', 'No']))}
+                          {dnaRow('Async / Await', dnaChip('code', 'asyncAwait', ['Yes', 'No']))}
+                          {dnaRow('TypeScript', dnaChip('code', 'typescript', ['Yes', 'No']))}
+                          {dnaRow('Naming', dnaChip('code', 'naming', ['camelCase', 'PascalCase', 'snake_case', 'kebab-case']))}
+                          {dnaRow('Imports', dnaChip('code', 'importStyle', ['named', 'default', 'mixed']))}
+                          {dnaRow('JSDoc', dnaChip('code', 'jsdocComments', ['Yes', 'No']))}
+                        </>}
+
+                        {codeLang === 'python' && <>
+                          {dnaRow('Indent', dnaChip('workflow', 'pythonIndent', ['4 spaces', '2 spaces', 'tabs']))}
                           {dnaRow('Naming', dnaChip('workflow', 'pythonNaming', ['snake_case', 'camelCase']))}
                           {dnaRow('Type hints', dnaChip('workflow', 'pythonTypeHints', ['Yes', 'No']))}
                           {dnaRow('Docstrings', dnaChip('workflow', 'pythonDocstrings', ['Google', 'NumPy', 'reStructuredText', 'None']))}
                           {dnaRow('Formatter', dnaChip('workflow', 'pythonFormatter', ['Black', 'autopep8', 'YAPF', 'None']))}
-                        </>)}
+                        </>}
+
+                        {codeLang === 'other' && <>
+                          {dnaRow('Error handling', dnaChip('workflow', 'errorHandling', ['Result/Option', 'Exceptions', 'Error codes', 'Panic/crash']))}
+                          {dnaRow('Comments', dnaChip('workflow', 'commentStyle', ['Inline only', 'Block headers', 'Full docs', 'Minimal']))}
+                          {dnaRow('Line length', dnaChip('workflow', 'lineLength', ['80 chars', '100 chars', '120 chars', 'No limit']))}
+                        </>}
+
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px', marginTop: '4px' }}>
+                          <textarea value={fullProfile.code.notes} onChange={e => updFullProfile('code', { notes: e.target.value })} placeholder="Notes — linter rules, patterns, anything the AI should always follow…" className="chat-input" style={{ width: '100%', height: '60px', resize: 'vertical', fontSize: '0.65rem', padding: '7px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
+                        </div>
                       </div>
-                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                        {dnaSection('Rust / Go / Other', <span style={{ fontSize: '0.8rem' }}>⚙️</span>, <>
-                          {dnaRow('Error handling style', dnaChip('workflow', 'errorHandling', ['Result/Option', 'Exceptions', 'Error codes', 'Panic/crash']))}
-                          {dnaRow('Comment style', dnaChip('workflow', 'commentStyle', ['Inline only', 'Block headers', 'Full docs', 'Minimal']))}
-                          {dnaRow('Line length limit', dnaChip('workflow', 'lineLength', ['80 chars', '100 chars', '120 chars', 'No limit']))}
-                        </>)}
-                      </div>
-                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                        <div style={{ fontSize: '0.58rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>NOTES</div>
-                        <textarea value={fullProfile.code.notes} onChange={e => updFullProfile('code', { notes: e.target.value })} placeholder="Any specific code style rules, linter configs, patterns you always follow…" className="chat-input" style={{ width: '100%', height: '72px', resize: 'vertical', fontSize: '0.68rem', padding: '8px 12px', boxSizing: 'border-box', lineHeight: 1.6 }} />
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* ── STACK tab ── */}
                   {styleDnaTab === 'stack' && (
