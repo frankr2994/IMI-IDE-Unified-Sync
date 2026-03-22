@@ -4682,6 +4682,19 @@ const App = () => {
 
                       {/* API KEY FINDER */}
                       {(() => {
+                        // Map known services to their IMI key slots
+                        const KEY_SLOT_MAP: Record<string, { get: () => string; set: (v: string) => void; saveKey: string }> = {
+                          'Anthropic':   { get: () => claudeKey,      set: setClaudeKey,      saveKey: 'claudeKey' },
+                          'OpenAI':      { get: () => openaiKey,       set: setOpenaiKey,      saveKey: 'openaiKey' },
+                          'Gemini':      { get: () => geminiKey,       set: setGeminiKey,      saveKey: 'geminiKey' },
+                          'Cohere':      { get: () => cohereKey,       set: setCohereKey,      saveKey: 'cohereKey' },
+                          'Mistral':     { get: () => mistralKey,      set: setMistralKey,     saveKey: 'mistralKey' },
+                          'Groq':        { get: () => groqKey,         set: setGroqKey,        saveKey: 'groqKey' },
+                          'Perplexity':  { get: () => perplexityKey,   set: setPerplexityKey,  saveKey: 'perplexityKey' },
+                          'Google Maps': { get: () => googleMapsKey,   set: setGoogleMapsKey,  saveKey: 'googleMapsKey' },
+                          'GitHub':      { get: () => githubToken,     set: setGithubToken,    saveKey: 'githubToken' },
+                          'OpenRouter':  { get: () => customApiKey,    set: setCustomApiKey,   saveKey: 'customApiKey' },
+                        };
                         const API_DIRECTORY = [
                           { name: 'OpenRouter', emoji: '🔀', desc: 'Unified gateway — access 200+ models with one key', link: 'https://openrouter.ai/keys', tags: ['openrouter','router','unified','llm'] },
                           { name: 'Hugging Face', emoji: '🤗', desc: 'Open-source models, datasets, and inference API', link: 'https://huggingface.co/settings/tokens', tags: ['huggingface','hf','hugging','open source','models'] },
@@ -4727,23 +4740,72 @@ const App = () => {
                                 className="chat-input"
                                 style={{ width: '100%', height: '42px', fontSize: '0.82rem', paddingLeft: '14px', paddingRight: '14px', borderRadius: '10px', boxSizing: 'border-box' }}
                               />
-                              {apiKeySearch && <button onClick={() => setApiKeySearch('')} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>}
+                              {apiKeySearch && <button onClick={() => { setApiKeySearch(''); setApiKeyAddOpen(null); }} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>×</button>}
                             </div>
                             {q.length > 0 && (
                               <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {results.length > 0
-                                  ? results.map(r => (
-                                      <div key={r.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                          <span style={{ fontSize: '1.1rem' }}>{r.emoji}</span>
-                                          <div>
-                                            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white' }}>{r.name}</div>
-                                            <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '1px' }}>{r.desc}</div>
+                                  ? results.map(r => {
+                                      const slot = KEY_SLOT_MAP[r.name];
+                                      const isOpen = apiKeyAddOpen === r.name;
+                                      const inputVal = apiKeyAddVal[r.name] || '';
+                                      const alreadySaved = slot && slot.get().trim().length > 0;
+                                      return (
+                                        <div key={r.name} style={{ background: alreadySaved ? 'rgba(0,255,136,0.04)' : 'rgba(255,255,255,0.03)', border: `1px solid ${alreadySaved ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: '10px', overflow: 'hidden', transition: 'border-color 0.2s' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                              <span style={{ fontSize: '1.1rem' }}>{r.emoji}</span>
+                                              <div>
+                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                  {r.name}
+                                                  {alreadySaved && <span style={{ fontSize: '0.52rem', background: 'rgba(0,255,136,0.15)', color: '#00ff88', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>✓ SAVED</span>}
+                                                </div>
+                                                <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '1px' }}>{r.desc}</div>
+                                              </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
+                                              <button onClick={() => (ipc as any).send('open-external-url', r.link)} style={{ padding: '6px 12px', fontSize: '0.6rem', background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: 'var(--text-dim)', borderRadius: '7px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 700 }}>Get Key →</button>
+                                              <button
+                                                onClick={() => setApiKeyAddOpen(isOpen ? null : r.name)}
+                                                className="btn-premium"
+                                                style={{ padding: '6px 12px', fontSize: '0.6rem', whiteSpace: 'nowrap', background: isOpen ? 'rgba(255,255,255,0.08)' : undefined }}
+                                              >
+                                                {alreadySaved ? '✏️ Update' : '⬇ Add Key'}
+                                              </button>
+                                            </div>
                                           </div>
+                                          {isOpen && (
+                                            <div style={{ padding: '0 14px 12px', display: 'flex', gap: '8px' }}>
+                                              <input
+                                                autoFocus
+                                                type="password"
+                                                value={inputVal}
+                                                onChange={e => setApiKeyAddVal(p => ({ ...p, [r.name]: e.target.value }))}
+                                                placeholder={alreadySaved ? '••••••••  (paste new key to replace)' : 'Paste your API key here…'}
+                                                className="chat-input"
+                                                style={{ flex: 1, height: '38px', fontSize: '0.8rem', paddingLeft: '12px', borderRadius: '8px', boxSizing: 'border-box' }}
+                                              />
+                                              <button
+                                                onClick={() => {
+                                                  if (!inputVal.trim()) return;
+                                                  if (slot) {
+                                                    slot.set(inputVal.trim());
+                                                    saveConfig({ [slot.saveKey]: inputVal.trim() });
+                                                  }
+                                                  setApiKeyAddVal(p => ({ ...p, [r.name]: '' }));
+                                                  setApiKeyAddOpen(null);
+                                                }}
+                                                className="btn-premium"
+                                                style={{ padding: '0 16px', height: '38px', fontSize: '0.68rem', whiteSpace: 'nowrap', background: slot ? undefined : 'rgba(255,255,255,0.1)', opacity: slot ? 1 : 0.6 }}
+                                                title={slot ? 'Save to IMI' : 'This service is not directly integrated — add it via Custom API'}
+                                              >
+                                                {slot ? '✓ Save' : '📋 Copy'}
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
-                                        <button onClick={() => (ipc as any).send('open-external-url', r.link)} className="btn-premium" style={{ padding: '6px 14px', fontSize: '0.62rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: '12px' }}>Get Key →</button>
-                                      </div>
-                                    ))
+                                      );
+                                    })
                                   : (
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '10px' }}>
                                         <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)' }}>No match in directory — search the web for <strong style={{ color: 'white' }}>"{apiKeySearch} API key"</strong></div>
