@@ -4463,12 +4463,20 @@ const App = () => {
                           </div>
                         );
 
+                        // card wrapper shared by all tabs
+                        const TabCard = ({ children }: { children: React.ReactNode }) => (
+                          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '0 0 12px 12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                            {children}
+                          </div>
+                        );
+
                         // ── CODE ──
                         if (profileSubTab === 'code') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                                {styleProfile ? `✅ Auto-scanned ${styleProfile.filesAnalyzed} files · ${new Date(styleProfile.analyzedAt).toLocaleTimeString()}` : 'Not scanned yet'}
+                          <TabCard>
+                            {/* Scan bar */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                              <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>
+                                {styleProfile ? `✅ Scanned ${styleProfile.filesAnalyzed} files · ${new Date(styleProfile.analyzedAt).toLocaleTimeString()}` : 'No scan yet — click to detect your code style automatically'}
                               </div>
                               <button onClick={async () => {
                                 const root = stats.projectRoot;
@@ -4484,11 +4492,11 @@ const App = () => {
                                   } else { setStyleMsg({ type: 'error', text: p?.error || 'Scan failed' }); }
                                 } catch(e: any) { setStyleMsg({ type: 'error', text: e.message }); }
                                 setStyleLoading(false);
-                              }} disabled={styleLoading} style={{ padding: '7px 16px', background: 'rgba(79,172,254,0.12)', border: '1px solid rgba(79,172,254,0.3)', borderRadius: '8px', color: '#4facfe', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-                                {styleLoading ? '⏳ Scanning…' : '🔍 Auto-scan Project'}
+                              }} disabled={styleLoading} className="btn-premium" style={{ height: '32px', padding: '0 14px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em', flexShrink: 0 }}>
+                                {styleLoading ? '⏳ SCANNING…' : '🔍 AUTO-SCAN'}
                               </button>
                             </div>
-                            {styleMsg && <div style={{ padding: '8px 12px', borderRadius: '7px', fontSize: '0.75rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
+                            {styleMsg && <div style={{ padding: '7px 12px', borderRadius: '7px', fontSize: '0.68rem', background: styleMsg.type === 'success' ? 'rgba(0,255,136,0.07)' : 'rgba(255,65,108,0.07)', color: styleMsg.type === 'success' ? '#00ff88' : '#ff6b6b', border: `1px solid ${styleMsg.type === 'success' ? 'rgba(0,255,136,0.2)' : 'rgba(255,65,108,0.2)'}` }}>{styleMsg.text}</div>}
                             <Row label="Indent"><Chips cat="code" field="indent" options={['2 spaces','4 spaces','tabs']} /></Row>
                             <Row label="Quotes"><Chips cat="code" field="quotes" options={['single','double','backtick']} /></Row>
                             <Row label="Semicolons"><Chips cat="code" field="semicolons" options={['true','false'] as any} /></Row>
@@ -4500,24 +4508,24 @@ const App = () => {
                             <Row label="TypeScript"><Chips cat="code" field="typescript" options={['true','false'] as any} /></Row>
                             <Row label="Notes"><Notes cat="code" /></Row>
                             {/* Impact Analyzer */}
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: '18px' }}>
-                              <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#00ff88', letterSpacing: '0.08em', marginBottom: '10px' }}>🔭 Impact Analyzer</div>
+                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
+                              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '10px' }}>Impact Analyzer</div>
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <input value={impactTarget} onChange={e => setImpactTarget(e.target.value)} placeholder="e.g. src/App.tsx" className="chat-input" style={{ flex: 1, height: '36px', fontSize: '0.75rem', padding: '0 12px' }} />
+                                <input value={impactTarget} onChange={e => setImpactTarget(e.target.value)} placeholder="e.g. src/App.tsx" className="chat-input" style={{ flex: 1, height: '38px', fontSize: '0.72rem', padding: '0 14px' }} />
                                 <button onClick={async () => {
                                   if (!impactTarget.trim()) return; setImpactLoading(true); setImpactData(null);
                                   try { const res = await (ipc as any).invoke('get-impact', { filePath: impactTarget.trim(), projectRoot: stats.projectRoot }); if (res && !res.error) setImpactData(res); } catch {}
                                   setImpactLoading(false);
-                                }} disabled={impactLoading || !impactTarget.trim()} style={{ padding: '0 16px', height: '36px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: '8px', color: '#00ff88', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>{impactLoading ? '…' : 'Analyze'}</button>
+                                }} disabled={impactLoading || !impactTarget.trim()} className="btn-premium" style={{ height: '38px', padding: '0 16px', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.05em' }}>{impactLoading ? '…' : 'ANALYZE'}</button>
                               </div>
-                              {impactData && <div style={{ marginTop: '10px', fontSize: '0.75rem', color: impactData.affected.length ? '#ffa000' : '#00ff88' }}>{impactData.affected.length === 0 ? '✅ No dependents — safe to change' : `⚠ ${impactData.affected.length} files affected`}</div>}
+                              {impactData && <div style={{ marginTop: '8px', fontSize: '0.68rem', color: impactData.affected.length ? '#ffa000' : '#00ff88' }}>{impactData.affected.length === 0 ? '✅ No dependents — safe to change' : `⚠ ${impactData.affected.length} files affected`}</div>}
                             </div>
-                          </div>
+                          </TabCard>
                         );
 
                         // ── DESIGN ──
                         if (profileSubTab === 'design') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <TabCard>
                             <Row label="Color palette"><Chips cat="design" field="colorPalette" options={['Dark','Light','High contrast','Colorful','Pastel']} /></Row>
                             <Row label="Corner radius"><Chips cat="design" field="cornerRadius" options={['Sharp','Subtle','Rounded','Pill']} /></Row>
                             <Row label="Spacing"><Chips cat="design" field="spacing" options={['Tight','Normal','Comfortable','Spacious']} /></Row>
@@ -4525,40 +4533,40 @@ const App = () => {
                             <Row label="Animations"><Chips cat="design" field="animations" options={['None','Subtle','Smooth','Energetic']} /></Row>
                             <Row label="Density"><Chips cat="design" field="density" options={['Dense','Normal','Spacious']} /></Row>
                             <Row label="Notes"><Notes cat="design" /></Row>
-                          </div>
+                          </TabCard>
                         );
 
                         // ── ART ──
                         if (profileSubTab === 'art') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <TabCard>
                             <Row label="Visual style"><Chips cat="art" field="visualStyle" options={['Minimalist','Maximalist','Flat','Glassmorphic','Neumorphic','Brutalist','Retro','Cyberpunk']} /></Row>
                             <Row label="Color scheme"><Chips cat="art" field="colorScheme" options={['Dark mono','Light mono','Vibrant','Neon','Pastel','Earth tones','Gradient heavy']} /></Row>
                             <Row label="Mood"><Chips cat="art" field="mood" options={['Professional','Playful','Serious','Creative','Corporate','Futuristic','Cozy']} /></Row>
                             <Row label="Medium"><Chips cat="art" field="medium" options={['Digital','Print','3D','Motion','Illustration','Photography','Mixed']} /></Row>
                             <Row label="Notes"><Notes cat="art" /></Row>
-                          </div>
+                          </TabCard>
                         );
 
                         // ── WRITING ──
                         if (profileSubTab === 'writing') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <TabCard>
                             <Row label="Tone"><Chips cat="writing" field="tone" options={['Casual','Professional','Technical','Friendly','Direct','Humorous','Academic']} /></Row>
                             <Row label="Length"><Chips cat="writing" field="length" options={['Ultra concise','Concise','Balanced','Detailed','Comprehensive']} /></Row>
                             <Row label="Formality"><Chips cat="writing" field="formality" options={['Very low','Low','Medium','High','Very high']} /></Row>
                             <Row label="Tech level"><Chips cat="writing" field="techLevel" options={['Beginner','Intermediate','Advanced','Expert']} /></Row>
                             <Row label="Notes"><Notes cat="writing" /></Row>
-                          </div>
+                          </TabCard>
                         );
 
                         // ── WORKFLOW ──
                         if (profileSubTab === 'workflow') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <TabCard>
                             <Row label="Approach"><Chips cat="workflow" field="approach" options={['Big picture first','Small steps','Iterative','Top-down','Bottom-up']} /></Row>
                             <Row label="Docs"><Chips cat="workflow" field="documentation" options={['None','Minimal','Inline comments','JSDoc','Full docs']} /></Row>
                             <Row label="Errors"><Chips cat="workflow" field="errorHandling" options={['Throw always','Explicit try/catch','Silent fail','Log only']} /></Row>
                             <Row label="Testing"><Chips cat="workflow" field="testing" options={['None','Manual only','Pragmatic','Unit tests','Full TDD']} /></Row>
                             <Row label="Notes"><Notes cat="workflow" /></Row>
-                          </div>
+                          </TabCard>
                         );
 
                         // ── STACK ──
@@ -4590,27 +4598,27 @@ const App = () => {
                             );
                           };
                           return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                            <TabCard>
                               {stackField('languages', 'Languages', ['TypeScript','JavaScript','Python','Rust','Go','Java','C++','C#','Swift','Kotlin','PHP','Ruby','Dart'])}
                               {stackField('frameworks', 'Frameworks & Libraries', ['React','Next.js','Vue','Angular','Svelte','Node.js','Express','Electron','Tailwind','Prisma','tRPC','FastAPI','Django','Laravel'])}
                               {stackField('tools', 'Tools & Software', ['VS Code','Cursor','Vim','IntelliJ','Figma','Sketch','Adobe XD','Git','GitHub','Docker','Vercel','Netlify','Supabase','Postgres','Redis'])}
                               <div>
-                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: 600 }}>Preferred AI Model</div>
+                                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: '8px' }}>Preferred AI Model</div>
                                 <Chips cat="stack" field="preferredModel" options={['Gemini','Claude','ChatGPT','Groq','DeepSeek','Mistral','Ollama (local)']} />
                               </div>
                               {stackField('modelUsage', 'I use AI for', ['Coding','Debugging','Writing','Design','Planning','Learning','Refactoring','Code review','Documentation'])}
                               <Row label="Notes"><Notes cat="stack" /></Row>
-                            </div>
+                            </TabCard>
                           );
                         }
 
                         // ── COMMUNITY ──
                         if (profileSubTab === 'community') return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <TabCard>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>Community Library</div>
-                              <button onClick={() => { setCommunityProfilesLoading(true); (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false)); }} style={{ padding: '7px 12px', background: 'none', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <RefreshCw size={12} />Refresh
+                              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Community Library</div>
+                              <button onClick={() => { setCommunityProfilesLoading(true); (ipc as any).invoke('get-community-profiles').then((r: any[]) => { setCommunityProfiles(r || []); setCommunityProfilesLoading(false); }).catch(() => setCommunityProfilesLoading(false)); }} className="btn-premium" style={{ height: '30px', padding: '0 12px', fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <RefreshCw size={11} />REFRESH
                               </button>
                             </div>
                             {communityProfilesLoading && <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-dim)', fontSize: '0.8rem' }}>Loading…</div>}
