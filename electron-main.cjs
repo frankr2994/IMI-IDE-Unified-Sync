@@ -1336,7 +1336,7 @@ START NOW — use search_code or read_file first, never write_patch as your firs
       read_file: 'ðŸ“–', write_file: 'ðŸ“', write_patch: 'âœï¸',
       search_code: 'ðŸ”', glob: 'ðŸ—‚ï¸', list_dir: 'ðŸ“',
       get_file_info: 'â„¹ï¸', run_build: 'ðŸ”¨', read_error: 'ðŸ”Ž',
-      run_command: '⚡', take_screenshot: 'ðŸ“¸', open_browser: 'ðŸŒ'
+      run_command: '⚡', take_screenshot: 'ðŸ“¸', open_browser: '🌐'
     };
     const toolLabel = {
       read_file:    `Reading \`${args?.path}\`${args?.offset !== undefined ? ` (offset:${args?.offset})` : ''}`,
@@ -1728,7 +1728,7 @@ const COMMUNITY_FALLBACK_SKILLS = [
   { id: 'com_git_status',       name: 'Git Status Check',       pattern: '^git status$|^show git status$',                  type: 'passthrough', response: '',  desc: 'Run git status in terminal', category: 'ðŸ’» Dev Tools', icon: '🌿', author: 'devcraft', installs: 5291, rating: 4.9, version: '2.0.0' },
   { id: 'com_npm_install',      name: 'NPM Install',            pattern: '^npm install$|^run npm install$',                 type: 'passthrough', response: '',  desc: 'Run npm install in project', category: 'ðŸ’» Dev Tools', icon: '📦', author: 'devcraft', installs: 3847, rating: 4.8, version: '1.1.0' },
   { id: 'com_open_vscode',      name: 'Open VS Code',           pattern: 'open vscode|open vs code|launch vscode',         type: 'cached',      response: 'Opening VS Code! ðŸ’»',  desc: 'Launch VS Code editor', category: 'ðŸ’» Dev Tools', icon: '💙', author: 'coderx', installs: 6104, rating: 4.9, version: '1.0.3' },
-  { id: 'com_localhost',        name: 'Open Localhost',         pattern: 'open localhost|go to localhost|localhost 3000',   type: 'passthrough', response: '',  desc: 'Open localhost:3000 in browser', category: 'ðŸ’» Dev Tools', icon: 'ðŸŒ', author: 'webdev42', installs: 2901, rating: 4.7, version: '1.0.0' },
+  { id: 'com_localhost',        name: 'Open Localhost',         pattern: 'open localhost|go to localhost|localhost 3000',   type: 'passthrough', response: '',  desc: 'Open localhost:3000 in browser', category: 'ðŸ’» Dev Tools', icon: '🌐', author: 'webdev42', installs: 2901, rating: 4.7, version: '1.0.0' },
   { id: 'com_clear_terminal',   name: 'Clear Terminal',         pattern: '^clear$|^cls$|clear terminal',                    type: 'cached',      response: '__CLEAR__',  desc: 'Clear terminal output', category: 'ðŸ’» Dev Tools', icon: 'ðŸ§¹', author: 'shellpro', installs: 1872, rating: 4.6, version: '1.0.0' },
 
   // ðŸ¤– AI & IMI
@@ -1736,12 +1736,12 @@ const COMMUNITY_FALLBACK_SKILLS = [
   { id: 'com_switch_gemini',    name: 'Switch to Gemini',       pattern: 'use gemini|switch to gemini|change to gemini',    type: 'passthrough', response: '',  desc: 'Switch brain to Gemini', category: 'ðŸ¤– AI & IMI', icon: '✨', author: 'aifan', installs: 1201, rating: 4.5, version: '1.0.0' },
   { id: 'com_switch_claude',    name: 'Switch to Claude',       pattern: 'use claude|switch to claude|change to claude',    type: 'passthrough', response: '',  desc: 'Switch brain to Claude', category: 'ðŸ¤– AI & IMI', icon: 'ðŸŸ£', author: 'aifan', installs: 1098, rating: 4.5, version: '1.0.0' },
 
-  // ðŸŒ Productivity
-  { id: 'com_open_gmail',       name: 'Open Gmail',             pattern: 'open gmail|go to gmail|check email',              type: 'passthrough', response: '',  desc: 'Open Gmail in browser', category: 'ðŸŒ Productivity', icon: 'ðŸ“§', author: 'prodmaster', installs: 4782, rating: 4.7, version: '1.0.1' },
-  { id: 'com_open_notion',      name: 'Open Notion',            pattern: 'open notion|go to notion|launch notion',          type: 'passthrough', response: '',  desc: 'Open Notion workspace', category: 'ðŸŒ Productivity', icon: 'ðŸ““', author: 'workflowpro', installs: 2193, rating: 4.8, version: '1.0.0' },
-  { id: 'com_open_calendar',    name: 'Open Google Calendar',   pattern: 'open calendar|google calendar|check calendar',    type: 'passthrough', response: '',  desc: 'Open Google Calendar', category: 'ðŸŒ Productivity', icon: 'ðŸ“…', author: 'scheduler9', installs: 2891, rating: 4.7, version: '1.0.0' },
-  { id: 'com_open_drive',       name: 'Open Google Drive',      pattern: 'open drive|google drive|open my drive',           type: 'passthrough', response: '',  desc: 'Open Google Drive', category: 'ðŸŒ Productivity', icon: 'ðŸ’¾', author: 'cloudguy', installs: 3512, rating: 4.7, version: '1.0.0' },
-  { id: 'com_open_slack',       name: 'Open Slack',             pattern: 'open slack|launch slack|go to slack',             type: 'passthrough', response: '',  desc: 'Open Slack workspace', category: 'ðŸŒ Productivity', icon: 'ðŸ’¬', author: 'teamchat', installs: 2214, rating: 4.6, version: '1.0.2' },
+  // 🌐 Productivity
+  { id: 'com_open_gmail',       name: 'Open Gmail',             pattern: 'open gmail|go to gmail|check email',              type: 'passthrough', response: '',  desc: 'Open Gmail in browser', category: '🌐 Productivity', icon: 'ðŸ“§', author: 'prodmaster', installs: 4782, rating: 4.7, version: '1.0.1' },
+  { id: 'com_open_notion',      name: 'Open Notion',            pattern: 'open notion|go to notion|launch notion',          type: 'passthrough', response: '',  desc: 'Open Notion workspace', category: '🌐 Productivity', icon: 'ðŸ““', author: 'workflowpro', installs: 2193, rating: 4.8, version: '1.0.0' },
+  { id: 'com_open_calendar',    name: 'Open Google Calendar',   pattern: 'open calendar|google calendar|check calendar',    type: 'passthrough', response: '',  desc: 'Open Google Calendar', category: '🌐 Productivity', icon: 'ðŸ“…', author: 'scheduler9', installs: 2891, rating: 4.7, version: '1.0.0' },
+  { id: 'com_open_drive',       name: 'Open Google Drive',      pattern: 'open drive|google drive|open my drive',           type: 'passthrough', response: '',  desc: 'Open Google Drive', category: '🌐 Productivity', icon: 'ðŸ’¾', author: 'cloudguy', installs: 3512, rating: 4.7, version: '1.0.0' },
+  { id: 'com_open_slack',       name: 'Open Slack',             pattern: 'open slack|launch slack|go to slack',             type: 'passthrough', response: '',  desc: 'Open Slack workspace', category: '🌐 Productivity', icon: 'ðŸ’¬', author: 'teamchat', installs: 2214, rating: 4.6, version: '1.0.2' },
 
   // ðŸŽ® Gaming
   { id: 'com_open_steam',       name: 'Open Steam',             pattern: 'open steam|launch steam|go to steam',             type: 'cached',      response: 'Opening Steam! ðŸŽ®',  desc: 'Launch Steam client', category: 'ðŸŽ® Gaming', icon: 'ðŸŽ®', author: 'gamer404', installs: 3229, rating: 4.8, version: '1.0.0' },
@@ -2402,7 +2402,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const isProfile = /\b(profile|account|page|me)\b/i.test(cmdLower) && !/\brepo\b/i.test(cmdLower);
     const url = isProfile ? `https://github.com/${ghUser}` : `https://github.com/${ghRepo}`;
     shell.openExternal(url);
-    event.sender.send('command-chunk', { messageId, chunk: `🙏 Opening GitHub...\nðŸŒ **${url}**` });
+    event.sender.send('command-chunk', { messageId, chunk: `🙏 Opening GitHub...\n🌐 **${url}**` });
     event.sender.send('command-end', { messageId, code: 0 });
     return;
   }
@@ -2423,7 +2423,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         // If skill has a hardcoded URL, use it directly
         if (matchedSkill.url) {
           shell.openExternal(matchedSkill.url);
-          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${matchedSkill.url}` });
+          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${matchedSkill.url}` });
           event.sender.send('command-end', { messageId, code: 0 });
           skillEngine.recordHit(matchedSkill.id, 400, director);
           return;
@@ -2468,7 +2468,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           }
           if (url) {
             shell.openExternal(url);
-            event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${url}` });
+            event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n🌐 Opening ${url}` });
             event.sender.send('command-end', { messageId, code: 0 });
             skillEngine.recordHit(matchedSkill.id, 400, director);
             return;
@@ -2526,7 +2526,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // â”€â”€ End skill check — continue to AI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // â”€â”€ ðŸŒ UNIVERSAL BROWSER ACTIONS — run for ANY brain model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ 🌐 UNIVERSAL BROWSER ACTIONS — run for ANY brain model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const _cmdU = command.toLowerCase();
   // _isCodeCtx = true means the command is about IMI's own code/UI, not about creating files on desktop
   const _isCodeCtx = /\b(function|component|variable|class|import|export|the app|imi|electron|react|code|style|json|package|sidebar|dashboard|settings|tab|button|panel|header|modal|theme|font|color|layout|animation)\b/.test(_cmdU)
@@ -2566,7 +2566,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     }
     if (resolvedUrls.length > 0 && /\b(open|go to|head to|visit|launch|navigate|take me to|browser|chrome)\b/.test(_cmdU)) {
       resolvedUrls.forEach(u => shell.openExternal(u));
-      event.sender.send('command-chunk', { messageId, chunk: resolvedUrls.map(u => `ðŸŒ Opening: **${u}**`).join('\n') });
+      event.sender.send('command-chunk', { messageId, chunk: resolvedUrls.map(u => `🌐 Opening: **${u}**`).join('\n') });
       event.sender.send('command-end', { messageId, code: 0 });
       return;
     }
@@ -2631,7 +2631,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         const url = intent.url.startsWith('http') ? intent.url : `https://${intent.url}`;
         console.log(`[ROUTE] smartRoute â†’ open_browser (${url})`);
         shell.openExternal(url);
-        event.sender.send('command-chunk', { messageId, chunk: `ðŸŒ Opening: **${url}**` });
+        event.sender.send('command-chunk', { messageId, chunk: `🌐 Opening: **${url}**` });
         event.sender.send('command-end', { messageId, code: 0 });
         return;
       }
@@ -2645,7 +2645,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
   const memoryLog = smartContext.getMemorySummary();
 
-  // â”€â”€ ðŸŒ WEB GROUNDING — inject live DDG context for factual/current queries â”€â”€
+  // â”€â”€ 🌐 WEB GROUNDING — inject live DDG context for factual/current queries â”€â”€
   const WEB_QUERY_RE = /\b(what is|what's|who is|who's|latest|current version|how do i|how to|when is|when was|price of|cost of|news about|today|release date|changelog|just released|just dropped|available now)\b/i;
   let webGrounding = '';
   if (WEB_QUERY_RE.test(command)) {
@@ -2883,7 +2883,7 @@ User: `;
       if (allUrls.length > 0) {
         console.log(`[ROUTE] â†’ isSimpleOpen (shell.openExternal) urls=${allUrls.join(',')}`);
         allUrls.forEach(u => shell.openExternal(u));
-        event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `ðŸŒ Opening: **${u}**`).join('\n') });
+        event.sender.send('command-chunk', { messageId, chunk: allUrls.map(u => `🌐 Opening: **${u}**`).join('\n') });
         event.sender.send('command-end', { messageId, code: 0 });
         return;
       }
@@ -3006,7 +3006,7 @@ User: `;
             if (mentionedUrls.length > 0) {
               const urlToOpen = mentionedUrls[mentionedUrls.length - 1]; // use the last/most specific URL
               shell.openExternal(urlToOpen);
-              event.sender.send('command-chunk', { messageId, chunk: `\n\nðŸŒ Opened: **${urlToOpen}**` });
+              event.sender.send('command-chunk', { messageId, chunk: `\n\n🌐 Opened: **${urlToOpen}**` });
             }
           }
 
@@ -4348,7 +4348,7 @@ async function triggerDesktopVision(event, userCommand, messageId) {
 
 async function triggerBrowserAgent(event, userCommand, messageId) {
   if (mainWindow) mainWindow.webContents.send('coder-status', 'Browsing');
-  event.sender.send('command-chunk', { messageId, chunk: `ðŸŒ [Browser Agent] Launching Gemini with Puppeteer control...\n` });
+  event.sender.send('command-chunk', { messageId, chunk: `🌐 [Browser Agent] Launching Gemini with Puppeteer control...\n` });
 
   let binPath = await checkCommand('gemini');
   if (!binPath && process.platform === 'win32') binPath = await checkCommand('gemini.cmd');
@@ -5496,7 +5496,7 @@ ipcMain.handle('parallel-brain-query', async (e, { prompt, models, keys }) => {
 ipcMain.on('open-external-url', (e, url) => { shell.openExternal(url); });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŒ WEB GROUNDING — DuckDuckGo instant answers, no API key needed
+// 🌐 WEB GROUNDING — DuckDuckGo instant answers, no API key needed
 // Used by: browser skill URL resolution + brain context injection
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function ddgSearch(query, timeoutMs = 3000) {
