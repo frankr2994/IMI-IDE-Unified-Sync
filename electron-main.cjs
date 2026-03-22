@@ -427,6 +427,7 @@ const STYLE_PROFILE_PATH = path.join(os.homedir(), '.imi', 'style-profile.json')
 class StyleAnalyzer {
   constructor() {
     this.profile = null;
+    this._enabled = true;
     this._load();
   }
 
@@ -595,8 +596,11 @@ class StyleAnalyzer {
   }
 
   getCompactPrompt() {
+    if (!this._enabled) return '';
     return this.profile?.compact ? `\n${this.profile.compact}\n` : '';
   }
+
+  setEnabled(val) { this._enabled = val !== false; }
 
   getProfile() { return this.profile; }
 }
@@ -1557,6 +1561,7 @@ ipcMain.handle('analyze-style', async (_, { projectRoot } = {}) => {
 });
 
 ipcMain.handle('get-style-profile', () => styleAnalyzer.getProfile());
+ipcMain.handle('set-style-scan', (_, { enabled }) => { styleAnalyzer.setEnabled(enabled); return { ok: true }; });
 
 // â”€â”€ IMPACT ANALYZER IPC handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('get-impact', async (_, { filePath, projectRoot } = {}) => {

@@ -1803,6 +1803,10 @@ const App = () => {
                     <button onClick={() => setParallelMode(p => !p)} title="Parallel Orchestration — query all models simultaneously" style={{ height: '28px', padding: '0 10px', background: parallelMode ? 'rgba(79,172,254,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${parallelMode ? 'rgba(79,172,254,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: parallelMode ? '#4facfe' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
                       ⚡ PARALLEL {parallelMode ? 'ON' : 'OFF'}
                     </button>
+                    {/* Style Scan toggle */}
+                    <button onClick={() => { setStyleScanEnabled(p => !p); (ipc as any).invoke('set-style-scan', { enabled: !styleScanEnabled }); }} title="Style Scan — AI learns your coding style and applies it to all responses" style={{ height: '28px', padding: '0 10px', background: styleScanEnabled ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleScanEnabled ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: styleScanEnabled ? '#22c55e' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
+                      🎨 STYLE {styleScanEnabled ? 'ON' : 'OFF'}
+                    </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
                       <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Connected</span>
