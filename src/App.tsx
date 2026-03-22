@@ -1804,10 +1804,6 @@ const App = () => {
                     <button onClick={() => setParallelMode(p => !p)} title="Parallel Orchestration — query all models simultaneously" style={{ height: '28px', padding: '0 10px', background: parallelMode ? 'rgba(79,172,254,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${parallelMode ? 'rgba(79,172,254,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: parallelMode ? '#4facfe' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
                       ⚡ PARALLEL {parallelMode ? 'ON' : 'OFF'}
                     </button>
-                    {/* Style Scan toggle */}
-                    <button onClick={() => { setStyleScanEnabled(p => !p); (ipc as any).invoke('set-style-scan', { enabled: !styleScanEnabled }); }} title="Style Scan — AI learns your coding style and applies it to all responses" style={{ height: '28px', padding: '0 10px', background: styleScanEnabled ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleScanEnabled ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '7px', color: styleScanEnabled ? '#22c55e' : 'rgba(255,255,255,0.35)', cursor: 'pointer', fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.06em' }}>
-                      🎨 STYLE {styleScanEnabled ? 'ON' : 'OFF'}
-                    </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }} className="pulse-slow" />
                       <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Connected</span>
@@ -2226,8 +2222,8 @@ const App = () => {
                       {/* Debate Mode */}
                       <button type="button" onClick={() => { setDebateMode(d => !d); if (planMode) setPlanMode(false); }} title={debateMode ? 'Debate Mode ON — Brain & Coder debate then execute' : 'Debate Mode — Brain plans, Coder critiques, then apply'} style={{ height: '38px', width: '38px', background: debateMode ? 'rgba(255,160,0,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${debateMode ? 'rgba(255,160,0,0.55)' : 'var(--glass-border)'}`, borderRadius: '9px', color: debateMode ? '#ffa000' : 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>⚔</button>
 
-                      {/* Style Profile indicator */}
-                      <button type="button" title={styleProfile ? `Style learned: ${styleProfile?.filesAnalyzed ?? '?'} files · ${styleProfile?.indent ?? '?'}, ${styleProfile?.quotes ?? '?'} quotes${styleProfile?.semicolons ? ', semi' : ', no-semi'}` : 'No style profile — go to Settings → Style & Impact to learn'} onClick={async () => { setActiveTab('settings'); setSettingsActiveSubTab('style'); }} style={{ height: '38px', width: '38px', background: styleProfile ? 'rgba(79,172,254,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleProfile ? 'rgba(79,172,254,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: styleProfile ? '#4facfe' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                      {/* Style Profile indicator — opens Style DNA tab */}
+                      <button type="button" title={styleProfile ? `Style DNA active · ${styleProfile?.filesAnalyzed ?? '?'} files scanned — click to edit` : 'No style profile yet — click to set up Style DNA'} onClick={() => setActiveTab('style')} style={{ height: '38px', width: '38px', background: styleProfile ? 'rgba(79,172,254,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${styleProfile ? 'rgba(79,172,254,0.4)' : 'var(--glass-border)'}`, borderRadius: '9px', color: styleProfile ? '#4facfe' : 'var(--text-dim)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
                         <Palette size={15}/>
                         {styleProfile && <span style={{ position: 'absolute', top: '4px', right: '4px', width: '5px', height: '5px', borderRadius: '50%', background: '#4facfe' }} />}
                       </button>
@@ -4498,7 +4494,6 @@ const App = () => {
                   <div style={{ width: '172px', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.15)' }}>
                     {([
                       { id: 'workspace', label: 'Workspace',   icon: <Settings2 size={13}/> },
-                      { id: 'apis',      label: 'APIs & Keys', icon: <Key size={13}/> },
                       { id: 'advanced',  label: 'Advanced',    icon: <ShieldCheck size={13}/> },
                     ] as { id: string; label: string; icon: React.ReactNode }[]).map(tab => {
                       const active = settingsActiveSubTab === tab.id;
