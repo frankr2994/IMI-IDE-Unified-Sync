@@ -97,6 +97,25 @@ const App = () => {
   const [styleLoading, setStyleLoading] = useState(false);
   const [styleMsg, setStyleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // 🗂️ Full Style Profile (code + design + art + writing + workflow + stack)
+  const DEFAULT_FULL_PROFILE = {
+    id: '', name: 'My Style Profile', author: '', description: '', tags: [] as string[], isPublic: false,
+    createdAt: 0, updatedAt: 0,
+    code:     { indent: '', quotes: '', semicolons: null as boolean|null, arrowFunctions: null as boolean|null, constOverLet: null as boolean|null, asyncAwait: null as boolean|null, typescript: null as boolean|null, naming: '', importStyle: '', jsdocComments: null as boolean|null, filesAnalyzed: 0, notes: '' },
+    design:   { colorPalette: '', cornerRadius: '', spacing: '', typography: '', animations: '', density: '', notes: '' },
+    art:      { visualStyle: '', colorScheme: '', mood: '', medium: '', notes: '' },
+    writing:  { tone: '', length: '', formality: '', techLevel: '', notes: '' },
+    workflow: { approach: '', documentation: '', errorHandling: '', testing: '', notes: '' },
+    stack:    { languages: [] as string[], frameworks: [] as string[], tools: [] as string[], preferredModel: '', modelUsage: [] as string[], notes: '' },
+  };
+  const [fullProfile, setFullProfile] = useState<typeof DEFAULT_FULL_PROFILE>(DEFAULT_FULL_PROFILE);
+  const [profileSubTab, setProfileSubTab] = useState<'code'|'design'|'art'|'writing'|'workflow'|'stack'|'community'>('code');
+  const [communityProfiles, setCommunityProfiles] = useState<any[]>([]);
+  const [communityProfilesLoading, setCommunityProfilesLoading] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success'|'error'; text: string } | null>(null);
+  const [profileTagInput, setProfileTagInput] = useState('');
+  const [stackChipInput, setStackChipInput] = useState<Record<string,string>>({});
+
   // 🔭 Impact Analyzer
   const [impactData, setImpactData] = useState<{ filePath: string; affected: Array<{ path: string; depth: number; label: string }> } | null>(null);
   const [impactLoading, setImpactLoading] = useState(false);
@@ -1073,6 +1092,7 @@ const App = () => {
   // Load style profile on startup
   useEffect(() => {
     (ipc as any).invoke('get-style-profile').then((p: any) => { if (p) setStyleProfile(p); }).catch(() => {});
+    (ipc as any).invoke('get-full-profile').then((p: any) => { if (p) setFullProfile(p); }).catch(() => {});
   }, []);
 
   // Re-load style profile whenever stats (project root) refresh

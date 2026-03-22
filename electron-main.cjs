@@ -1562,6 +1562,95 @@ ipcMain.handle('get-impact', async (_, { filePath, projectRoot } = {}) => {
   } catch(e) { return { error: e.message }; }
 });
 
+// ── FULL STYLE PROFILE — code, design, art, writing, workflow, stack ─────────
+const FULL_PROFILE_PATH      = path.join(os.homedir(), '.imi', 'full-profile.json');
+const COMMUNITY_PROFILES_PATH = path.join(os.homedir(), '.imi', 'community-profiles.json');
+
+function _loadFullProfile() {
+  try { if (fs.existsSync(FULL_PROFILE_PATH)) return JSON.parse(fs.readFileSync(FULL_PROFILE_PATH, 'utf-8')); } catch {}
+  return null;
+}
+function _saveFullProfile(profile) {
+  try {
+    const dir = path.dirname(FULL_PROFILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(FULL_PROFILE_PATH, JSON.stringify(profile, null, 2));
+    return true;
+  } catch(e) { console.warn('[FullProfile] save error:', e.message); return false; }
+}
+
+ipcMain.handle('get-full-profile', () => _loadFullProfile());
+
+ipcMain.handle('save-full-profile', (_, profile) => {
+  if (!profile || typeof profile !== 'object') return { error: 'Invalid profile' };
+  const now = Date.now();
+  const updated = {
+    ...profile,
+    updatedAt: now,
+    id: profile.id || (now.toString(36) + Math.random().toString(36).slice(2, 7)),
+    createdAt: profile.createdAt || now,
+    author: profile.author || GITHUB_USER || '',
+  };
+  const ok = _saveFullProfile(updated);
+  return ok ? updated : { error: 'Failed to save profile' };
+});
+
+ipcMain.handle('export-full-profile', async (_, { profile }) => {
+  if (!profile) return { error: 'No profile to export' };
+  const safeName = (profile.name || 'my-style-profile').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const defaultPath = path.join(os.homedir(), 'Desktop', `${safeName}.imi-profile.json`);
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export IMI Style Profile',
+      defaultPath,
+      filters: [{ name: 'IMI Profile', extensions: ['json'] }]
+    });
+    if (result.canceled || !result.filePath) return { canceled: true };
+    fs.writeFileSync(result.filePath, JSON.stringify(profile, null, 2), 'utf-8');
+    return { path: result.filePath };
+  } catch(e) { return { error: e.message }; }
+});
+
+ipcMain.handle('import-full-profile', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import IMI Style Profile',
+      filters: [{ name: 'IMI Profile', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths.length) return { canceled: true };
+    const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
+    const profile = JSON.parse(raw);
+    if (!profile || !profile.code) return { error: 'Invalid profile file — missing expected fields' };
+    return { profile };
+  } catch(e) { return { error: e.message }; }
+});
+
+ipcMain.handle('get-community-profiles', () => {
+  try {
+    if (fs.existsSync(COMMUNITY_PROFILES_PATH)) {
+      return JSON.parse(fs.readFileSync(COMMUNITY_PROFILES_PATH, 'utf-8'));
+    }
+  } catch {}
+  return [];
+});
+
+ipcMain.handle('add-to-community', (_, { profile }) => {
+  if (!profile || !profile.id) return { error: 'Invalid profile' };
+  try {
+    let list = [];
+    try { list = JSON.parse(fs.readFileSync(COMMUNITY_PROFILES_PATH, 'utf-8')); } catch {}
+    list = list.filter(p => p.id !== profile.id);
+    const shared = { ...profile, sharedAt: Date.now(), downloads: (profile.downloads || 0) + 1 };
+    list.unshift(shared);
+    if (list.length > 500) list = list.slice(0, 500);
+    const dir = path.dirname(COMMUNITY_PROFILES_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(COMMUNITY_PROFILES_PATH, JSON.stringify(list, null, 2));
+    return { success: true };
+  } catch(e) { return { error: e.message }; }
+});
+
 // Native folder picker — opens Windows folder browser dialog
 ipcMain.handle('browse-folder', async () => {
   try {
