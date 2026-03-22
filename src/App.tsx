@@ -4219,13 +4219,10 @@ const App = () => {
                   {/* Sidebar */}
                   <div style={{ width: '172px', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '2px', overflowY: 'auto', flexShrink: 0, background: 'rgba(0,0,0,0.15)' }}>
                     {([
-                      { id: 'general',    label: 'Preferences',    icon: <Settings2 size={13}/> },
-                      { id: 'appearance', label: 'Appearance',     icon: <Palette size={13}/> },
-                      { id: 'apis',       label: 'APIs & Keys',    icon: <Key size={13}/> },
-                      { id: 'style',      label: 'Style & Impact', icon: <GitBranch size={13}/> },
-                      { id: 'sync',       label: 'GitHub & Sync',  icon: <RefreshCw size={13}/> },
-                      { id: 'telemetry',  label: 'Telemetry',      icon: <Gauge size={13}/> },
-                      { id: 'automation', label: 'Automation',     icon: <ShieldCheck size={13}/> },
+                      { id: 'workspace', label: 'Workspace',      icon: <Settings2 size={13}/> },
+                      { id: 'apis',      label: 'APIs & Keys',    icon: <Key size={13}/> },
+                      { id: 'style',     label: 'Style & Impact', icon: <GitBranch size={13}/> },
+                      { id: 'advanced',  label: 'Advanced',       icon: <ShieldCheck size={13}/> },
                     ] as { id: string; label: string; icon: React.ReactNode }[]).map(tab => {
                       const active = settingsActiveSubTab === tab.id;
                       return (
