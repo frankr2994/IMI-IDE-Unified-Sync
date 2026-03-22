@@ -5,7 +5,7 @@ const os = require('os');
 const https = require('https');
 const { exec, spawn, execSync } = require('child_process');
 
-// â”€â”€ File logger â€” writes to ~/.imi/imi.log, rotates at 2MB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ File logger — writes to ~/.imi/imi.log, rotates at 2MB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const IMI_LOG_PATH = path.join(os.homedir(), '.imi', 'imi.log');
 const _logStream = (() => {
   try {
@@ -39,7 +39,7 @@ let mainWindow = null;
 const isDev = process.env.NODE_ENV === 'development';
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ—„ï¸  IMI STORE â€” fast local storage, zero API calls, zero tokens
+// ðŸ—„ï¸  IMI STORE — fast local storage, zero API calls, zero tokens
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const IMI_STORE_PATH = path.join(os.homedir(), '.imi', 'store.json');
 const MAX_MESSAGES_PER_PROJECT = 100; // LRU cap per project
@@ -60,7 +60,7 @@ class ImiStore {
     } catch(e) { this._mem = {}; }
   }
 
-  // Debounced write â€” batches saves, no disk thrashing
+  // Debounced write — batches saves, no disk thrashing
   _scheduleSave() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
@@ -105,7 +105,7 @@ class ImiStore {
 const imiStore = new ImiStore();
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// âš¡ SKILL ENGINE â€” Self-optimizing, zero-token skill system
+// ⚡ SKILL ENGINE — Self-optimizing, zero-token skill system
 // Goal: handle 90% of requests without hitting any AI API
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const SKILLS_PATH = path.join(os.homedir(), '.imi', 'skills.json');
@@ -121,7 +121,7 @@ class SkillEngine {
     this.stats = { totalRequests: 0, skillHits: 0, tokensSaved: 0 };
     this._load();
     this._ensureDefaults();
-    // Self-optimization loop â€” runs every 5 minutes
+    // Self-optimization loop — runs every 5 minutes
     setInterval(() => this._optimize(), 5 * 60 * 1000);
   }
 
@@ -143,16 +143,16 @@ class SkillEngine {
     } catch(e) {}
   }
 
-  // 5 built-in default skills â€” always 0 tokens
+  // 5 built-in default skills — always 0 tokens
   _ensureDefaults() {
     const defaults = [
-      { id: 'sk_browser',   name: 'Browser Navigation',    pattern: '\\b(open|go to|navigate|launch|visit)\\b.{0,60}\\b(chrome|browser|http|www|netflix|youtube|gmail|spotify|twitch|reddit|twitter|instagram|facebook|github|stackoverflow|figma|discord|slack|notion|linear|vercel|netlify|supabase|\\.com|\\.org|\\.io|\\.net)\\b', type: 'direct', handler: 'browser',  desc: 'Opens websites instantly via shell â€” no API call' },
-      { id: 'sk_desktop',   name: 'Desktop File/Folder',   pattern: '\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b.{0,60}\\b(desktop|my desktop)\\b|\\b(desktop|my desktop)\\b.{0,60}\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b', type: 'direct', handler: 'desktop', desc: 'Creates files/folders on desktop â€” no API call' },
+      { id: 'sk_browser',   name: 'Browser Navigation',    pattern: '\\b(open|go to|navigate|launch|visit)\\b.{0,60}\\b(chrome|browser|http|www|netflix|youtube|gmail|spotify|twitch|reddit|twitter|instagram|facebook|github|stackoverflow|figma|discord|slack|notion|linear|vercel|netlify|supabase|\\.com|\\.org|\\.io|\\.net)\\b', type: 'direct', handler: 'browser',  desc: 'Opens websites instantly via shell — no API call' },
+      { id: 'sk_desktop',   name: 'Desktop File/Folder',   pattern: '\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b.{0,60}\\b(desktop|my desktop)\\b|\\b(desktop|my desktop)\\b.{0,60}\\b(create|make|new|add)\\b.{0,25}\\b(folder|file|directory)\\b', type: 'direct', handler: 'desktop', desc: 'Creates files/folders on desktop — no API call' },
       { id: 'sk_stats',     name: 'Project Stats Query',   pattern: '\\b(show|get|what is|how many|display)\\b.{0,30}\\b(stats|status|files|tokens|memory|usage|quota)\\b', type: 'direct', handler: 'stats',   desc: 'Returns live stats without an AI call' },
-      { id: 'sk_imi_info',  name: 'What is IMI',           pattern: '\\b(what is|explain|describe|tell me about)\\b.{0,20}\\b(imi|this app|this program|this tool)\\b', type: 'cached', handler: null, cachedResponse: 'IMI (Integrated Merge Interface) is your AI orchestration desktop app. It splits every task between a Brain (plans) and a Coder (executes) to minimize token usage. It controls your browser, desktop, and codebase simultaneously.', desc: 'Cached IMI description â€” 0 tokens' },
-      { id: 'sk_help',      name: 'Help / Capabilities',   pattern: '^\\s*(help|what can you do|capabilities|commands|skills|features)\\s*[?!]?\\s*$', type: 'cached', handler: null, cachedResponse: 'IMI can: open websites, create desktop files/folders, write & edit code, take screenshots, control your browser, sync to GitHub, switch AI models, track token usage, and run self-optimizing skills. Just tell me what you need!', desc: 'Cached help response â€” 0 tokens' },
-      { id: 'sk_installed_models', name: 'List Installed AI Models', pattern: '\\b(what|which|list|show|do i have)\\b.{0,40}\\b(ai|ollama|llm|model|models)\\b.{0,40}\\b(installed|downloaded|on my|available|have)\\b|\\b(installed|downloaded|available)\\b.{0,30}\\b(ai|ollama|llm|model|models)\\b', type: 'direct', handler: 'installed-models', desc: 'Lists installed Ollama models + AI tools â€” no API call' },
-      { id: 'sk_claude_sdk', name: 'Claude Agent SDK', pattern: '\\b(how does claude|claude agent|agent sdk|anthropic sdk|sse event|tool use|agentic loop|how do you think|how do you work|what events|event stream|content_block|message_start|stop_reason|tool_use|how does the ai|how does the brain|how does imi think)\\b', type: 'cached', handler: null, cachedResponse: `ðŸ§  Claude Agent SDK â€” How IMI's Brain Works\n\nðŸ“¡ SSE EVENT STREAM (every response streams these in order):\n  message_start â†’ content_block_start â†’ content_block_delta â†’ content_block_stop â†’ message_delta â†’ message_stop\n\nðŸ”§ TOOL USE LOOP:\n  1. Claude picks a tool (stop_reason: "tool_use")\n  2. Tool input streams in via input_json_delta events\n  3. Your code executes the tool\n  4. Result sent back as role:user + type:tool_result\n  5. Loop continues until no more tool calls â†’ final answer\n\nðŸ§  HOW CLAUDE REASONS:\n  â€¢ Read before edit â€” always checks file contents first\n  â€¢ Parallel when independent â€” multiple tools in one turn\n  â€¢ Sequential when dependent â€” waits for results before next step\n  â€¢ Minimal footprint â€” surgical edits, not full rewrites\n  â€¢ Infer intent â€” never refuses vague requests, always acts\n  â€¢ Complete the task â€” finishes all steps before reporting done\n\nðŸ“¦ MODELS:\n  claude-opus-4-5    â†’ deep reasoning (200K ctx)\n  claude-sonnet-4-5  â†’ balanced, IMI default (200K ctx)\n  claude-haiku-3-5   â†’ fast/cheap, high-volume (200K ctx)\n\nðŸ”‘ API: POST api.anthropic.com/v1/messages\n   Headers: x-api-key + anthropic-version: 2023-06-01\n   See Dev Hub â†’ Agent SDK for full reference.`, desc: 'Cached Claude Agent SDK reference â€” 0 tokens' },
+      { id: 'sk_imi_info',  name: 'What is IMI',           pattern: '\\b(what is|explain|describe|tell me about)\\b.{0,20}\\b(imi|this app|this program|this tool)\\b', type: 'cached', handler: null, cachedResponse: 'IMI (Integrated Merge Interface) is your AI orchestration desktop app. It splits every task between a Brain (plans) and a Coder (executes) to minimize token usage. It controls your browser, desktop, and codebase simultaneously.', desc: 'Cached IMI description — 0 tokens' },
+      { id: 'sk_help',      name: 'Help / Capabilities',   pattern: '^\\s*(help|what can you do|capabilities|commands|skills|features)\\s*[?!]?\\s*$', type: 'cached', handler: null, cachedResponse: 'IMI can: open websites, create desktop files/folders, write & edit code, take screenshots, control your browser, sync to GitHub, switch AI models, track token usage, and run self-optimizing skills. Just tell me what you need!', desc: 'Cached help response — 0 tokens' },
+      { id: 'sk_installed_models', name: 'List Installed AI Models', pattern: '\\b(what|which|list|show|do i have)\\b.{0,40}\\b(ai|ollama|llm|model|models)\\b.{0,40}\\b(installed|downloaded|on my|available|have)\\b|\\b(installed|downloaded|available)\\b.{0,30}\\b(ai|ollama|llm|model|models)\\b', type: 'direct', handler: 'installed-models', desc: 'Lists installed Ollama models + AI tools — no API call' },
+      { id: 'sk_claude_sdk', name: 'Claude Agent SDK', pattern: '\\b(how does claude|claude agent|agent sdk|anthropic sdk|sse event|tool use|agentic loop|how do you think|how do you work|what events|event stream|content_block|message_start|stop_reason|tool_use|how does the ai|how does the brain|how does imi think)\\b', type: 'cached', handler: null, cachedResponse: `ðŸ§  Claude Agent SDK — How IMI's Brain Works\n\nðŸ“¡ SSE EVENT STREAM (every response streams these in order):\n  message_start â†’ content_block_start â†’ content_block_delta â†’ content_block_stop â†’ message_delta â†’ message_stop\n\nðŸ”§ TOOL USE LOOP:\n  1. Claude picks a tool (stop_reason: "tool_use")\n  2. Tool input streams in via input_json_delta events\n  3. Your code executes the tool\n  4. Result sent back as role:user + type:tool_result\n  5. Loop continues until no more tool calls â†’ final answer\n\nðŸ§  HOW CLAUDE REASONS:\n  â€¢ Read before edit — always checks file contents first\n  â€¢ Parallel when independent — multiple tools in one turn\n  â€¢ Sequential when dependent — waits for results before next step\n  â€¢ Minimal footprint — surgical edits, not full rewrites\n  â€¢ Infer intent — never refuses vague requests, always acts\n  â€¢ Complete the task — finishes all steps before reporting done\n\n📦 MODELS:\n  claude-opus-4-5    â†’ deep reasoning (200K ctx)\n  claude-sonnet-4-5  â†’ balanced, IMI default (200K ctx)\n  claude-haiku-3-5   â†’ fast/cheap, high-volume (200K ctx)\n\nðŸ”‘ API: POST api.anthropic.com/v1/messages\n   Headers: x-api-key + anthropic-version: 2023-06-01\n   See Dev Hub â†’ Agent SDK for full reference.`, desc: 'Cached Claude Agent SDK reference — 0 tokens' },
     ];
     for (const d of defaults) {
       if (!this.skills.find(s => s.id === d.id)) {
@@ -162,7 +162,7 @@ class SkillEngine {
     this._save();
   }
 
-  // Try to match a command to a skill â€” returns skill or null
+  // Try to match a command to a skill — returns skill or null
   match(command) {
     const cmd = command.toLowerCase().trim();
     for (const skill of this.skills) {
@@ -247,7 +247,7 @@ class SkillEngine {
       return true;
     });
     const efficiency = this.getEfficiency();
-    console.log(`[SkillEngine] Optimization pass â€” efficiency: ${efficiency}% | removed: ${removed} weak skills`);
+    console.log(`[SkillEngine] Optimization pass — efficiency: ${efficiency}% | removed: ${removed} weak skills`);
     if (removed > 0) this._save();
     return { efficiency, removed };
   }
@@ -279,7 +279,7 @@ class SkillEngine {
 
 const skillEngine = new SkillEngine();
 
-// â”€â”€ Smart Context Engine â€” Claude Code-style project awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Smart Context Engine — Claude Code-style project awareness â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const MEMORY_PATH = path.join(os.homedir(), '.imi', 'memory.json');
 
 class SmartContext {
@@ -401,7 +401,7 @@ class SmartContext {
     return snippets.join('\n\n');
   }
 
-  // Compact project map â€” structure without full code (always included, very small)
+  // Compact project map — structure without full code (always included, very small)
   getProjectMap(projectRoot) {
     try {
       const appPath = path.join(projectRoot, 'src', 'App.tsx');
@@ -419,7 +419,7 @@ class SmartContext {
 const smartContext = new SmartContext();
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŽ¨ STYLE ANALYZER â€” zero tokens, pure local analysis
+// ðŸŽ¨ STYLE ANALYZER — zero tokens, pure local analysis
 // Learns user's coding style from their existing files
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const STYLE_PROFILE_PATH = path.join(os.homedir(), '.imi', 'style-profile.json');
@@ -446,7 +446,7 @@ class StyleAnalyzer {
     } catch(e) {}
   }
 
-  // Main analysis â€” scans up to 30 most-recently-modified files, zero API calls
+  // Main analysis — scans up to 30 most-recently-modified files, zero API calls
   analyze(projectRoot) {
     if (!projectRoot || !fs.existsSync(projectRoot)) return null;
 
@@ -466,7 +466,7 @@ class StyleAnalyzer {
     };
     walk(projectRoot);
 
-    // Most recent 30 files â€” bias toward what user is actively writing
+    // Most recent 30 files — bias toward what user is actively writing
     files.sort((a, b) => b.mtime - a.mtime);
     const targets = files.slice(0, 30);
 
@@ -487,7 +487,7 @@ class StyleAnalyzer {
         const lines = raw.split('\n').slice(0, 200);
 
         for (const line of lines) {
-          // Indentation â€” look at first indented line
+          // Indentation — look at first indented line
           const indM = line.match(/^(\s+)\S/);
           if (indM) {
             const ind = indM[1];
@@ -495,12 +495,12 @@ class StyleAnalyzer {
             else if (ind.length % 4 === 0 && ind.length >= 4) sp4++;
             else if (ind.length >= 2) sp2++;
           }
-          // Quotes â€” strip template literals first to avoid counting backtick contents
+          // Quotes — strip template literals first to avoid counting backtick contents
           const noTpl = line.replace(/`[^`]*`/g, '""');
           sqt += (noTpl.match(/'/g) || []).length;
           dqt += (noTpl.match(/"/g) || []).length;
 
-          // Semicolons â€” code lines ending with ; vs statement starters without
+          // Semicolons — code lines ending with ; vs statement starters without
           const t = line.trim();
           if (t.length > 2 && /;\s*(?:\/\/.*)?$/.test(t)) semi++;
           else if (/^(const|let|var|return|throw|break|continue)\b/.test(t) && !t.endsWith(',') && !t.endsWith('{')) noSemi++;
@@ -576,7 +576,7 @@ class StyleAnalyzer {
       analyzedAt: Date.now(),
       projectRoot,
       rules,
-      // Compact block injected into prompts â€” ~100 tokens max
+      // Compact block injected into prompts — ~100 tokens max
       compact: `CODING STYLE (match the user's existing patterns exactly):\n${rules.map(r => `â€¢ ${r}`).join('\n')}`,
     };
     this._save();
@@ -602,7 +602,7 @@ class StyleAnalyzer {
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ”­ IMPACT ANALYZER â€” zero tokens, traverses import graph
+// ðŸ”­ IMPACT ANALYZER — zero tokens, traverses import graph
 // Shows blast radius before any change is applied
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class ImpactAnalyzer {
@@ -611,7 +611,7 @@ class ImpactAnalyzer {
     this._projectRoot  = '';
   }
 
-  // Build graph from scan data â€” called lazily before each impact query
+  // Build graph from scan data — called lazily before each impact query
   buildFromProjectRoot(projectRoot) {
     if (!projectRoot || !fs.existsSync(projectRoot)) return;
     this._projectRoot = projectRoot;
@@ -628,7 +628,7 @@ class ImpactAnalyzer {
           if (!extensions.some(x => e.name.endsWith(x))) continue;
           try {
             const content = fs.readFileSync(full, 'utf-8');
-            // Same regex as scan-project-imports â€” handles multiline imports via 'from' keyword
+            // Same regex as scan-project-imports — handles multiline imports via 'from' keyword
             const re = /(?:import|from)\s+['"]([^'"]+)['"]/g;
             let m;
             while ((m = re.exec(content)) !== null) {
@@ -659,7 +659,7 @@ class ImpactAnalyzer {
     } catch(_) { return null; }
   }
 
-  // BFS â€” find all files that will be affected if targetFile changes
+  // BFS — find all files that will be affected if targetFile changes
   getAffected(targetFile, maxDepth = 3) {
     const abs = path.isAbsolute(targetFile)
       ? targetFile
@@ -704,41 +704,41 @@ setImmediate(() => {
   catch(e) { console.warn('[StyleAnalyzer] startup analyze failed:', e.message); }
 });
 
-// â”€â”€ IMI Agent Tools â€” used by the agentic loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ IMI Agent Tools — used by the agentic loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getAgentToolsDesc = () => `
 You are an AI coding agent inside IMI. You have full access to the file system, terminal, screen, and browser.
 
-USER IDENTITY (always available â€” never ask for this):
+USER IDENTITY (always available — never ask for this):
 - GitHub Username: ${GITHUB_USER || 'creepybunny99'}
 - GitHub Repo: ${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
 - GitHub Profile: https://github.com/${GITHUB_USER || 'creepybunny99'}
 - IMI Repo URL: https://github.com/${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
 
 AVAILABLE TOOLS:
-1.  read_file      {"path": "relative/path", "offset": 0, "limit": 100} â€” Read file with optional line range (line numbers shown)
-2.  write_file     {"file": "relative/path", "content": "full file content"} â€” Create or overwrite a file
-3.  write_patch    {"file": "path", "search": "exact text", "replace": "new text"} â€” Surgical find-and-replace patch
-4.  search_code    {"pattern": "regex", "path": "src/", "file_type": "tsx", "context": 2} â€” Grep files for pattern with optional context lines
-5.  glob           {"pattern": "**/*.tsx", "path": "."} â€” Find files matching a glob pattern
-6.  list_dir       {"path": ".", "depth": 1} â€” List directory contents with optional recursion depth
-7.  get_file_info  {"path": "relative/path"} â€” Get file metadata: size, line count, modified time
-8.  run_build      {} â€” Run npm run build, returns errors
-9.  run_command    {"cmd": "git status"} â€” Run a terminal command and see output
-10. take_screenshot {} â€” Capture the screen, see what the UI currently looks like
-11. read_error     {"file": "path", "line": 392} â€” Read Â±15 lines around a specific line number
-12. open_browser   {"url": "https://github.com/..."} â€” Open a URL in the default browser
-13. done           {"message": "what was done"} â€” Signal completion
+1.  read_file      {"path": "relative/path", "offset": 0, "limit": 100} — Read file with optional line range (line numbers shown)
+2.  write_file     {"file": "relative/path", "content": "full file content"} — Create or overwrite a file
+3.  write_patch    {"file": "path", "search": "exact text", "replace": "new text"} — Surgical find-and-replace patch
+4.  search_code    {"pattern": "regex", "path": "src/", "file_type": "tsx", "context": 2} — Grep files for pattern with optional context lines
+5.  glob           {"pattern": "**/*.tsx", "path": "."} — Find files matching a glob pattern
+6.  list_dir       {"path": ".", "depth": 1} — List directory contents with optional recursion depth
+7.  get_file_info  {"path": "relative/path"} — Get file metadata: size, line count, modified time
+8.  run_build      {} — Run npm run build, returns errors
+9.  run_command    {"cmd": "git status"} — Run a terminal command and see output
+10. take_screenshot {} — Capture the screen, see what the UI currently looks like
+11. read_error     {"file": "path", "line": 392} — Read Â±15 lines around a specific line number
+12. open_browser   {"url": "https://github.com/..."} — Open a URL in the default browser
+13. done           {"message": "what was done"} — Signal completion
 
 RULES:
-- Always read_file before write_patch â€” use exact text for the search argument.
+- Always read_file before write_patch — use exact text for the search argument.
 - For large files use offset+limit to navigate (e.g. offset:100, limit:80 for lines 101-180).
 - Use glob to discover files before reading them. Use search_code to find specific symbols or patterns.
 - Use write_file only to create new files or fully rewrite small files. Prefer write_patch for surgical edits.
 - After every patch run_build to verify. Fix any errors before calling done.
 - Use take_screenshot to see the actual UI before making visual changes.
-- Use run_command for git, npm, node, python â€” but never destructive commands.
-- NEVER ask the user for their GitHub username â€” you already have it above.
-- BROWSER REFERENCE RESOLUTION: When the user says "open it", "go to it", "show me", or "open the browser" after you have listed or recommended websites, automatically resolve "it" to the most relevant URL from that list (prefer the first or top-recommended one). Never navigate to a partial word or conjunction â€” always use the full domain (e.g. stockanalysis.com, not "and.com").
+- Use run_command for git, npm, node, python — but never destructive commands.
+- NEVER ask the user for their GitHub username — you already have it above.
+- BROWSER REFERENCE RESOLUTION: When the user says "open it", "go to it", "show me", or "open the browser" after you have listed or recommended websites, automatically resolve "it" to the most relevant URL from that list (prefer the first or top-recommended one). Never navigate to a partial word or conjunction — always use the full domain (e.g. stockanalysis.com, not "and.com").
 - Maximum 20 tool steps. Respond ONLY with: TOOL_CALL: {"tool": "name", "args": {...}}
 `;
 
@@ -748,7 +748,7 @@ async function executeAgentTool(toolName, args, projectRoot) {
     // Safety: only allow access within project root or desktop
     const desktop = path.join(os.homedir(), 'Desktop');
     if (!resolved.startsWith(projectRoot) && !resolved.startsWith(desktop)) {
-      return { error: 'Access denied â€” path outside project' };
+      return { error: 'Access denied — path outside project' };
     }
     return { path: resolved };
   };
@@ -768,13 +768,13 @@ async function executeAgentTool(toolName, args, projectRoot) {
           const slice = lines.slice(offset, offset + limit);
           const end = offset + slice.length;
           const header = `File: ${args.path} (showing lines ${offset + 1}â€“${end} of ${lines.length})`;
-          const hint = end < lines.length ? `\n\n(${lines.length - end} more lines â€” use offset:${end} to continue)` : '';
+          const hint = end < lines.length ? `\n\n(${lines.length - end} more lines — use offset:${end} to continue)` : '';
           return `${header}\n\`\`\`\n${slice.map((l, i) => `${offset + i + 1}: ${l}`).join('\n')}\n\`\`\`${hint}`;
         }
         // Auto-paginate large files
         if (lines.length > 200) {
           const slice = lines.slice(0, 150);
-          return `File: ${args.path} (${lines.length} lines â€” showing 1â€“150)\n\`\`\`\n${slice.map((l, i) => `${i + 1}: ${l}`).join('\n')}\n\`\`\`\n\n(${lines.length - 150} more lines â€” use offset:150 to read more, or search_code to find specific sections)`;
+          return `File: ${args.path} (${lines.length} lines — showing 1â€“150)\n\`\`\`\n${slice.map((l, i) => `${i + 1}: ${l}`).join('\n')}\n\`\`\`\n\n(${lines.length - 150} more lines — use offset:150 to read more, or search_code to find specific sections)`;
         }
         return `File: ${args.path} (${lines.length} lines)\n\`\`\`\n${lines.map((l, i) => `${i + 1}: ${l}`).join('\n')}\n\`\`\``;
       }
@@ -1004,7 +1004,7 @@ async function executeAgentTool(toolName, args, projectRoot) {
 
       case 'open_browser': {
         const url = args.url || '';
-        if (!url.startsWith('http')) return 'Invalid URL â€” must start with http:// or https://';
+        if (!url.startsWith('http')) return 'Invalid URL — must start with http:// or https://';
         const { shell } = require('electron');
         await shell.openExternal(url);
         return `Opened browser: ${url}`;
@@ -1018,11 +1018,11 @@ async function executeAgentTool(toolName, args, projectRoot) {
   }
 }
 
-// â”€â”€ Generic model caller â€” used by debate system (no streaming, returns text) â”€
+// â”€â”€ Generic model caller — used by debate system (no streaming, returns text) â”€
 async function callModelAPI(director, systemPrompt, messages, maxTokens = 8000) {
   // messages: [{role: 'user'|'assistant', content: string}]
   if (director === 'gemini' || !director) {
-    if (!GEMINI_KEY) throw new Error('Gemini API key not configured â€” add it in Settings â†’ APIs');
+    if (!GEMINI_KEY) throw new Error('Gemini API key not configured — add it in Settings â†’ APIs');
     const contents = messages.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
@@ -1055,7 +1055,7 @@ async function callModelAPI(director, systemPrompt, messages, maxTokens = 8000) 
   }
 
   if (director === 'claude') {
-    if (!CLAUDE_KEY) throw new Error('Claude API key not configured â€” add it in Settings â†’ APIs');
+    if (!CLAUDE_KEY) throw new Error('Claude API key not configured — add it in Settings â†’ APIs');
     const body = JSON.stringify({
       model: 'claude-sonnet-4-5',
       max_tokens: maxTokens,
@@ -1084,7 +1084,7 @@ async function callModelAPI(director, systemPrompt, messages, maxTokens = 8000) 
     });
   }
 
-  // OpenAI / Groq / Ollama / Custom â€” all OpenAI-compatible
+  // OpenAI / Groq / Ollama / Custom — all OpenAI-compatible
   let hostname, apiPath, authHeader, model;
   if (director === 'chatgpt') {
     if (!OPENAI_KEY) throw new Error('OpenAI API key not configured');
@@ -1128,7 +1128,7 @@ async function callModelAPI(director, systemPrompt, messages, maxTokens = 8000) 
   });
 }
 
-// â”€â”€ Agentic Loop â€” multi-step reasoning like Claude Code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Agentic Loop — multi-step reasoning like Claude Code â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function runAgentLoop(event, command, projectRoot, messageId, director = 'gemini') {
   // Pick which API key/URL to use based on director
   const brainKey = {
@@ -1147,7 +1147,7 @@ async function runAgentLoop(event, command, projectRoot, messageId, director = '
 
   const systemPrompt = `${getAgentToolsDesc()}
 
-PROJECT: IMI (Integrated Merge Interface) â€” Electron + React/TypeScript app
+PROJECT: IMI (Integrated Merge Interface) — Electron + React/TypeScript app
 Root: ${projectRoot}
 ${projectMap}
 ${memoryLog}
@@ -1155,31 +1155,31 @@ ${memoryLog}
 TASK: ${command}
 
 â”â”â” HOW TO WORK (SEARCH-FIRST APPROACH) â”â”â”
-Follow these steps exactly â€” this is what makes the difference between fast accurate fixes and slow broken ones:
+Follow these steps exactly — this is what makes the difference between fast accurate fixes and slow broken ones:
 
-STEP 1 â€” SEARCH BEFORE YOU TOUCH
+STEP 1 — SEARCH BEFORE YOU TOUCH
 â€¢ Use search_code to find the EXACT function, variable or block you need to change
 â€¢ Use read_file with offset+limit to read ONLY the relevant section (not the whole file)
-â€¢ Never assume what code looks like â€” always verify first
+â€¢ Never assume what code looks like — always verify first
 â€¢ If you get a line number from an error, read that exact area
 
-STEP 2 â€” UNDERSTAND THE ROOT CAUSE
-â€¢ Trace errors back to their source â€” stack traces give you the exact file:line
+STEP 2 — UNDERSTAND THE ROOT CAUSE
+â€¢ Trace errors back to their source — stack traces give you the exact file:line
 â€¢ Look for what's MISSING or WRONG, not just what the error message says
 â€¢ Check if the issue is in the frontend (App.tsx), backend (electron-main.cjs), or styles (index.css)
 
-STEP 3 â€” MAKE THE SMALLEST POSSIBLE CHANGE
+STEP 3 — MAKE THE SMALLEST POSSIBLE CHANGE
 â€¢ One targeted patch beats a full rewrite every time
 â€¢ Use write_patch with the EXACT text from your read_file result as the search string
 â€¢ If your search string doesn't match exactly, search_code again to get the real text
 
-STEP 4 â€” VERIFY
-â€¢ Run run_build after patching â€” if it fails, read the error and fix it
+STEP 4 — VERIFY
+â€¢ Run run_build after patching — if it fails, read the error and fix it
 â€¢ Never call done until the build passes or the task is confirmed working
 
-START NOW â€” use search_code or read_file first, never write_patch as your first action.`;
+START NOW — use search_code or read_file first, never write_patch as your first action.`;
 
-  // Generic brain caller â€” works for any configured model
+  // Generic brain caller — works for any configured model
   const callBrain = async (history) => {
     if (director === 'gemini') {
       const body = JSON.stringify({
@@ -1244,7 +1244,7 @@ START NOW â€” use search_code or read_file first, never write_patch as your
       });
     }
 
-    // OpenAI / Groq / Ollama / Custom â€” all OpenAI-compatible
+    // OpenAI / Groq / Ollama / Custom — all OpenAI-compatible
     if (director === 'chatgpt') { hostname = 'api.openai.com'; apiPath = '/v1/chat/completions'; authHeader = `Bearer ${OPENAI_KEY}`; model = 'gpt-4o'; }
     else if (director === 'groq') { hostname = 'api.groq.com'; apiPath = '/openai/v1/chat/completions'; authHeader = `Bearer ${GROQ_KEY}`; model = 'llama-3.3-70b-versatile'; }
     else if (director === 'ollama') { hostname = '127.0.0.1'; apiPath = '/api/chat'; authHeader = ''; model = CUSTOM_API_MODEL || 'llama3'; }
@@ -1290,7 +1290,7 @@ START NOW â€” use search_code or read_file first, never write_patch as your
   agentStats.totalRuns++;
   const runStart = Date.now();
 
-  event.sender.send('command-chunk', { messageId, chunk: `ðŸ¤– **Agent Mode** (${director}) â€” reasoning through your request...\n\n` });
+  event.sender.send('command-chunk', { messageId, chunk: `ðŸ¤– **Agent Mode** (${director}) — reasoning through your request...\n\n` });
 
   while (step < MAX_STEPS) {
     step++;
@@ -1336,7 +1336,7 @@ START NOW â€” use search_code or read_file first, never write_patch as your
       read_file: 'ðŸ“–', write_file: 'ðŸ“', write_patch: 'âœï¸',
       search_code: 'ðŸ”', glob: 'ðŸ—‚ï¸', list_dir: 'ðŸ“',
       get_file_info: 'â„¹ï¸', run_build: 'ðŸ”¨', read_error: 'ðŸ”Ž',
-      run_command: 'âš¡', take_screenshot: 'ðŸ“¸', open_browser: 'ðŸŒ'
+      run_command: '⚡', take_screenshot: 'ðŸ“¸', open_browser: 'ðŸŒ'
     };
     const toolLabel = {
       read_file:    `Reading \`${args?.path}\`${args?.offset !== undefined ? ` (offset:${args?.offset})` : ''}`,
@@ -1570,7 +1570,7 @@ ipcMain.handle('get-impact', async (_, { filePath, projectRoot } = {}) => {
   } catch(e) { return { error: e.message }; }
 });
 
-// â”€â”€ FULL STYLE PROFILE â€” code, design, art, writing, workflow, stack â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ FULL STYLE PROFILE — code, design, art, writing, workflow, stack â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FULL_PROFILE_PATH      = path.join(os.homedir(), '.imi', 'full-profile.json');
 const COMMUNITY_PROFILES_PATH = path.join(os.homedir(), '.imi', 'community-profiles.json');
 
@@ -1629,7 +1629,7 @@ ipcMain.handle('import-full-profile', async () => {
     if (result.canceled || !result.filePaths.length) return { canceled: true };
     const raw = fs.readFileSync(result.filePaths[0], 'utf-8');
     const profile = JSON.parse(raw);
-    if (!profile || !profile.code) return { error: 'Invalid profile file â€” missing expected fields' };
+    if (!profile || !profile.code) return { error: 'Invalid profile file — missing expected fields' };
     return { profile };
   } catch(e) { return { error: e.message }; }
 });
@@ -1659,7 +1659,7 @@ ipcMain.handle('add-to-community', (_, { profile }) => {
   } catch(e) { return { error: e.message }; }
 });
 
-// Native folder picker â€” opens Windows folder browser dialog
+// Native folder picker — opens Windows folder browser dialog
 ipcMain.handle('browse-folder', async () => {
   try {
     const opts = { title: 'Select Project Folder', defaultPath: currentProjectRoot, properties: ['openDirectory'] };
@@ -1671,7 +1671,7 @@ ipcMain.handle('browse-folder', async () => {
   return null;
 });
 
-// Multi-file/folder selector â€” lets user pick multiple files or folders at once
+// Multi-file/folder selector — lets user pick multiple files or folders at once
 ipcMain.handle('browse-multi', async (_e, mode) => {
   try {
     const props = mode === 'files' ? ['openFile', 'multiSelections'] : ['openDirectory', 'multiSelections'];
@@ -1725,15 +1725,15 @@ const COMMUNITY_FALLBACK_SKILLS = [
   { id: 'com_vlc_open',         name: 'Open VLC',               pattern: 'open vlc|launch vlc|start vlc',                   type: 'cached',      response: 'Opening VLC media player! ðŸŽ¬',  desc: 'Launch VLC player', category: 'ðŸŽµ Media', icon: 'ðŸ”¶', author: 'mediaguru', installs: 1534, rating: 4.5, version: '1.0.1' },
 
   // ðŸ’» Developer Tools
-  { id: 'com_git_status',       name: 'Git Status Check',       pattern: '^git status$|^show git status$',                  type: 'passthrough', response: '',  desc: 'Run git status in terminal', category: 'ðŸ’» Dev Tools', icon: 'ðŸŒ¿', author: 'devcraft', installs: 5291, rating: 4.9, version: '2.0.0' },
-  { id: 'com_npm_install',      name: 'NPM Install',            pattern: '^npm install$|^run npm install$',                 type: 'passthrough', response: '',  desc: 'Run npm install in project', category: 'ðŸ’» Dev Tools', icon: 'ðŸ“¦', author: 'devcraft', installs: 3847, rating: 4.8, version: '1.1.0' },
-  { id: 'com_open_vscode',      name: 'Open VS Code',           pattern: 'open vscode|open vs code|launch vscode',         type: 'cached',      response: 'Opening VS Code! ðŸ’»',  desc: 'Launch VS Code editor', category: 'ðŸ’» Dev Tools', icon: 'ðŸ’™', author: 'coderx', installs: 6104, rating: 4.9, version: '1.0.3' },
+  { id: 'com_git_status',       name: 'Git Status Check',       pattern: '^git status$|^show git status$',                  type: 'passthrough', response: '',  desc: 'Run git status in terminal', category: 'ðŸ’» Dev Tools', icon: '🌿', author: 'devcraft', installs: 5291, rating: 4.9, version: '2.0.0' },
+  { id: 'com_npm_install',      name: 'NPM Install',            pattern: '^npm install$|^run npm install$',                 type: 'passthrough', response: '',  desc: 'Run npm install in project', category: 'ðŸ’» Dev Tools', icon: '📦', author: 'devcraft', installs: 3847, rating: 4.8, version: '1.1.0' },
+  { id: 'com_open_vscode',      name: 'Open VS Code',           pattern: 'open vscode|open vs code|launch vscode',         type: 'cached',      response: 'Opening VS Code! ðŸ’»',  desc: 'Launch VS Code editor', category: 'ðŸ’» Dev Tools', icon: '💙', author: 'coderx', installs: 6104, rating: 4.9, version: '1.0.3' },
   { id: 'com_localhost',        name: 'Open Localhost',         pattern: 'open localhost|go to localhost|localhost 3000',   type: 'passthrough', response: '',  desc: 'Open localhost:3000 in browser', category: 'ðŸ’» Dev Tools', icon: 'ðŸŒ', author: 'webdev42', installs: 2901, rating: 4.7, version: '1.0.0' },
   { id: 'com_clear_terminal',   name: 'Clear Terminal',         pattern: '^clear$|^cls$|clear terminal',                    type: 'cached',      response: '__CLEAR__',  desc: 'Clear terminal output', category: 'ðŸ’» Dev Tools', icon: 'ðŸ§¹', author: 'shellpro', installs: 1872, rating: 4.6, version: '1.0.0' },
 
   // ðŸ¤– AI & IMI
-  { id: 'com_imi_help',         name: 'Quick AI Help',          pattern: 'quick help|what can imi do|imi features',         type: 'cached',      response: 'IMI Features: ðŸ§  Multi-AI Brain (Gemini/Claude/GPT/Groq/Ollama) Â· âš¡ Zero-token Skills Â· ðŸ“‹ Plan Mode Â· ðŸ¤– Agent Loop Â· ðŸ›  Dev Hub Â· ðŸŽ¤ Voice Input Â· ðŸ”„ GitHub Sync',  desc: 'Quick IMI features overview', category: 'ðŸ¤– AI & IMI', icon: 'ðŸ¤–', author: 'imidev', installs: 3344, rating: 4.9, version: '1.0.0' },
-  { id: 'com_switch_gemini',    name: 'Switch to Gemini',       pattern: 'use gemini|switch to gemini|change to gemini',    type: 'passthrough', response: '',  desc: 'Switch brain to Gemini', category: 'ðŸ¤– AI & IMI', icon: 'âœ¨', author: 'aifan', installs: 1201, rating: 4.5, version: '1.0.0' },
+  { id: 'com_imi_help',         name: 'Quick AI Help',          pattern: 'quick help|what can imi do|imi features',         type: 'cached',      response: 'IMI Features: ðŸ§  Multi-AI Brain (Gemini/Claude/GPT/Groq/Ollama) Â· ⚡ Zero-token Skills Â· ðŸ“‹ Plan Mode Â· ðŸ¤– Agent Loop Â· ðŸ›  Dev Hub Â· ðŸŽ¤ Voice Input Â· ðŸ”„ GitHub Sync',  desc: 'Quick IMI features overview', category: 'ðŸ¤– AI & IMI', icon: 'ðŸ¤–', author: 'imidev', installs: 3344, rating: 4.9, version: '1.0.0' },
+  { id: 'com_switch_gemini',    name: 'Switch to Gemini',       pattern: 'use gemini|switch to gemini|change to gemini',    type: 'passthrough', response: '',  desc: 'Switch brain to Gemini', category: 'ðŸ¤– AI & IMI', icon: '✨', author: 'aifan', installs: 1201, rating: 4.5, version: '1.0.0' },
   { id: 'com_switch_claude',    name: 'Switch to Claude',       pattern: 'use claude|switch to claude|change to claude',    type: 'passthrough', response: '',  desc: 'Switch brain to Claude', category: 'ðŸ¤– AI & IMI', icon: 'ðŸŸ£', author: 'aifan', installs: 1098, rating: 4.5, version: '1.0.0' },
 
   // ðŸŒ Productivity
@@ -1784,7 +1784,7 @@ ipcMain.handle('skills-fetch-community', async (_e, _forceRefresh) => {
     });
     return { skills: data, source: 'remote', total: data.length };
   } catch(e) {
-    console.log('[Community Skills] Using local fallback â€” remote unavailable:', e.message);
+    console.log('[Community Skills] Using local fallback — remote unavailable:', e.message);
     return { skills: COMMUNITY_FALLBACK_SKILLS, source: 'local', total: COMMUNITY_FALLBACK_SKILLS.length };
   }
 });
@@ -1799,8 +1799,8 @@ ipcMain.handle('skills-export', async (_e, skillId) => {
     type: skill.type || 'cached',
     response: skill.cachedResponse || '',
     desc: skill.desc || '',
-    category: 'âš¡ Custom',
-    icon: 'âš¡',
+    category: '⚡ Custom',
+    icon: '⚡',
     author: 'me',
     installs: 0,
     rating: 0,
@@ -1854,7 +1854,7 @@ const getMCPEnv = () => {
   return mcpEnv;
 };
 
-// Fetch GitHub username + primary IMI repo from token â€” runs once at startup and after token change
+// Fetch GitHub username + primary IMI repo from token — runs once at startup and after token change
 async function fetchGitHubIdentity() {
   if (!GITHUB_TOKEN || !GITHUB_TOKEN.trim()) return;
   try {
@@ -1897,7 +1897,7 @@ async function fetchGitHubIdentity() {
 }
 
 async function triggerGitSync() {
-  // Only auto-sync if the user has configured a GitHub token â€” never run silently without it
+  // Only auto-sync if the user has configured a GitHub token — never run silently without it
   if (!GITHUB_TOKEN || !GITHUB_TOKEN.trim()) return;
   const gitPath = await checkCommand('git');
   if (!gitPath || !currentProjectRoot) return;
@@ -1913,11 +1913,11 @@ async function triggerGitSync() {
   if (mainWindow) mainWindow.webContents.send('sync-end');
 }
 
-// â”€â”€ PLAN MODE â€” generate a phased implementation spec â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ PLAN MODE — generate a phased implementation spec â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('generate-plan', async (_e, { command }) => {
-  if (!GEMINI_KEY) throw new Error('Gemini key missing â€” add it in Settings â†’ APIs');
+  if (!GEMINI_KEY) throw new Error('Gemini key missing — add it in Settings â†’ APIs');
 
-  // Detect task type â€” desktop/file tasks must NOT get IMI project code injected
+  // Detect task type — desktop/file tasks must NOT get IMI project code injected
   // (Gemini would think "make a pong game" = edit App.tsx)
   const isDesktopTask = /\b(desktop|my desktop)\b/i.test(command) && /\b(create|make|build|write|generate|folder|file|directory|html|script|game|app)\b/i.test(command);
   const isExternalFileTask = /\b(create|make|write|generate|build)\b.{0,50}\b(html|css|python|javascript|js|script|file|folder|directory|game|app|webpage|website)\b/i.test(command) && !/\b(imi|app\.tsx|index\.css|electron)\b/i.test(command);
@@ -1927,17 +1927,17 @@ ipcMain.handle('generate-plan', async (_e, { command }) => {
   const relevantCode = isDesktopOrExternal ? '' : smartContext.getRelevantCode(command, currentProjectRoot);
 
   const desktopContext = isDesktopOrExternal
-    ? `WHAT IS CURRENTLY ON THE DESKTOP (live scan â€” use this to avoid recreating existing files and to build accurate full paths):\n${getDesktopSnapshot(1)}\n\nThis task involves creating files or folders on the user's system â€” NOT editing IMI's own code.`
+    ? `WHAT IS CURRENTLY ON THE DESKTOP (live scan — use this to avoid recreating existing files and to build accurate full paths):\n${getDesktopSnapshot(1)}\n\nThis task involves creating files or folders on the user's system — NOT editing IMI's own code.`
     : `Project structure:\n${projectMap}\n\nRelevant code:\n${relevantCode}`;
 
-  const systemPrompt = `You are a task planner for IMI â€” an AI desktop assistant that can create files, create folders, open websites, open files in the browser, write HTML/CSS/JS, and edit code.
+  const systemPrompt = `You are a task planner for IMI — an AI desktop assistant that can create files, create folders, open websites, open files in the browser, write HTML/CSS/JS, and edit code.
 
 ${desktopContext}
 ${styleAnalyzer.getCompactPrompt()}
 
 The user wants to: "${command}"
 
-Break this into clear sequential phases. Each phase must have a "prompt" that is a SHORT, DIRECT, PLAIN-ENGLISH COMMAND â€” exactly like something a user would type to IMI. NOT a technical spec. NOT code. NOT an explanation. Just a simple instruction.
+Break this into clear sequential phases. Each phase must have a "prompt" that is a SHORT, DIRECT, PLAIN-ENGLISH COMMAND — exactly like something a user would type to IMI. NOT a technical spec. NOT code. NOT an explanation. Just a simple instruction.
 
 GOOD phase prompt examples:
 - "create a folder called 'pong game' on the desktop"
@@ -2010,7 +2010,7 @@ Respond with ONLY valid JSON matching exactly:
   });
 });
 
-// â”€â”€ DEBATE MODE â€” Brain + Coder multi-round consensus before execution â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ DEBATE MODE — Brain + Coder multi-round consensus before execution â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('run-debate', async (event, { command, messageId }) => {
   const brainDirector = ACTIVE_BRAIN || 'gemini';
   // Coder uses a different model if configured, else same as Brain
@@ -2021,7 +2021,7 @@ ipcMain.handle('run-debate', async (event, { command, messageId }) => {
     try { event.sender.send('debate-update', { messageId, round, role, label, content, status }); } catch(e) {}
   };
 
-  // Read context â€” desktop task vs project task
+  // Read context — desktop task vs project task
   const isDesktopTask = /\b(desktop|create|make|build)\b/i.test(command) && !/\b(app\.tsx|electron|imi)\b/i.test(command);
   const projectMap = isDesktopTask ? '' : smartContext.getProjectMap(currentProjectRoot);
   const relevantCode = isDesktopTask ? '' : smartContext.getRelevantCode(command, currentProjectRoot);
@@ -2029,11 +2029,11 @@ ipcMain.handle('run-debate', async (event, { command, messageId }) => {
   const contextStr = (relevantCode || desktopCtx).slice(0, 3500);
 
   try {
-    // â”€â”€ ROUND 1: Brain â€” High-level strategic plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ ROUND 1: Brain — High-level strategic plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     sendUpdate(1, 'brain', 'ðŸ§  Brain: Strategic Plan', '', 'streaming');
 
     const brainPlan = await callModelAPI(brainDirector,
-      `You are the Brain of IMI â€” a high-level strategic AI planner.
+      `You are the Brain of IMI — a high-level strategic AI planner.
 Your role: analyze tasks and produce clear execution strategies. Focus on WHAT to do and WHY.
 Be concise (under 250 words). Be decisive. Propose a clear 2-4 step strategy.
 ${projectMap ? 'PROJECT STRUCTURE:\n' + projectMap.slice(0, 1500) : 'DESKTOP CONTEXT:\n' + desktopCtx.slice(0, 1000)}`,
@@ -2042,42 +2042,42 @@ ${projectMap ? 'PROJECT STRUCTURE:\n' + projectMap.slice(0, 1500) : 'DESKTOP CON
     );
     sendUpdate(1, 'brain', 'ðŸ§  Brain: Strategic Plan', brainPlan, 'done');
 
-    // â”€â”€ ROUND 2: Coder â€” Implementation critique â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ ROUND 2: Coder — Implementation critique â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     sendUpdate(2, 'coder', 'âš™ï¸ Coder: Implementation Review', '', 'streaming');
 
     const coderCritique = await callModelAPI(coderDirector,
-      `You are the Coder of IMI â€” a precise implementation specialist who reviews plans for technical feasibility.
+      `You are the Coder of IMI — a precise implementation specialist who reviews plans for technical feasibility.
 Your role: critique the Brain's plan. You MUST find at least ONE specific issue, edge case, or improvement.
-Focus on HOW the code/implementation works â€” specific APIs, file structures, and technical constraints.
+Focus on HOW the code/implementation works — specific APIs, file structures, and technical constraints.
 CURRENT CODE CONTEXT:\n${contextStr}`,
       [{ role: 'user', content: `The Brain proposed:\n\n${brainPlan}\n\nCritique it. Find implementation issues, edge cases, or better approaches. Reference actual code patterns or file paths where relevant. Under 250 words.` }],
       2500
     );
     sendUpdate(2, 'coder', 'âš™ï¸ Coder: Implementation Review', coderCritique, 'done');
 
-    // â”€â”€ ROUND 3: Brain â€” Refined final plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ ROUND 3: Brain — Refined final plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     sendUpdate(3, 'brain', 'ðŸ§  Brain: Refined Plan', '', 'streaming');
 
     const finalPlan = await callModelAPI(brainDirector,
       `You are the Brain of IMI. You've received implementation feedback from the Coder.
 Incorporate the valid criticisms and produce the FINAL refined execution plan.
-Be specific and actionable â€” this plan will be executed directly.
+Be specific and actionable — this plan will be executed directly.
 End your response with a line starting with "EXECUTE:" containing the single most precise command to run this task.`,
       [{ role: 'user', content: `Original plan:\n${brainPlan}\n\nCoder's critique:\n${coderCritique}\n\nProduce the final refined plan addressing valid concerns. Under 250 words. End with EXECUTE: <precise command>` }],
       2500
     );
     sendUpdate(3, 'brain', 'ðŸ§  Brain: Refined Plan', finalPlan, 'done');
 
-    // â”€â”€ ROUND 4: Coder â€” Surgical implementation output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ ROUND 4: Coder — Surgical implementation output â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     sendUpdate(4, 'coder', 'âš™ï¸ Coder: Implementation Output', '', 'streaming');
 
     const patch = await callModelAPI(coderDirector,
-      `You are the Coder of IMI â€” generating the final, precise implementation.
+      `You are the Coder of IMI — generating the final, precise implementation.
 Based on the agreed plan, produce the exact implementation:
 â€¢ For CODE tasks: exact code to write, with file paths clearly specified
 â€¢ For SYSTEM tasks: the precise shell command or action
 â€¢ For FILE tasks: the exact complete file content
-Be surgical and precise. No preamble â€” just the implementation.
+Be surgical and precise. No preamble — just the implementation.
 CONTEXT:\n${contextStr}`,
       [{ role: 'user', content: `Agreed plan:\n${finalPlan}\n\nTask: "${command}"\n\nGenerate the surgical implementation. Provide exact code/commands needed. Be complete and precise.` }],
       6000
@@ -2099,9 +2099,9 @@ CONTEXT:\n${contextStr}`,
   }
 });
 
-// â”€â”€ UI PREVIEW â€” Gemini 2.0 Flash image generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ UI PREVIEW — Gemini 2.0 Flash image generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
-  if (!GEMINI_KEY) throw new Error('Gemini API key missing â€” add it in Settings â†’ APIs');
+  if (!GEMINI_KEY) throw new Error('Gemini API key missing — add it in Settings â†’ APIs');
   const imagePrompt = `Create a high-fidelity UI mockup screenshot of: ${description}. Dark theme desktop app, modern and clean design, professional product UI.`;
   return new Promise((resolve, reject) => {
     const req = https.request({
@@ -2123,7 +2123,7 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
           const parts = parsed?.candidates?.[0]?.content?.parts || [];
           const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'));
           if (!imagePart) {
-            const msg = 'No image returned â€” try a more specific UI description';
+            const msg = 'No image returned — try a more specific UI description';
             console.error('[generate-ui-preview]', msg, '| parts:', JSON.stringify(parts).slice(0, 200));
             reject(msg); return;
           }
@@ -2143,26 +2143,26 @@ ipcMain.handle('generate-ui-preview', async (_e, { description }) => {
   });
 });
 
-// â”€â”€ PLAN PHASE EXECUTOR â€” routes directly through the main command pipeline â”€â”€
-// Each phase prompt is treated exactly like a user command â€” same skill engine,
+// â”€â”€ PLAN PHASE EXECUTOR — routes directly through the main command pipeline â”€â”€
+// Each phase prompt is treated exactly like a user command — same skill engine,
 // same smart context, same desktop handlers, same AI brain. No separate pipeline.
 ipcMain.on('execute-plan-phase', (event, payload) => {
   const { prompt, director = 'gemini', engine = 'imi-core', messageId } = payload;
   console.log(`[PLAN PHASE] â†’ main pipeline: "${prompt.slice(0, 100)}"`);
-  // Re-emit as a normal command â€” goes through everything: skills, context, brain, coder
+  // Re-emit as a normal command — goes through everything: skills, context, brain, coder
   ipcMain.emit('execute-command-stream', event, { command: prompt, director, engine, messageId, history: [] });
 });
 
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ›  BRAIN TOOL USE â€” gives Gemini real file-reading tools before patching
+// ðŸ›  BRAIN TOOL USE — gives Gemini real file-reading tools before patching
 // This is the core of "think like Claude": read first, then write.
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const BRAIN_TOOLS_SCHEMA = {
   functionDeclarations: [
     {
       name: 'read_file',
-      description: 'Read a file\'s actual contents. ALWAYS call this before writing any patch to a file â€” you must see the real code before you can edit it accurately.',
+      description: 'Read a file\'s actual contents. ALWAYS call this before writing any patch to a file — you must see the real code before you can edit it accurately.',
       parameters: {
         type: 'object',
         properties: {
@@ -2202,7 +2202,7 @@ function executeBrainTool(toolName, args) {
       const start = args.start_line ? Math.max(0, args.start_line - 1) : 0;
       const end = args.end_line ? Math.min(lines.length, args.end_line) : Math.min(lines.length, start + 300);
       return lines.slice(start, end).map((l, i) => `${start + i + 1}: ${l}`).join('\n')
-        + (end < lines.length ? `\n... (${lines.length - end} more lines â€” call again with start_line=${end + 1})` : '');
+        + (end < lines.length ? `\n... (${lines.length - end} more lines — call again with start_line=${end + 1})` : '');
     }
     if (toolName === 'search_in_file') {
       const filePath = path.isAbsolute(args.path) ? args.path : path.join(currentProjectRoot || os.homedir(), args.path);
@@ -2215,7 +2215,7 @@ function executeBrainTool(toolName, args) {
           for (let j = s; j <= e; j++) hits.push(`${j + 1}${j === i ? ' >' : '  '} ${lines[j]}`);
         }
       });
-      return hits.length > 0 ? hits.join('\n') : `"${args.query}" â€” NOT FOUND in ${args.path}. Search for a different string.`;
+      return hits.length > 0 ? hits.join('\n') : `"${args.query}" — NOT FOUND in ${args.path}. Search for a different string.`;
     }
     if (toolName === 'list_project_files') {
       const walk = (dir, depth = 0) => {
@@ -2284,7 +2284,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
 
   // Plan phases use their own dedicated handler (execute-plan-phase), never reach here.
 
-  // â”€â”€ â¬‡ UNIVERSAL INSTALL INTERCEPT â€” catches "install X" before Gemini sees it â”€â”€
+  // â”€â”€ â¬‡ UNIVERSAL INSTALL INTERCEPT — catches "install X" before Gemini sees it â”€â”€
   // Only trigger for short user commands (< 80 chars), never for long plan phase prompts
   const installMatch = command.length < 80 && command.match(/\b(?:install|setup|download|get|add)\b\s+(.+?)(?:\s+(?:for me|please|now|on my (?:pc|computer|machine|desktop)))?\s*$/i);
   if (installMatch) {
@@ -2298,7 +2298,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         event.sender.send('command-done', { messageId, fullText: `âœ… ${info.name} is already installed.` });
         return;
       } catch {}
-      // Not installed â€” trigger in-app install
+      // Not installed — trigger in-app install
       event.sender.send('command-chunk', { messageId, chunk: `â¬‡ Installing **${info.name}** for youâ€¦\n` });
       const fakeEvent = { sender: event.sender };
       const result = await (async () => {
@@ -2332,7 +2332,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
             await new Promise((res2, rej2) => exec(`npm install -g ${depInfo.npm}`, { timeout: 120000 }, (err) => err ? rej2(err) : res2()));
             mockEvent.sender.send('install-dep-progress', { dep: depKey, name: depInfo.name, status: 'done', percent: 100 });
           } else if (depInfo.winget || depInfo.winExe) {
-            // Try winget first â€” fully silent, no popup
+            // Try winget first — fully silent, no popup
             let wingetDone = false;
             if (depInfo.winget) {
               try {
@@ -2362,17 +2362,17 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     }
   }
 
-  // â”€â”€ ðŸ” HARDCODED SYSTEM QUERIES â€” always intercept, no skill file needed â”€â”€
+  // â”€â”€ ðŸ” HARDCODED SYSTEM QUERIES — always intercept, no skill file needed â”€â”€
   if (/\b(what|which|list|show)\b.{0,50}\b(ai|ollama|llm|model|models)\b.{0,50}\b(installed|have|downloaded|available)\b/i.test(cmdLower)
     || /\b(installed|downloaded)\b.{0,30}\b(ai|ollama|llm|model|models)\b/i.test(cmdLower)) {
     try {
       const ollamaRaw = await new Promise(resolve => exec('ollama list', { timeout: 5000 }, (err, stdout) => resolve(err ? null : stdout.trim())));
-      let ollamaSection = 'ðŸ¦™ **Ollama:** Not installed or no models pulled yet.';
+      let ollamaSection = '🦙 **Ollama:** Not installed or no models pulled yet.';
       if (ollamaRaw) {
         const lines = String(ollamaRaw).split('\n').slice(1).filter(Boolean);
         ollamaSection = lines.length > 0
-          ? `ðŸ¦™ **Ollama (local models):**\n${lines.map(l => `  â€¢ ${l.trim().split(/\s+/).slice(0,2).join('  ')}`).join('\n')}`
-          : 'ðŸ¦™ **Ollama:** Installed but no models pulled yet. Use Dev Hub â†’ AI Models to pull one.';
+          ? `🦙 **Ollama (local models):**\n${lines.map(l => `  â€¢ ${l.trim().split(/\s+/).slice(0,2).join('  ')}`).join('\n')}`
+          : '🦙 **Ollama:** Installed but no models pulled yet. Use Dev Hub â†’ AI Models to pull one.';
       }
       const aiTools = [
         { name: 'Gemini CLI', cmd: 'gemini --version' },
@@ -2386,13 +2386,13 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       const cliSection = installedCLIs.length > 0
         ? `ðŸ”§ **AI CLI Tools:**\n${installedCLIs.map(t => `  â€¢ ${t.name} v${t.version}`).join('\n')}`
         : 'ðŸ”§ **AI CLI Tools:** None detected.';
-      event.sender.send('command-chunk', { messageId, chunk: `âš¡ [IMI System]\n\n${ollamaSection}\n\n${cliSection}\n\nðŸ’¡ Pull more models in **Dev Hub â†’ AI Models**.` });
+      event.sender.send('command-chunk', { messageId, chunk: `⚡ [IMI System]\n\n${ollamaSection}\n\n${cliSection}\n\nðŸ’¡ Pull more models in **Dev Hub â†’ AI Models**.` });
       event.sender.send('command-end', { messageId, code: 0 });
       return;
     } catch(e) { /* fall through to AI */ }
   }
 
-  // â”€â”€ ðŸ™ GITHUB NAVIGATION â€” open browser directly, 0 tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ 🙏 GITHUB NAVIGATION — open browser directly, 0 tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const isGithubNav = /\b(go to|open|show|view|navigate|visit|take me to|pull up|launch)\b.{0,50}\b(my\s+)?(github|gh repo|repository|repo)\b/i.test(cmdLower)
     || /\b(my\s+)?(github|gh)\b.{0,40}\b(repo|profile|page|account|project)\b/i.test(cmdLower)
     || /\bgithub\.com\b/i.test(cmdLower);
@@ -2402,28 +2402,28 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
     const isProfile = /\b(profile|account|page|me)\b/i.test(cmdLower) && !/\brepo\b/i.test(cmdLower);
     const url = isProfile ? `https://github.com/${ghUser}` : `https://github.com/${ghRepo}`;
     shell.openExternal(url);
-    event.sender.send('command-chunk', { messageId, chunk: `ðŸ™ Opening GitHub...\nðŸŒ **${url}**` });
+    event.sender.send('command-chunk', { messageId, chunk: `🙏 Opening GitHub...\nðŸŒ **${url}**` });
     event.sender.send('command-end', { messageId, code: 0 });
     return;
   }
 
-  // â”€â”€ âš¡ SKILL ENGINE â€” check skills FIRST before any API call â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ ⚡ SKILL ENGINE — check skills FIRST before any API call â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const matchedSkill = skillEngine.match(command);
   if (matchedSkill) {
     if (matchedSkill.type === 'cached' && matchedSkill.cachedResponse) {
-      // Instant cached response â€” 0 tokens
-      event.sender.send('command-chunk', { messageId, chunk: `âš¡ [Skill: ${matchedSkill.name}]\n\n${matchedSkill.cachedResponse}` });
+      // Instant cached response — 0 tokens
+      event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\n\n${matchedSkill.cachedResponse}` });
       event.sender.send('command-end', { messageId, code: 0 });
       skillEngine.recordHit(matchedSkill.id, 600, director);
       return;
     }
     if (matchedSkill.type === 'direct') {
-      // Route to existing direct handlers â€” they record the hit themselves
+      // Route to existing direct handlers — they record the hit themselves
       if (matchedSkill.handler === 'browser') {
         // If skill has a hardcoded URL, use it directly
         if (matchedSkill.url) {
           shell.openExternal(matchedSkill.url);
-          event.sender.send('command-chunk', { messageId, chunk: `âš¡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${matchedSkill.url}` });
+          event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${matchedSkill.url}` });
           event.sender.send('command-end', { messageId, code: 0 });
           skillEngine.recordHit(matchedSkill.id, 400, director);
           return;
@@ -2431,7 +2431,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         const cmdL = command.toLowerCase();
         const urlMatch = command.match(/https?:\/\/[^\s]+/i);
         // Match "head to X", "go to X", "open X", "navigate to X", "visit X", "launch X"
-        // Extended FILLER set â€” all common words that are NOT site names
+        // Extended FILLER set — all common words that are NOT site names
         const FILLER = new Set([
           'up','my','the','a','an','browser','chrome','internet','web','website','webpage',
           'and','show','it','me','us','that','this','here','please','now','again','just',
@@ -2459,7 +2459,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
             // No dot = try DDG lookup; if that fails, fall through to AI (don't guess .com blindly)
             const resolved = await ddgResolveUrl(raw);
             if (!resolved) {
-              // No confident URL found â€” fall through to AI (don't guess blindly)
+              // No confident URL found — fall through to AI (don't guess blindly)
               raw = null;
               url = null;
             } else {
@@ -2468,16 +2468,16 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           }
           if (url) {
             shell.openExternal(url);
-            event.sender.send('command-chunk', { messageId, chunk: `âš¡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${url}` });
+            event.sender.send('command-chunk', { messageId, chunk: `⚡ [Skill: ${matchedSkill.name}]\nðŸŒ Opening ${url}` });
             event.sender.send('command-end', { messageId, code: 0 });
             skillEngine.recordHit(matchedSkill.id, 400, director);
             return;
           }
         }
-        // No URL could be confidently extracted â€” fall through to AI
+        // No URL could be confidently extracted — fall through to AI
       }
       if (matchedSkill.handler === 'stats') {
-        const reply = `âš¡ [Skill: ${matchedSkill.name}]\nðŸ“Š Project: ${currentProjectRoot}\nðŸ§  Brain: ${ACTIVE_BRAIN} | Coder: ${ACTIVE_CODER}\nâš¡ Skill efficiency: ${skillEngine.getEfficiency()}% | Tokens saved: ${skillEngine.stats.tokensSaved.toLocaleString()}\nðŸ’¾ Free RAM: ${(os.freemem()/1024/1024/1024).toFixed(2)}GB`;
+        const reply = `⚡ [Skill: ${matchedSkill.name}]\nðŸ“Š Project: ${currentProjectRoot}\nðŸ§  Brain: ${ACTIVE_BRAIN} | Coder: ${ACTIVE_CODER}\n⚡ Skill efficiency: ${skillEngine.getEfficiency()}% | Tokens saved: ${skillEngine.stats.tokensSaved.toLocaleString()}\nðŸ’¾ Free RAM: ${(os.freemem()/1024/1024/1024).toFixed(2)}GB`;
         event.sender.send('command-chunk', { messageId, chunk: reply });
         event.sender.send('command-end', { messageId, code: 0 });
         skillEngine.recordHit(matchedSkill.id, 400, director);
@@ -2487,12 +2487,12 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         try {
           // Check Ollama models
           const ollamaRaw = await new Promise(resolve => exec('ollama list', { timeout: 5000 }, (err, stdout) => resolve(err ? null : stdout.trim())));
-          let ollamaSection = 'ðŸ¦™ **Ollama (local models):** Not installed or no models pulled yet.';
+          let ollamaSection = '🦙 **Ollama (local models):** Not installed or no models pulled yet.';
           if (ollamaRaw) {
             const lines = String(ollamaRaw).split('\n').slice(1).filter(Boolean);
             ollamaSection = lines.length > 0
-              ? `ðŸ¦™ **Ollama (local models):**\n${lines.map(l => `  â€¢ ${l.trim().split(/\s+/)[0]}`).join('\n')}`
-              : 'ðŸ¦™ **Ollama:** Installed but no models pulled yet. Go to Dev Hub â†’ AI Models to pull one.';
+              ? `🦙 **Ollama (local models):**\n${lines.map(l => `  â€¢ ${l.trim().split(/\s+/)[0]}`).join('\n')}`
+              : '🦙 **Ollama:** Installed but no models pulled yet. Go to Dev Hub â†’ AI Models to pull one.';
           }
           // Check AI CLI tools
           const aiTools = [
@@ -2507,7 +2507,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
           const cliSection = installedCLIs.length > 0
             ? `ðŸ”§ **AI CLI Tools:**\n${installedCLIs.map(t => `  â€¢ ${t.name} (${t.version})`).join('\n')}`
             : 'ðŸ”§ **AI CLI Tools:** None detected.';
-          const reply = `âš¡ [Skill: List Installed AI Models]\n\n${ollamaSection}\n\n${cliSection}\n\nðŸ’¡ Tip: Pull more local models in **Dev Hub â†’ AI Models**.`;
+          const reply = `⚡ [Skill: List Installed AI Models]\n\n${ollamaSection}\n\n${cliSection}\n\nðŸ’¡ Tip: Pull more local models in **Dev Hub â†’ AI Models**.`;
           event.sender.send('command-chunk', { messageId, chunk: reply });
           event.sender.send('command-end', { messageId, code: 0 });
           skillEngine.recordHit(matchedSkill.id, 600, director);
@@ -2518,15 +2518,15 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
       }
       // desktop handler falls through to existing triggerDesktopTask below
     }
-    // passthrough: skill matched but still needs API â€” track as partial hit
+    // passthrough: skill matched but still needs API — track as partial hit
     skillEngine.recordHit(matchedSkill.id, 100, director);
   } else {
-    // No skill matched â€” record miss for pattern analysis + auto-skill creation
+    // No skill matched — record miss for pattern analysis + auto-skill creation
     skillEngine.recordMiss(command, 600);
   }
-  // â”€â”€ End skill check â€” continue to AI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ End skill check — continue to AI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // â”€â”€ ðŸŒ UNIVERSAL BROWSER ACTIONS â€” run for ANY brain model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ ðŸŒ UNIVERSAL BROWSER ACTIONS — run for ANY brain model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const _cmdU = command.toLowerCase();
   // _isCodeCtx = true means the command is about IMI's own code/UI, not about creating files on desktop
   const _isCodeCtx = /\b(function|component|variable|class|import|export|the app|imi|electron|react|code|style|json|package|sidebar|dashboard|settings|tab|button|panel|header|modal|theme|font|color|layout|animation)\b/.test(_cmdU)
@@ -2573,7 +2573,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // â”€â”€ End universal browser actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // â”€â”€ DESKTOP / FILE CREATION â€” director-agnostic, always runs before AI routing â”€â”€
+  // â”€â”€ DESKTOP / FILE CREATION — director-agnostic, always runs before AI routing â”€â”€
 
   // These always use Gemini's API for content generation regardless of which brain is selected.
   // Desktop typo tolerance: "destop", "dekstop", "desktp", "desctop", "destktop" etc.
@@ -2605,7 +2605,7 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
   }
   // â”€â”€ End desktop / file creation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // â”€â”€ SMART INTENT CLASSIFIER â€” AI-powered fallback for anything that didn't match regexes â”€â”€
+  // â”€â”€ SMART INTENT CLASSIFIER — AI-powered fallback for anything that didn't match regexes â”€â”€
   // Catches typos, vague descriptions, indirect phrasing, missing "desktop" keyword, etc.
   const _looksLikeCreationTask = !_isCodeCtx && (
     // Has desktop (or typo) + any action/object vibe
@@ -2635,17 +2635,17 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         event.sender.send('command-end', { messageId, code: 0 });
         return;
       }
-      // intent is imi_change or chat â€” fall through to AI
+      // intent is imi_change or chat — fall through to AI
     }
   }
   // â”€â”€ End smart intent classifier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  // Smart context â€” reads only what's relevant for this specific command
+  // Smart context — reads only what's relevant for this specific command
   const relevantCode = smartContext.getRelevantCode(command, currentProjectRoot);
   const projectMap = smartContext.getProjectMap(currentProjectRoot);
   const memoryLog = smartContext.getMemorySummary();
 
-  // â”€â”€ ðŸŒ WEB GROUNDING â€” inject live DDG context for factual/current queries â”€â”€
+  // â”€â”€ ðŸŒ WEB GROUNDING — inject live DDG context for factual/current queries â”€â”€
   const WEB_QUERY_RE = /\b(what is|what's|who is|who's|latest|current version|how do i|how to|when is|when was|price of|cost of|news about|today|release date|changelog|just released|just dropped|available now)\b/i;
   let webGrounding = '';
   if (WEB_QUERY_RE.test(command)) {
@@ -2657,14 +2657,14 @@ ipcMain.on('execute-command-stream', async (event, payload) => {
         if (ddgResult.abstract) parts.push(`${ddgResult.abstractSource ? ddgResult.abstractSource + ': ' : ''}${ddgResult.abstract}`);
         if (ddgResult.abstractUrl) parts.push(`Source: ${ddgResult.abstractUrl}`);
         if (ddgResult.relatedTopics.length) parts.push(`Related: ${ddgResult.relatedTopics.slice(0, 2).join(' | ')}`);
-        if (parts.length) webGrounding = `\nWEB CONTEXT (live, retrieved now via DuckDuckGo):\n${parts.join('\n')}\nUse this to inform your answer â€” treat it as current, factual context.\n`;
+        if (parts.length) webGrounding = `\nWEB CONTEXT (live, retrieved now via DuckDuckGo):\n${parts.join('\n')}\nUse this to inform your answer — treat it as current, factual context.\n`;
       }
-    } catch { /* grounding is best-effort â€” never block the main flow */ }
+    } catch { /* grounding is best-effort — never block the main flow */ }
   }
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface) â€” an AI orchestration desktop app built with Electron + React/TypeScript.
-You have FULL awareness of this project's actual live code (shown below). Think and act like Claude Code â€” read the code, understand the structure, make precise targeted changes.
+  const PROJECT_CONTEXT = `You are the Brain inside IMI (Integrated Merge Interface) — an AI orchestration desktop app built with Electron + React/TypeScript.
+You have FULL awareness of this project's actual live code (shown below). Think and act like Claude Code — read the code, understand the structure, make precise targeted changes.
 
 ${projectMap}
 
@@ -2679,14 +2679,14 @@ SYSTEM INFO:
 - Tabs: dashboard, command (Command Center), devhub (Dev Hub), skills, settings
 - Settings sub-tabs: general, appearance, apis, sync, telemetry, automation
 
-USER IDENTITY (never ask the user for this â€” you already know it):
+USER IDENTITY (never ask the user for this — you already know it):
 - GitHub Username: ${GITHUB_USER || 'creepybunny99'}
 - GitHub Profile: https://github.com/${GITHUB_USER || 'creepybunny99'}
 - IMI Repo: https://github.com/${GITHUB_REPO || 'creepybunny99/IMI-IDE-Unified-Sync'}
 - Desktop path: ${path.join(os.homedir(), 'Desktop')}
 
 When the user says "IMI" = this app. "Settings" = Settings tab. "make it look better" = edit src/index.css or src/App.tsx.
-When the user says "my github" / "my repo" â€” use the USER IDENTITY above, never ask.
+When the user says "my github" / "my repo" — use the USER IDENTITY above, never ask.
 You know the real code. Use it. Be precise. Act like you built this yourself.
 
 UNDERSTANDING IMPERFECT REQUESTS:
@@ -2696,19 +2696,19 @@ Users often type fast, make typos, or describe things indirectly. Always infer t
 - "on my desktop", "for my desktop", "put it on my desktop" = create a file at Desktop path
 - "make it nicer", "looks bad", "fix the ui" = edit src/index.css or src/App.tsx
 - "it broke", "not working" = debug whatever they're talking about
-Never say "I'm not sure what you mean" â€” always make a reasonable interpretation and act.
+Never say "I'm not sure what you mean" — always make a reasonable interpretation and act.
 
-HOW TO THINK AND ACT â€” CLAUDE AGENT PATTERNS (apply these at all times):
-1. READ BEFORE EDIT â€” always read a file's actual contents before modifying it. Never assume what's in it.
-2. PARALLEL WHEN INDEPENDENT â€” if two pieces of information are needed and neither depends on the other, fetch both at the same time. Don't do them one-by-one when parallel is possible.
-3. SEQUENTIAL WHEN DEPENDENT â€” if step B needs the result of step A, finish A first. Never guess a tool's output.
-4. MINIMAL FOOTPRINT â€” make the smallest change that achieves the goal. Surgical edits beat full rewrites.
-5. VERIFY BEFORE DESTROY â€” before deleting files, sending messages, or publishing anything irreversible, describe what will happen and wait for explicit confirmation.
-6. INFER INTENT â€” never refuse a vague request. Pick the single most reasonable interpretation and execute it. Only ask if you genuinely cannot make any reasonable guess.
-7. NO UNNECESSARY QUESTIONS â€” if the answer is discoverable by reading the code or files, read them first. Only ask the user for things that cannot be determined any other way.
-8. TRUST THE CODE â€” the actual file contents are ground truth. Don't rely on memory of what the file "should" look like.
-9. BEST-EFFORT FALLBACK â€” if an optional enrichment step fails (web lookup, doc fetch, etc.), continue anyway. Never block the main task on a non-critical path.
-10. COMPLETE THE TASK â€” don't stop halfway. If a task has multiple steps, finish all of them in one pass before reporting done.
+HOW TO THINK AND ACT — CLAUDE AGENT PATTERNS (apply these at all times):
+1. READ BEFORE EDIT — always read a file's actual contents before modifying it. Never assume what's in it.
+2. PARALLEL WHEN INDEPENDENT — if two pieces of information are needed and neither depends on the other, fetch both at the same time. Don't do them one-by-one when parallel is possible.
+3. SEQUENTIAL WHEN DEPENDENT — if step B needs the result of step A, finish A first. Never guess a tool's output.
+4. MINIMAL FOOTPRINT — make the smallest change that achieves the goal. Surgical edits beat full rewrites.
+5. VERIFY BEFORE DESTROY — before deleting files, sending messages, or publishing anything irreversible, describe what will happen and wait for explicit confirmation.
+6. INFER INTENT — never refuse a vague request. Pick the single most reasonable interpretation and execute it. Only ask if you genuinely cannot make any reasonable guess.
+7. NO UNNECESSARY QUESTIONS — if the answer is discoverable by reading the code or files, read them first. Only ask the user for things that cannot be determined any other way.
+8. TRUST THE CODE — the actual file contents are ground truth. Don't rely on memory of what the file "should" look like.
+9. BEST-EFFORT FALLBACK — if an optional enrichment step fails (web lookup, doc fetch, etc.), continue anyway. Never block the main task on a non-critical path.
+10. COMPLETE THE TASK — don't stop halfway. If a task has multiple steps, finish all of them in one pass before reporting done.
 
 CLAUDE API INTERNALS (know this to help users build agents):
 - Endpoint: POST https://api.anthropic.com/v1/messages
@@ -2718,7 +2718,7 @@ CLAUDE API INTERNALS (know this to help users build agents):
 - Models: claude-opus-4-5 (deep reasoning), claude-sonnet-4-5 (balanced, IMI default), claude-haiku-3-5 (fast/cheap)
 - Context window: 200K tokens on all models
 - Tool definition shape: { name, description, input_schema: { type:"object", properties:{...}, required:[...] } }
-- The description field is the most important part of a tool definition â€” it tells Claude WHEN to use it
+- The description field is the most important part of a tool definition — it tells Claude WHEN to use it
 `;
   const blueprintPrefix = `${PROJECT_CONTEXT}
 GLOBAL BLUEPRINT PROTOCOL: The user wants a CODE CHANGE to IMI.
@@ -2732,10 +2732,10 @@ IMI's UI is built in src/App.tsx and src/index.css. Key areas that can be improv
 - Settings: API key inputs, config sections
 - Global: font sizes, spacing, colors, glassmorphism effects, animations
 
-STEP 1 â€” UNDERSTAND INTENT FIRST:
-If the user mentions "appearance", "UI", "look", "design", "style", or "Settings > Appearance" â€” they are referring to the visual look of IMI. The Appearance & UI settings are in Settings > APPEARANCE tab (settingsActiveSubTab = 'appearance') AND in src/index.css and src/App.tsx.
+STEP 1 — UNDERSTAND INTENT FIRST:
+If the user mentions "appearance", "UI", "look", "design", "style", or "Settings > Appearance" — they are referring to the visual look of IMI. The Appearance & UI settings are in Settings > APPEARANCE tab (settingsActiveSubTab = 'appearance') AND in src/index.css and src/App.tsx.
 
-If the request says "make it better" / "improve" / "nicer" / "polish" WITH a location (e.g. "appearance", "UI", "settings", "dashboard", "sidebar") â€” DO NOT ask for clarification. Pick the single most impactful improvement for that area and generate a spec for it.
+If the request says "make it better" / "improve" / "nicer" / "polish" WITH a location (e.g. "appearance", "UI", "settings", "dashboard", "sidebar") — DO NOT ask for clarification. Pick the single most impactful improvement for that area and generate a spec for it.
 
 Only ask for clarification when the request gives NO location AND NO hint of what to change.
 
@@ -2744,13 +2744,13 @@ If you must ask, format like this:
 â€¢ [Real option based on actual code you can see above]
 â€¢ [Real option based on actual code you can see above]
 â€¢ [Real option based on actual code you can see above]
-â€¢ Something else â€” just describe it
+â€¢ Something else — just describe it
 
-STEP 2 â€” WHEN ACTING:
+STEP 2 — WHEN ACTING:
 Generate a precise TECHNICAL SPECIFICATION for IMI-CORE. State: exact file (src/index.css or src/App.tsx), exact CSS property or JSX element, exact value change. One focused change only.
 
 User Request: `;
-  const chatPrefix = `You are the AI brain inside IMI (Integrated Merge Interface) â€” a desktop developer tool built with Electron + React.
+  const chatPrefix = `You are the AI brain inside IMI (Integrated Merge Interface) — a desktop developer tool built with Electron + React.
 You are smart, fast, and understand what people mean even when they type badly, use slang, or make typos.
 
 ABOUT THE USER:
@@ -2758,7 +2758,7 @@ ABOUT THE USER:
 - Desktop: ${path.join(os.homedir(), 'Desktop')}
 - Project: ${currentProjectRoot}
 
-LIVE DESKTOP SNAPSHOT (scanned right now â€” this is what is ACTUALLY on the user's desktop):
+LIVE DESKTOP SNAPSHOT (scanned right now — this is what is ACTUALLY on the user's desktop):
 ${getDesktopSnapshot(1)}
 
 ABOUT IMI (the app you live inside):
@@ -2767,19 +2767,19 @@ ABOUT IMI (the app you live inside):
 - Has tabs: Dashboard, Command Center, Dev Hub, Skills, Settings
 - You can modify IMI's own code when asked
 
-CRITICAL â€” IMI IS AN ELECTRON APP, NOT A WEB BROWSER:
+CRITICAL — IMI IS AN ELECTRON APP, NOT A WEB BROWSER:
 - IMI runs in Electron with FULL Node.js file system access. It can create, read, write, and open ANY file on the user's computer.
 - NEVER say "browsers cannot create files" or "I can't access the file system". That is WRONG for IMI.
-- IMI has built-in handlers that use fs.writeFileSync, fs.mkdirSync, shell.openPath â€” it creates files and folders natively.
-- When asked to create a file, folder, game, or script â€” DO IT. Don't explain limitations. IMI has no such limitations.
+- IMI has built-in handlers that use fs.writeFileSync, fs.mkdirSync, shell.openPath — it creates files and folders natively.
+- When asked to create a file, folder, game, or script — DO IT. Don't explain limitations. IMI has no such limitations.
 
 RULES:
 1. UNDERSTAND INTENT, NOT WORDS. "can u make a pong game" = make a working pong game. "htlm" = html. "u" = you. "wat" = what.
-2. NEVER say "I don't understand" or "Could you clarify?" â€” always make your best guess and go.
+2. NEVER say "I don't understand" or "Could you clarify?" — always make your best guess and go.
 3. Be concise. No filler. No "Certainly!" or "Of course!" or "Great question!". Just answer or do it.
 4. If someone asks to make/create/build something, be specific about what you'd create and how.
 5. For questions, give direct answers first, explain only if needed.
-6. Be friendly and natural â€” talk like a person, not a corporate chatbot.
+6. Be friendly and natural — talk like a person, not a corporate chatbot.
 ${styleAnalyzer.getCompactPrompt()}
 User: `;
 
@@ -2800,7 +2800,7 @@ User: `;
       return;
     }
 
-    // â”€â”€ Screen vision â€” take screenshot + send to Gemini Vision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ Screen vision — take screenshot + send to Gemini Vision â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const needsVision = /\b(look at|see|view|check|analyze|read)\b.{0,30}\b(screen|desktop|window|monitor)\b/i.test(command)
       || /\b(screen|desktop|window|monitor)\b.{0,30}\b(look|see|view|check|analyze|read)\b/i.test(command);
     if (needsVision) {
@@ -2809,7 +2809,7 @@ User: `;
       return;
     }
 
-    // Agent mode â€” complex multi-step coding tasks that need readâ†’editâ†’verify loop
+    // Agent mode — complex multi-step coding tasks that need readâ†’editâ†’verify loop
     const isAgentTask = (
       /\b(fix|debug|find.*error|why.*not working|broken|refactor|rewrite|add.*feature|implement|build.*feature)\b/i.test(command)
       && /\b(imi|app|code|file|component|function|screen|page|ui|css|style)\b/i.test(command)
@@ -2823,7 +2823,7 @@ User: `;
       return;
     }
 
-    // â”€â”€ Windows absolute file path â€” open with shell.openPath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ Windows absolute file path — open with shell.openPath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Catches: "open C:\Users\nikol\Desktop\pong_game.html in the browser"
     const winFilePathMatch = command.match(/[A-Za-z]:\\[^\n"']+\.(?:html?|pdf|txt|png|jpe?g|gif|js|ts|css|py|json|md|csv|xml|svg)/i);
     if (winFilePathMatch && /\b(open|show|launch|preview|view|display|load|start)\b/i.test(command)) {
@@ -2838,10 +2838,10 @@ User: `;
     // â”€â”€ Browser routing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const isCodeAction = /\b(file|function|component|variable|class|import|export|the app|imi|electron|react|code|script|style|css|json|package)\b/.test(cmdL);
 
-    // Tier 2: full Puppeteer agent â€” only when real browser automation is needed
+    // Tier 2: full Puppeteer agent — only when real browser automation is needed
     const needsAutomation = !isCodeAction && /\b(screenshot|click|fill|type into|search for|fix.*site|fix.*web|take control|scroll|hover|form|log ?in|sign ?in)\b/.test(cmdL);
 
-    // Tier 1: simple open â€” instant via shell, zero tokens, zero Puppeteer startup
+    // Tier 1: simple open — instant via shell, zero tokens, zero Puppeteer startup
     const isSimpleOpen = !isCodeAction && !needsAutomation && (
       /\bgo to\b/.test(cmdL) ||
       /https?:\/\//.test(cmdL) ||
@@ -2869,7 +2869,7 @@ User: `;
         .map(m => `https://${m[1].trim()}`);
       let allUrls = [...new Set([...urls, ...siteNames, ...openDotSites])];
       // Fallback: if no URL found but command is just "open the browser" / "show it to me" / "show me it"
-      // â€” look back through conversation history for the most recent URL that was mentioned
+      // — look back through conversation history for the most recent URL that was mentioned
       if (allUrls.length === 0 && /\b(show|open|take me|load|go|it|browser)\b/i.test(cmdL)) {
         for (let i = history.length - 1; i >= 0; i--) {
           const histText = history[i]?.text || history[i]?.content || '';
@@ -2898,7 +2898,7 @@ User: `;
     const isCodingAction = ((_hasAction && _hasIMITarget) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isAboutDesktopFile;
     const activePrefix = isCodingAction ? blueprintPrefix : chatPrefix;
 
-    // â”€â”€ ðŸ›  TOOL-USE BRAIN â€” for coding actions, read files first â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â”€â”€ ðŸ›  TOOL-USE BRAIN — for coding actions, read files first â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (isCodingAction) {
       console.log(`[ROUTE] â†’ Gemini tool-use loop (reads real files before patching)`);
       event.sender.send('command-chunk', { messageId, chunk: 'ðŸ§  Analyzing project...\n' });
@@ -2918,7 +2918,7 @@ User: `;
         event.sender.send('command-chunk', { messageId, chunk: '\n' + brainResult });
         tokenStats[director] = (tokenStats[director] || 0) + Math.ceil(brainResult.length / 4);
         saveGlobalState();
-        // triggerCoderImplementation sends command-end itself â€” never send it here too
+        // triggerCoderImplementation sends command-end itself — never send it here too
         const coderEngine = payload.engine || 'imi-core';
         event.sender.send('command-chunk', { messageId, chunk: `\n\n[IMI ORCHESTRATOR] Handing off to ${coderEngine.toUpperCase()}` });
         setTimeout(() => triggerCoderImplementation(event, coderEngine, brainResult, messageId), 800);
@@ -3114,7 +3114,7 @@ User: `;
     const _hasIMITarget4 = /\b(imi|the app|sidebar|dashboard|settings|tab|button|panel|header|modal|ui|css|style|layout|component|function|code|electron|react|index\.css|app\.tsx|devhub|dev hub|command center|chat|theme|font|color|appearance|look)\b/i.test(command);
     const _isDesktopFile4 = /\b(desktop|my desktop)\b/i.test(command) && /\b(game|pong|snake|calculator|html|python|file|script)\b/i.test(command);
     const isCodingAction = ((_hasAction4 && _hasIMITarget4) || /\b(src\/|electron-main|app\.tsx|index\.css)\b/i.test(command)) && !_isDesktopFile4;
-    // For local models use a lightweight system prompt for casual chat â€” injecting the full
+    // For local models use a lightweight system prompt for casual chat — injecting the full
     // project code into a 3-7B model's context leaves no room for conversation history.
     const ollamaLightPrefix = chatPrefix;
     const activePrefix = isCodingAction ? blueprintPrefix : ollamaLightPrefix;
@@ -3132,8 +3132,8 @@ User: `;
     const ollamaTimeout = setTimeout(() => {
       timedOut = true;
       try { req.abort(); } catch {}
-      const sizeHint = modelSizeGB >= 15 ? ` This model is ${modelSizeGB.toFixed(0)}GB â€” it needs a GPU to run at usable speed.` : '';
-      event.sender.send('command-error', { messageId, error: `â±ï¸ Ollama timed out after ${timeoutMs/1000}s.${sizeHint}\n\nðŸ’¡ Try switching to **qwen2.5-coder:7b** (4.7GB) â€” it runs fast on CPU.` });
+      const sizeHint = modelSizeGB >= 15 ? ` This model is ${modelSizeGB.toFixed(0)}GB — it needs a GPU to run at usable speed.` : '';
+      event.sender.send('command-error', { messageId, error: `â±ï¸ Ollama timed out after ${timeoutMs/1000}s.${sizeHint}\n\nðŸ’¡ Try switching to **qwen2.5-coder:7b** (4.7GB) — it runs fast on CPU.` });
     }, timeoutMs);
     // Build conversation history for Ollama (OpenAI format)
     const ollamaMessages = [{ role: 'system', content: activePrefix }];
@@ -3251,7 +3251,7 @@ User: `;
 
 
   // â”€â”€ Direct OpenAI-compatible API handlers (ChatGPT / DeepSeek / Mistral / Perplexity) â”€â”€â”€â”€â”€
-  // These all share the same streaming format â€” only hostname, model, and key differ
+  // These all share the same streaming format — only hostname, model, and key differ
   const openAICompatMap = {
     chatgpt:    { hostname: 'api.openai.com',        path: '/v1/chat/completions', model: 'gpt-4o',                              key: () => OPENAI_KEY,      label: 'OpenAI API key' },
     deepseek:   { hostname: 'api.deepseek.com',      path: '/v1/chat/completions', model: 'deepseek-chat',                       key: () => DEEPSEEK_KEY,    label: 'DeepSeek API key' },
@@ -3425,17 +3425,17 @@ CURRENT FILE STATE (use these exact strings for "search"):${fileContext}
 BRAIN PLAN TO IMPLEMENT:
 ${brainPlan.trim()}
 
-OUTPUT: A raw JSON array of patch objects. No markdown, no explanation â€” ONLY the JSON array.
+OUTPUT: A raw JSON array of patch objects. No markdown, no explanation — ONLY the JSON array.
 Format: [{ "file": "relative/path", "search": "exact existing text to find", "replace": "replacement text" }]
 
 CRITICAL RULES:
-- "search" MUST be copied VERBATIM from the CURRENT FILE STATE shown above â€” never invent or paraphrase it
-- Pick a short unique anchor (3-10 lines) from the actual file as "search" â€” do not paste the entire file
+- "search" MUST be copied VERBATIM from the CURRENT FILE STATE shown above — never invent or paraphrase it
+- Pick a short unique anchor (3-10 lines) from the actual file as "search" — do not paste the entire file
 - "replace" is the new text that replaces the search anchor (can be empty string "" to delete)
 - To delete a block: set "replace" to "" (empty string)
 - To add new code after an anchor: include the anchor in "replace" plus the new code below it
 - To create a brand NEW file: set "search" to "__NEW_FILE__"
-- Only change lines needed for the plan â€” do NOT rewrite whole files
+- Only change lines needed for the plan — do NOT rewrite whole files
 - Multiple patches allowed, one per logical change
 - If no code change is needed (e.g. plan is just analysis), return []`;
 
@@ -3515,7 +3515,7 @@ CRITICAL RULES:
 
   if (engine.toLowerCase() === 'antigravity') {
     // [SAFE MODE] Display Brain spec in chat + save task file.
-    // Autonomous file-writing is disabled â€” Gemini rewrites entire files which is destructive.
+    // Autonomous file-writing is disabled — Gemini rewrites entire files which is destructive.
     // The spec is shown in chat so the human (Antigravity in the IDE) can implement it safely.
     if (mainWindow) mainWindow.webContents.send('coder-status', 'Ready');
     const taskPath = path.join(currentProjectRoot, '.antigravity_task.md');
@@ -3702,8 +3702,8 @@ CRITICAL RULES:
       } catch(e) {}
 
       if (newPR) {
-        // Found Jules' PR â€” pull the branch locally
-        event.sender.send('command-chunk', { messageId, chunk: `\nâœ… [Jules] PR found: "${newPR.title}" (#${newPR.number})\nðŸŒ¿ Branch: ${newPR.head.ref}\nâ¬‡ï¸  Pulling changes to your desktop...\n` });
+        // Found Jules' PR — pull the branch locally
+        event.sender.send('command-chunk', { messageId, chunk: `\nâœ… [Jules] PR found: "${newPR.title}" (#${newPR.number})\n🌿 Branch: ${newPR.head.ref}\nâ¬‡ï¸  Pulling changes to your desktop...\n` });
         if (mainWindow) mainWindow.webContents.send('coder-status', 'Pulling Jules Changes');
         try {
           execSync(`git fetch origin ${newPR.head.ref}`, { cwd: currentProjectRoot, timeout: 30000 });
@@ -3814,7 +3814,7 @@ If no code change needed, return [].`;
           if (applied === 0) {
             event.sender.send('command-chunk', { messageId, chunk: `â„¹ï¸ No file changes were needed.\n` });
           } else {
-            event.sender.send('command-chunk', { messageId, chunk: `\nâœ… Done â€” ${applied} patch(es) applied. Run a build to verify.\n` });
+            event.sender.send('command-chunk', { messageId, chunk: `\nâœ… Done — ${applied} patch(es) applied. Run a build to verify.\n` });
             triggerGitSync();
           }
         } catch(e) {
@@ -3835,7 +3835,7 @@ If no code change needed, return [].`;
   });
 }
 
-// â”€â”€ Smart intent classifier â€” used when regex routing doesn't match â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Smart intent classifier — used when regex routing doesn't match â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Sends a tiny fast Gemini call to understand what the user wants, then routes accordingly.
 async function classifyCommandIntent(command) {
   if (!GEMINI_KEY) return null;
@@ -3861,7 +3861,7 @@ Rules:
 - "imi_change" = user wants to change the IMI application's own UI or code
 - "chat" = general question, conversation, or explanation request
 - fileName: infer a good snake_case descriptive name (e.g. "pong_game", "calculator", "todo_list")
-- fileType: infer from context â€” games/apps/websites = html, data/automation = py, default = html
+- fileType: infer from context — games/apps/websites = html, data/automation = py, default = html
 - confidence: how sure you are (0-100)
 - IGNORE spelling mistakes, understand intent despite typos`;
 
@@ -3888,7 +3888,7 @@ Rules:
     if (apiResp.error) { console.warn('[classifyIntent] API error:', apiResp.error.message); return null; }
     const text = apiResp?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     console.log('[classifyIntent] raw text:', text.slice(0, 200));
-    // Extract JSON from response â€” handle code fences, plain JSON, etc.
+    // Extract JSON from response — handle code fences, plain JSON, etc.
     const cleaned = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
     // Try parsing, with fallback to find first { ... } block
     let result;
@@ -3908,7 +3908,7 @@ Rules:
   }
 }
 
-// â”€â”€ Desktop awareness â€” scan what's actually on the desktop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Desktop awareness — scan what's actually on the desktop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getDesktopSnapshot(maxDepth = 1) {
   const DESKTOP = path.join(os.homedir(), 'Desktop');
   const lines = [];
@@ -3944,7 +3944,7 @@ function getDesktopSnapshot(maxDepth = 1) {
 async function triggerAutoCreateFile(event, command, messageId, overrides = {}) {
   const DESKTOP = path.join(os.homedir(), 'Desktop');
 
-  // Detect file type â€” overrides take priority (from AI classifier), then regex on command
+  // Detect file type — overrides take priority (from AI classifier), then regex on command
   const extMap = { python: 'py', py: 'py', javascript: 'js', js: 'js', html: 'html', css: 'css',
     typescript: 'ts', ts: 'ts', json: 'json', markdown: 'md', md: 'md', bash: 'sh', shell: 'sh',
     text: 'txt', txt: 'txt', react: 'tsx', node: 'js', script: 'py', program: 'py', app: 'html' };
@@ -3956,7 +3956,7 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
     }
   }
 
-  // Extract file name â€” priority: AI override â†’ "called X" / "named X" â†’ smart extraction â†’ fallback
+  // Extract file name — priority: AI override â†’ "called X" / "named X" â†’ smart extraction â†’ fallback
   let baseName = overrides.fileName || null;
   if (!baseName) {
     const nameMatch = command.match(/(?:called?|named?)\s+["']?([a-zA-Z0-9_\- ]{2,40})["']?/i)
@@ -3993,21 +3993,21 @@ async function triggerAutoCreateFile(event, command, messageId, overrides = {}) 
   try { fs.mkdirSync(path.dirname(filePath), { recursive: true }); } catch(_) {}
 
   const displayName = path.basename(filePath);
-  event.sender.send('command-chunk', { messageId, chunk: `âš¡ On it â€” generating \`${displayName}\`...` });
+  event.sender.send('command-chunk', { messageId, chunk: `⚡ On it — generating \`${displayName}\`...` });
 
-  // Read existing file if it exists â€” so Gemini improves it rather than generating blind
+  // Read existing file if it exists — so Gemini improves it rather than generating blind
   let existingContent = '';
   try {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, 'utf-8');
       // Cap at 12000 chars to avoid blowing the prompt budget
       existingContent = raw.length > 12000 ? raw.slice(0, 12000) + '\n... [truncated for context]' : raw;
-      event.sender.send('command-chunk', { messageId, chunk: `\nðŸ“– Found existing \`${displayName}\` â€” reading it first...\n` });
+      event.sender.send('command-chunk', { messageId, chunk: `\nðŸ“– Found existing \`${displayName}\` — reading it first...\n` });
     }
   } catch(_) {}
 
   const existingBlock = existingContent
-    ? `\nEXISTING FILE CONTENT (the current version â€” improve this, don't start from scratch unless told to rewrite):\n\`\`\`\n${existingContent}\n\`\`\`\n`
+    ? `\nEXISTING FILE CONTENT (the current version — improve this, don't start from scratch unless told to rewrite):\n\`\`\`\n${existingContent}\n\`\`\`\n`
     : '';
 
   // Also inject desktop snapshot so Gemini knows full context
@@ -4028,8 +4028,8 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
 - If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
 - If it's an app/tool: make it polished with a clean modern UI.
 - Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
-- Everything must be in a single file â€” inline CSS and JS. No external dependencies.
-- Output ONLY the raw file content. No markdown fences, no explanation, no preamble â€” just the code.`;
+- Everything must be in a single file — inline CSS and JS. No external dependencies.
+- Output ONLY the raw file content. No markdown fences, no explanation, no preamble — just the code.`;
 
   let generatedContent = '';
   try {
@@ -4076,7 +4076,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${ext.toUpperCase()} file.
   // Write file
   try {
     fs.writeFileSync(filePath, finalContent, 'utf-8');
-    // If the command had an explicit absolute path (plan phase), skip auto-open â€”
+    // If the command had an explicit absolute path (plan phase), skip auto-open —
     // the plan's "open" phase will handle it. Otherwise, open automatically.
     const wasExplicitPath = !!explicitPathMatch;
     const willOpen = !wasExplicitPath && (ext === 'html' || /\b(open|launch|run|start|play|show)\b/i.test(command));
@@ -4198,7 +4198,7 @@ Return the COMPLETE updated file content in a code block. Apply ONLY the changes
 }
 
 async function triggerDesktopTask(event, command, cmdL, messageId) {
-  // Extract folder name â€” stop at natural transition words so "called pong game inside the folder" â†’ "pong game"
+  // Extract folder name — stop at natural transition words so "called pong game inside the folder" â†’ "pong game"
   const folderMatch = command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+["']([^"']+)["']/i)   // quoted: called "My Folder"
     || command.match(/(?:call(?:ed)?|nam(?:e(?:d)?)?(?:\s+it)?)\s+((?:(?!\b(?:inside|in\s+the|make|create|put|add|open|launch|from|that|with|then|and\s)\b)\w+[\s-]?){1,5})/i);
   const folderName = (folderMatch?.[1] || '').trim().replace(/\s+/g, ' ').replace(/\s*(inside|in the|make|create|and|then|open|from).*$/i, '') || 'New Folder';
@@ -4215,7 +4215,7 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
   }
 
   // Step 2: detect if user wants a file generated inside the folder.
-  // IMPORTANT: strip the folder name before checking â€” "create a folder called 'pong game'"
+  // IMPORTANT: strip the folder name before checking — "create a folder called 'pong game'"
   // should NOT generate a file just because "game" appears in the folder name.
   const cmdLWithoutFolderName = folderName !== 'New Folder'
     ? cmdL.replace(folderName.toLowerCase(), '')
@@ -4237,7 +4237,7 @@ async function triggerDesktopTask(event, command, cmdL, messageId) {
   const filePath = path.join(desktopPath, fileName);
 
   if (!GEMINI_KEY) {
-    event.sender.send('command-chunk', { messageId, chunk: 'âŒ Gemini key missing â€” cannot generate file content.\n' });
+    event.sender.send('command-chunk', { messageId, chunk: 'âŒ Gemini key missing — cannot generate file content.\n' });
     event.sender.send('command-end', { messageId, code: 1 });
     return;
   }
@@ -4267,7 +4267,7 @@ Generate a COMPLETE, FULLY FUNCTIONAL, SELF-CONTAINED ${fileExt.toUpperCase()} f
 - If it's a game: make it actually fun and playable with good visuals, smooth controls, and a dark theme.
 - If it's an app/tool: make it polished with a clean modern UI.
 - Use modern CSS (flexbox, grid, gradients, shadows, rounded corners).
-- Everything in one file â€” inline CSS and JS. No external dependencies.
+- Everything in one file — inline CSS and JS. No external dependencies.
 - Output ONLY the raw code. No markdown fences, no explanation, no preamble.`;
 
   const req = net.request({ method: 'POST', protocol: 'https:', hostname: 'generativelanguage.googleapis.com',
@@ -4392,7 +4392,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({ width: 1400, height: 900, frame: false, transparent: true, webPreferences: { nodeIntegration: true, contextIsolation: false } });
   if (isDev) mainWindow.loadURL('http://127.0.0.1:3333');
   else mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
-  // Scale the entire UI up â€” makes all rem/px values more comfortable on 1080p screens
+  // Scale the entire UI up — makes all rem/px values more comfortable on 1080p screens
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.setZoomFactor(1.1);
   });
@@ -4410,7 +4410,7 @@ app.whenReady().then(() => {
   createWindow();
   // Fetch GitHub identity now that net module is available
   fetchGitHubIdentity();
-  // Only start auto-sync timer if GitHub token is already saved â€” user must opt in
+  // Only start auto-sync timer if GitHub token is already saved — user must opt in
   if (GITHUB_TOKEN && GITHUB_TOKEN.trim()) {
     syncTimer = setInterval(triggerGitSync, SYNC_INTERVAL_MS);
   }
@@ -4582,7 +4582,7 @@ ipcMain.handle('github-search', async (_e, query, sort) => {
         res.on('end', () => {
           try {
             const data = JSON.parse(raw);
-            // Bad/expired token â€” silently retry without auth
+            // Bad/expired token — silently retry without auth
             if (useToken && (data.message === 'Bad credentials' || res.statusCode === 401)) {
               return doSearch(false);
             }
@@ -4609,7 +4609,7 @@ ipcMain.handle('github-search', async (_e, query, sort) => {
 });
 
 // Clone a GitHub repo to local project folder
-// GitHub URL lookup â€” fetch a PR, issue, or repo directly from a URL
+// GitHub URL lookup — fetch a PR, issue, or repo directly from a URL
 ipcMain.handle('github-fetch-url', async (_e, url) => {
   try {
     // Parse URL: github.com/{owner}/{repo}/pull/{n} | /issues/{n} | just /{owner}/{repo}
@@ -4693,15 +4693,15 @@ ipcMain.handle('github-clone', async (_e, cloneUrl, folderName) => {
 
 // â”€â”€ Installed Tools checker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const TOOLS_MANIFEST = [
-  { id: 'node',      label: 'Node.js',       cmd: 'node --version',        installUrl: 'https://nodejs.org', category: 'runtime',  icon: 'ðŸŸ¢', desc: 'JavaScript runtime â€” required for IMI' },
-  { id: 'npm',       label: 'npm',           cmd: 'npm --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: 'ðŸ“¦', desc: 'Node package manager' },
-  { id: 'npx',       label: 'npx',           cmd: 'npx --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: 'âš¡', desc: 'Run npm packages without installing' },
-  { id: 'git',       label: 'Git',           cmd: 'git --version',         installUrl: 'https://git-scm.com', category: 'dev',     icon: 'ðŸŒ¿', desc: 'Version control â€” required for sync' },
-  { id: 'python',    label: 'Python',        cmd: 'python --version',      installUrl: 'https://python.org', category: 'runtime',  icon: 'ðŸ', desc: 'Python runtime' },
-  { id: 'gemini',    label: 'Gemini CLI',    cmd: 'gemini --version',      installUrl: 'https://github.com/google-gemini/gemini-cli', category: 'ai', icon: 'âœ¨', desc: 'Google Gemini CLI â€” powers the Brain' },
-  { id: 'ollama',    label: 'Ollama',        cmd: 'ollama --version',      installUrl: 'https://ollama.com', category: 'ai',       icon: 'ðŸ¦™', desc: 'Run AI models locally â€” zero API cost' },
-  { id: 'code',      label: 'VS Code',       cmd: 'code --version',        installUrl: 'https://code.visualstudio.com', category: 'editor', icon: 'ðŸ’™', desc: 'Visual Studio Code editor' },
-  { id: 'gh',        label: 'GitHub CLI',    cmd: 'gh --version',          installUrl: 'https://cli.github.com', category: 'dev',   icon: 'ðŸ™', desc: 'GitHub CLI â€” manage repos from terminal' },
+  { id: 'node',      label: 'Node.js',       cmd: 'node --version',        installUrl: 'https://nodejs.org', category: 'runtime',  icon: '🟢', desc: 'JavaScript runtime — required for IMI' },
+  { id: 'npm',       label: 'npm',           cmd: 'npm --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: '📦', desc: 'Node package manager' },
+  { id: 'npx',       label: 'npx',           cmd: 'npx --version',         installUrl: 'https://nodejs.org', category: 'runtime',  icon: '⚡', desc: 'Run npm packages without installing' },
+  { id: 'git',       label: 'Git',           cmd: 'git --version',         installUrl: 'https://git-scm.com', category: 'dev',     icon: '🌿', desc: 'Version control — required for sync' },
+  { id: 'python',    label: 'Python',        cmd: 'python --version',      installUrl: 'https://python.org', category: 'runtime',  icon: '🐍', desc: 'Python runtime' },
+  { id: 'gemini',    label: 'Gemini CLI',    cmd: 'gemini --version',      installUrl: 'https://github.com/google-gemini/gemini-cli', category: 'ai', icon: '✨', desc: 'Google Gemini CLI — powers the Brain' },
+  { id: 'ollama',    label: 'Ollama',        cmd: 'ollama --version',      installUrl: 'https://ollama.com', category: 'ai',       icon: '🦙', desc: 'Run AI models locally — zero API cost' },
+  { id: 'code',      label: 'VS Code',       cmd: 'code --version',        installUrl: 'https://code.visualstudio.com', category: 'editor', icon: '💙', desc: 'Visual Studio Code editor' },
+  { id: 'gh',        label: 'GitHub CLI',    cmd: 'gh --version',          installUrl: 'https://cli.github.com', category: 'dev',   icon: '🙏', desc: 'GitHub CLI — manage repos from terminal' },
 ];
 
 ipcMain.handle('check-tools', async () => {
@@ -4727,7 +4727,7 @@ ipcMain.handle('get-log', (_e, lines = 200) => {
   try {
     const content = fs.readFileSync(IMI_LOG_PATH, 'utf-8');
     return content.split('\n').filter(Boolean).slice(-lines).join('\n');
-  } catch { return '(No log file yet â€” restart IMI to start logging)'; }
+  } catch { return '(No log file yet — restart IMI to start logging)'; }
 });
 ipcMain.handle('open-log-file', () => { shell.openPath(IMI_LOG_PATH); });
 
@@ -4749,7 +4749,7 @@ ipcMain.handle('ollama-update', async (event) => {
     // Send real progress so UI can show download %
     safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'downloading', percent: 0 });
     await downloadFile(event, 'ollama-update', 'https://ollama.com/download/OllamaSetup.exe', installerPath);
-    // Push to 95% â€” installing phase
+    // Push to 95% — installing phase
     safeSend(event, 'install-dep-progress', { dep: 'ollama-update', status: 'installing', percent: 95 });
     // Kill Ollama BEFORE running installer so it doesn't lock files
     await new Promise(res => exec(`taskkill /F /IM "Ollama.exe" /T`, { windowsHide: true }, () => res()));
@@ -4814,7 +4814,7 @@ const resolveInstallKey = (name) => {
   return null;
 };
 
-// Safe send â€” never crashes if webContents was destroyed
+// Safe send — never crashes if webContents was destroyed
 const safeSend = (event, channel, data) => {
   try { if (event?.sender && !event.sender.isDestroyed()) event.sender.send(channel, data); } catch {}
 };
@@ -4855,7 +4855,7 @@ ipcMain.handle('install-dep', async (event, dep) => {
   safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'starting', percent: 0 });
 
   try {
-    // npm packages â€” just run npm install -g
+    // npm packages — just run npm install -g
     if (info.npm && !info.winExe) {
       safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 20 });
       await new Promise((resolve, reject) => {
@@ -4867,7 +4867,7 @@ ipcMain.handle('install-dep', async (event, dep) => {
       return { success: true };
     }
 
-    // Try winget first â€” fully silent, no popup, no UAC on supported packages
+    // Try winget first — fully silent, no popup, no UAC on supported packages
     if (info.winget) {
       try {
         safeSend(event, 'install-dep-progress', { dep: key, name: info.name, status: 'installing', percent: 10 });
@@ -4879,7 +4879,7 @@ ipcMain.handle('install-dep', async (event, dep) => {
       } catch { /* fall through to EXE installer */ }
     }
 
-    // EXE/MSI installer â€” download then run fully hidden (no window)
+    // EXE/MSI installer — download then run fully hidden (no window)
     if (info.winExe) {
       const isMsi = info.winExe.includes('.msi');
       const ext = isMsi ? '.msi' : '.exe';
@@ -4939,7 +4939,7 @@ ipcMain.handle('ollama-list', async () => {
   } catch(e) { return { success: false, models: [], error: e.message }; }
 });
 
-// â”€â”€ Hardware check â€” VRAM + free RAM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Hardware check — VRAM + free RAM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 ipcMain.handle('get-hardware-info', async () => {
   let vramMB = 0, gpuName = 'Unknown GPU';
   try {
@@ -4965,7 +4965,7 @@ const pingOllama = () => new Promise(resolve => {
 
 const ensureOllamaRunning = async () => {
   if (await pingOllama()) return true; // already up
-  // Not running â€” try to start it
+  // Not running — try to start it
   try {
     execSync('where ollama', { timeout: 2000 });
   } catch { return false; } // Ollama not installed
@@ -4979,7 +4979,7 @@ const ensureOllamaRunning = async () => {
   return false;
 };
 
-// Warm up the Ollama model by sending a silent 1-token request â€” eliminates cold-start delay on first real message
+// Warm up the Ollama model by sending a silent 1-token request — eliminates cold-start delay on first real message
 const warmupOllamaModel = async (modelName) => {
   if (!modelName) return;
   try {
@@ -5071,7 +5071,7 @@ ipcMain.handle('hf-batch-sizes', async (_e, modelIds) => {
   return results;
 });
 
-// HuggingFace model search â€” Ollama can pull any GGUF model from HF
+// HuggingFace model search — Ollama can pull any GGUF model from HF
 ipcMain.handle('hf-search-models', async (_e, query) => {
   if (!query || query.trim().length < 1) return { results: [], total: 0 };
 
@@ -5180,7 +5180,7 @@ ipcMain.handle('transcribe-audio', async (e, base64Audio) => {
   }
 });
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ“Š BENCHMARK TRACKER â€” per-model performance metrics
+// ðŸ“Š BENCHMARK TRACKER — per-model performance metrics
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const BENCH_PATH = path.join(os.homedir(), '.imi', 'benchmarks.json');
 class BenchmarkTracker {
@@ -5205,7 +5205,7 @@ ipcMain.on('record-benchmark', (e, { model, durationMs, success }) => benchTrack
 ipcMain.on('reset-benchmarks', () => benchTracker.reset());
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ—‚ FILE CACHE â€” 60s TTL in-memory cache for project files
+// ðŸ—‚ FILE CACHE — 60s TTL in-memory cache for project files
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const fileCache = new Map(); // key â†’ { content, ts }
 const FILE_CACHE_TTL = 60_000;
@@ -5232,7 +5232,7 @@ ipcMain.handle('get-cache-stats', () => {
 ipcMain.on('clear-file-cache', () => fileCache.clear());
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ’» EMBEDDED TERMINAL â€” run shell commands from the UI
+// ðŸ’» EMBEDDED TERMINAL — run shell commands from the UI
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 let terminalCwd = os.homedir();
 
@@ -5273,7 +5273,7 @@ ipcMain.handle('terminal-run', async (event, { cmd, cwd }) => {
 ipcMain.handle('terminal-get-cwd', () => terminalCwd);
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ—º PROJECT NAVIGATOR â€” scan imports & build dependency tree
+// ðŸ—º PROJECT NAVIGATOR — scan imports & build dependency tree
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ipcMain.handle('scan-project-imports', async (e, projectRoot) => {
   if (!projectRoot || !fs.existsSync(projectRoot)) return { error: 'No project root' };
@@ -5319,7 +5319,7 @@ ipcMain.handle('scan-project-imports', async (e, projectRoot) => {
 });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ“¦ DOC HELPER â€” fetch npm package info for project deps
+// 📦 DOC HELPER — fetch npm package info for project deps
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ipcMain.handle('fetch-package-docs', async (e, packages) => {
   const results = [];
@@ -5357,7 +5357,7 @@ ipcMain.handle('fetch-package-docs', async (e, packages) => {
 });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸ› DEBUG PASS â€” post-coder AI review for bugs
+// ðŸ› DEBUG PASS — post-coder AI review for bugs
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ipcMain.handle('run-debug-pass', async (e, { code, context, model, messageId, geminiKey: gKey }) => {
   const key = gKey || GEMINI_KEY;
@@ -5372,17 +5372,17 @@ ${(code || '').slice(0, 5000)}
 \`\`\`
 
 Check for these specific problems:
-1. TRUNCATION â€” Does the code/file end abruptly mid-function, mid-tag, or mid-statement? (e.g. ends with "if (" or missing closing </html> or incomplete JS)
-2. MARKDOWN LEAKAGE â€” Does the output start with \`\`\`html or \`\`\`js or similar code fence markers? (These break files)
-3. BUGS â€” Any actual logic bugs, syntax errors, or broken references
-4. INCOMPLETE FILES â€” Was a file meant to be created but appears to have missing sections?
+1. TRUNCATION — Does the code/file end abruptly mid-function, mid-tag, or mid-statement? (e.g. ends with "if (" or missing closing </html> or incomplete JS)
+2. MARKDOWN LEAKAGE — Does the output start with \`\`\`html or \`\`\`js or similar code fence markers? (These break files)
+3. BUGS — Any actual logic bugs, syntax errors, or broken references
+4. INCOMPLETE FILES — Was a file meant to be created but appears to have missing sections?
 
 Respond in this exact format:
-TRUNCATED: YES/NO â€” [brief reason]
-MARKDOWN LEAKAGE: YES/NO â€” [brief reason]
+TRUNCATED: YES/NO — [brief reason]
+MARKDOWN LEAKAGE: YES/NO — [brief reason]
 BUGS: [list any or "None found"]
 VERDICT: PASS / FAIL / WARNINGS
-ACTION: [one sentence â€” what IMI should do to fix it, or "None needed"]`;
+ACTION: [one sentence — what IMI should do to fix it, or "None needed"]`;
 
   const postData = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: debugPrompt }] }],
@@ -5413,7 +5413,7 @@ ACTION: [one sentence â€” what IMI should do to fix it, or "None needed"]`;
 });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// âš¡ PARALLEL ORCHESTRATION â€” query multiple models at once
+// ⚡ PARALLEL ORCHESTRATION — query multiple models at once
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ipcMain.handle('parallel-brain-query', async (e, { prompt, models, keys }) => {
   const { geminiKey: gKey, openaiKey, claudeKey, groqKey } = keys || {};
@@ -5484,7 +5484,7 @@ ipcMain.handle('parallel-brain-query', async (e, { prompt, models, keys }) => {
 ipcMain.on('open-external-url', (e, url) => { shell.openExternal(url); });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// ðŸŒ WEB GROUNDING â€” DuckDuckGo instant answers, no API key needed
+// ðŸŒ WEB GROUNDING — DuckDuckGo instant answers, no API key needed
 // Used by: browser skill URL resolution + brain context injection
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function ddgSearch(query, timeoutMs = 3000) {
@@ -5524,13 +5524,13 @@ function ddgSearch(query, timeoutMs = 3000) {
 // Expose DDG search to frontend
 ipcMain.handle('ddg-search', async (e, query) => ddgSearch(query));
 
-// DDG URL resolver â€” finds the real URL for a site name like "figma" or "linear"
+// DDG URL resolver — finds the real URL for a site name like "figma" or "linear"
 async function ddgResolveUrl(siteName) {
   try {
     const result = await ddgSearch(`${siteName} official website`, 2500);
     if (!result) return null;
     if (result.abstractUrl) return result.abstractUrl;
-    // Try the redirect approach â€” DDG "I'm Lucky" bang
+    // Try the redirect approach — DDG "I'm Lucky" bang
     return null;
   } catch { return null; }
 }
