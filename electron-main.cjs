@@ -1842,7 +1842,10 @@ const verifiedPaths = {};
 function checkCommand(cmd) {
   if (verifiedPaths[cmd]) return Promise.resolve(verifiedPaths[cmd]);
   return new Promise((resolve) => {
-    exec(`where.exe ${cmd}`, (err, stdout) => {
+    // Build an enriched PATH so Electron can find npm global bins, pyenv, etc.
+    const npmGlobal = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+    const enrichedEnv = { ...process.env, PATH: [process.env.PATH, npmGlobal].filter(Boolean).join(';') };
+    exec(`where.exe ${cmd}`, { env: enrichedEnv }, (err, stdout) => {
       if (err || !stdout) return resolve(false);
       const paths = stdout.split(/\r?\n/).filter(p => p.trim() !== '' && !p.toLowerCase().includes('windowsapps'));
       let foundPath = paths[0].trim();
@@ -4722,8 +4725,10 @@ const TOOLS_MANIFEST = [
 ];
 
 ipcMain.handle('check-tools', async () => {
+  const npmGlobal = path.join(os.homedir(), 'AppData', 'Roaming', 'npm');
+  const enrichedEnv = { ...process.env, PATH: [process.env.PATH, npmGlobal].filter(Boolean).join(';') };
   const execAsync = (cmd) => new Promise(resolve => {
-    exec(cmd, { timeout: 4000 }, (err, stdout) => {
+    exec(cmd, { timeout: 4000, env: enrichedEnv }, (err, stdout) => {
       if (err) { resolve(null); return; }
       const line = stdout.trim().split('\n')[0];
       // Extract first semver-like number from output (handles "git version 2.53.0", "ollama version is 0.18.2", etc.)
