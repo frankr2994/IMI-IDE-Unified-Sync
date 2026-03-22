@@ -151,6 +151,7 @@ const App = () => {
   const [debugResults, setDebugResults] = useState<Record<number, { analysis: string; loading: boolean }>>({});
   const [benchmarkData, setBenchmarkData] = useState<Record<string, { requests: number; totalMs: number; successes: number }>>({});
   const [parallelMode, setParallelMode] = useState(false);
+  const [styleScanEnabled, setStyleScanEnabled] = useState(true);
   const [parallelResults, setParallelResults] = useState<Record<string, { text: string; ms: number; model: string; error?: boolean }> | null>(null);
   const [parallelLoading, setParallelLoading] = useState(false);
   const [docPackages, setDocPackages] = useState<any[]>([]);
@@ -1809,6 +1810,35 @@ const App = () => {
                   </div>
                 </div>
                 <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {messages.length === 0 && !stats.projectRoot && (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', padding: '3rem 2rem', textAlign: 'center' }}>
+                      <div style={{ width: '64px', height: '64px', background: 'rgba(155,77,255,0.1)', border: '1px solid rgba(155,77,255,0.25)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' }}>📁</div>
+                      <div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: '8px' }}>No project open</div>
+                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, maxWidth: '320px' }}>Pick the folder you want to work on and the AI will read your code, learn your style, and help you build.</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px' }}>
+                        <button onClick={async () => {
+                          const p = await (ipc as any).invoke('browse-folder');
+                          if (p) {
+                            setProjectRootInput(p);
+                            const result = await (ipc as any).invoke('set-project-root', p);
+                            if (result?.success) {
+                              const s = await (ipc as any).invoke('get-stats');
+                              if (s) setStats(s);
+                            }
+                          }
+                        }} style={{ padding: '12px 24px', background: 'rgba(155,77,255,0.2)', border: '1px solid rgba(155,77,255,0.5)', borderRadius: '10px', color: 'rgba(155,77,255,1)', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          📁 Browse for project folder
+                        </button>
+                        <button onClick={() => {
+                          setStats((s: any) => ({ ...s, projectRoot: 'none' }));
+                        }} style={{ padding: '10px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 500, fontSize: '0.78rem', cursor: 'pointer' }}>
+                          Start without a project
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {messages.map(m => (
                     <div key={m.id} style={{ display: 'flex', gap: '12px', justifyContent: m.type==='user'?'flex-end':'flex-start', flexDirection: 'row', alignItems: 'flex-start' }}>
                       {m.type !== 'user' && <div style={{ width: '28px', height: '28px', background: m.type==='plan'?'rgba(155,77,255,0.5)':m.type==='system'?'#333':'var(--primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px', fontSize: '0.85rem', flexShrink: 0 }}>{m.type==='plan'?'📋':m.type==='ai'?<Cpu size={14}/>:<Terminal size={14}/>}</div>}
