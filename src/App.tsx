@@ -4834,6 +4834,7 @@ const App = () => {
                           { emoji: '🐙', name: 'GitHub',      val: githubToken,    set: setGithubToken,    saveKey: 'githubToken' },
                           { emoji: '🤝', name: 'Jules AI',    val: julesApiKey,    set: setJulesApiKey,    saveKey: 'julesApiKey' },
                           { emoji: '🗺️', name: 'Google Maps', val: googleMapsKey,  set: setGoogleMapsKey,  saveKey: 'googleMapsKey' },
+                          { emoji: '🔀', name: 'OpenRouter',  val: customApiKey,   set: setCustomApiKey,   saveKey: 'customApiKey' },
                         ];
                         const saved = allKeys.filter(k => k.val.trim());
                         if (saved.length === 0) return (
